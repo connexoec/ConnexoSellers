@@ -1,0 +1,226 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Tomorrow:ital,wght@1,600&display=swap');
+
+:root {
+  /* Core Colors from Palette */
+  --bg-primary: #210900;
+  --bg-secondary: #2b1208;
+  --text-primary: #ffefe5;
+  --text-secondary: #ffa35d;
+  --accent: #ff6600;
+  --accent-dark: #962700;
+  --accent-glow: rgba(255, 102, 0, 0.3);
+  --success: #10b981;
+  --danger: #ef4444;
+
+  /* Tier Colors */
+  --tier-basic: #94a3b8;
+  --tier-pro: #38bdf8;
+  --tier-ultra: #f59e0b;
+
+  /* Layout */
+  --nav-height: 70px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --container-max: 600px;
+
+  /* Senior UI Specs */
+  --font-main: 'Verdana', sans-serif;
+  --font-heading: 'Verdana', sans-serif;
+
+  --glass-bg: rgba(33, 9, 0, 0.7);
+  --glass-border: rgba(255, 102, 0, 0.15);
+  --glass-blur: blur(12px);
+
+  color-scheme: dark;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  font-family: var(--font-main);
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
+  line-height: 1.5;
+  overflow-x: hidden;
+  background-image: radial-gradient(circle at 50% 0%, #3a1505 0%, transparent 70%);
+}
+
+#root {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  max-width: var(--container-max);
+  margin: 0 auto;
+  position: relative;
+}
+
+/* Typography */
+h1,
+h2,
+h3 {
+  font-family: var(--font-heading);
+  font-style: italic;
+}
+
+h1 {
+  font-size: 2rem;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+h3 {
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+p {
+  color: var(--text-secondary);
+}
+
+/* Components Utilities */
+.glass {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+}
+
+.card {
+  padding: 1.25rem;
+  border-radius: var(--radius-md);
+  background: var(--bg-secondary);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:active {
+  transform: scale(0.98);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 1.5rem;
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s;
+  gap: 0.5rem;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: white;
+  box-shadow: 0 4px 14px var(--accent-glow);
+}
+
+.btn-primary:active {
+  transform: translateY(2px);
+  box-shadow: 0 2px 7px var(--accent-glow);
+}
+
+/* Navigation Bar (Bottom) */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: var(--container-max);
+  height: var(--nav-height);
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  padding: 0 1rem;
+  z-index: 1000;
+  border-top: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+
+.nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-decoration: none;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  gap: 4px;
+  transition: color 0.2s;
+}
+
+.nav-item.active {
+  color: var(--accent);
+}
+
+.nav-icon {
+  font-size: 1.5rem;
+}
+
+/* Senior Accessibility Focus */
+:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 4px;
+  box-shadow: 0 0 0 8px var(--accent-glow);
+}
+
+/* Plan Specific Styles */
+.tier-badge {
+  padding: 4px 10px;
+  border-radius: 100px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.tier-basic {
+  background: rgba(148, 163, 184, 0.2);
+  color: var(--tier-basic);
+  border: 1px solid var(--tier-basic);
+}
+
+.tier-pro {
+  background: rgba(56, 189, 248, 0.2);
+  color: var(--tier-pro);
+  border: 1px solid var(--tier-pro);
+}
+
+.tier-ultra {
+  background: rgba(245, 158, 11, 0.2);
+  color: var(--tier-ultra);
+  border: 1px solid var(--tier-ultra);
+}
+
+/* Animation */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in {
+  animation: fadeIn 0.4s ease forwards;
+}@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
