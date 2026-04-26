@@ -1,154 +1,162 @@
-import { auth, db } from '../lib/firebase';
-import { 
-  signInWithEmailAndPassword, 
-  signOut
-} from "firebase/auth";
-import { 
-  doc, 
-  getDoc, 
-  setDoc, 
-  collection, 
-  addDoc, 
-  query, 
-  where, 
-  getDocs,
-  onSnapshot,
-  updateDoc
-} from "firebase/firestore";
+// ============================================================
+// dataService.js — Modo Local (Sin Backend)
+// Toda la lógica de negocio y datos viven en memoria.
+// Listo para conectar a cualquier backend en el futuro.
+// ============================================================
 
 export const PLANS = {
-  PRO: { id: 'PRO', price: 97.00, label: 'Plan PRO' },
+  PRO:   { id: 'PRO',   price: 97.00,  label: 'Plan PRO' },
   ULTRA: { id: 'ULTRA', price: 179.00, label: 'Plan ULTRA' }
 };
 
 export const ROLES = {
   SUPER_ADMIN: 'SUPER_ADMIN',
   DISTRIBUTOR: 'DISTRIBUTOR',
-  SELLER: 'SELLER'
+  SELLER:      'SELLER'
 };
 
+// ---------- Estado local en memoria ----------
+let _currentUser = null;
+let _sales = [];
+let _profiles = [
+  {
+    uid: 'admin-001',
+    id:  'admin-001',
+    full_name:      'Super Admin',
+    email:          'admin@connexo.com',
+    password:       'admin123',
+    role:           'SUPER_ADMIN',
+    is_certified:   true,
+    wallet_balance: 0,
+    parent_id:      ''
+  }
+];
+
+// ---------- Utilidades ----------
+const delay = (ms = 400) => new Promise(r => setTimeout(r, ms));
+
+function calcMetrics(user) {
+  const uid = user.uid || user.id;
+
+  if (!user.is_certified) return { rate: 0, base: 0, level: 'BLOQUEADO' };
+
+  // Ventas propias
+  const mySales   = _sales.filter(s => s.seller_id === uid).length;
+  // Ventas del equipo (propias + de hijos directos)
+  const teamIds   = _profiles.filter(p => p.parent_id === uid).map(p => p.uid);
+  const teamSales = _sales.filter(s => teamIds.includes(s.seller_id) || s.seller_id === uid).length;
+
+  if (user.role === ROLES.SELLER) {
+    if (mySales >= 31) return { rate: 0.09, base: 300, level: 'VENDEDOR ULTRA' };
+    if (mySales >= 20) return { rate: 0.07, base: 250, level: 'VENDEDOR PRO'   };
+    return              { rate: 0.05, base: 0,   level: 'VENDEDOR BASIC'        };
+  }
+
+  if (user.role === ROLES.DISTRIBUTOR) {
+    if (teamSales >= 201) return { rate: 0.18, base: 600, level: 'PARTNER 3'    };
+    if (teamSales >= 101) return { rate: 0.15, base: 600, level: 'PARTNER 2'    };
+    if (teamSales >= 50)  return { rate: 0.12, base: 500, level: 'PARTNER 1'    };
+    return                { rate: 0.10, base: 0,   level: 'PARTNER BASIC'       };
+  }
+
+  return { rate: 0, base: 0, level: 'SUPER ADMIN' };
+}
+
+// ---------- Servicio ----------
 export const dataService = {
 
-  // 1. AUTHENTICATION
+  // 1. LOGIN
   async login(email, password) {
-    const userCredential = await signInWithEmailAndPassword(auth, email, password);
-    const user = userCredential.user;
-    const docRef = doc(db, "profiles", user.uid);
-    const docSnap = await getDoc(docRef);
-
-    if (!docSnap.exists()) {
-      await signOut(auth);
-      throw new Error("Perfil de usuario no encontrado. Contacte al administrador.");
-    }
-
-    return { uid: user.uid, email: user.email, ...docSnap.data() };
+    await delay();
+    const profile = _profiles.find(
+      p => p.email === email && p.password === password
+    );
+    if (!profile) throw new Error('Credenciales incorrectas. Verifica tu email y contraseña.');
+    _currentUser = { ...profile };
+    return _currentUser;
   },
 
+  // 2. LOGOUT
   async logout() {
-    await signOut(auth);
+    await delay(200);
+    _currentUser = null;
   },
 
-  // 2. REAL-TIME PROFILE SUBSCRIPTION (onSnapshot)
-  subscribeToProfile(userId, callback) {
-    const docRef = doc(db, "profiles", userId);
-    return onSnapshot(docRef, (snap) => {
-      if (snap.exists()) callback({ uid: userId, ...snap.data() });
-    });
-  },
-
-  // 3. METRICS (Commission Logic v2.2)
+  // 3. METRICS
   async getMetrics(user) {
-    if (!user.is_certified) return { rate: 0, base: 0, level: 'BLOQUEADO' };
-
-    const userId = user.uid || user.id;
-    const salesRef = collection(db, "sales");
-    let teamIds = [userId];
-
-    // Get team members for DISTRIBUTOR and SUPER_ADMIN
-    if (user.role === ROLES.DISTRIBUTOR || user.role === ROLES.SUPER_ADMIN) {
-      const teamQuery = query(collection(db, "profiles"), where("parent_id", "==", userId));
-      const teamSnap = await getDocs(teamQuery);
-      teamIds = [userId, ...teamSnap.docs.map(d => d.id)];
-    }
-
-    // Firestore 'in' query max 30 items — safe for MVP
-    const q = query(salesRef, where("seller_id", "in", teamIds.slice(0, 30)));
-    const querySnapshot = await getDocs(q);
-    const totalSalesCount = querySnapshot.size;
-    const mySalesCount = querySnapshot.docs.filter(d => d.data().seller_id === userId).length;
-
-    if (user.role === ROLES.SELLER) {
-      if (mySalesCount >= 31) return { rate: 0.09, base: 300, level: 'VENDEDOR ULTRA' };
-      if (mySalesCount >= 20) return { rate: 0.07, base: 250, level: 'VENDEDOR PRO' };
-      return { rate: 0.05, base: 0, level: 'VENDEDOR BASIC' };
-    }
-
-    if (user.role === ROLES.DISTRIBUTOR) {
-      if (totalSalesCount >= 201) return { rate: 0.18, base: 600, level: 'PARTNER 3' };
-      if (totalSalesCount >= 101) return { rate: 0.15, base: 600, level: 'PARTNER 2' };
-      if (totalSalesCount >= 50)  return { rate: 0.12, base: 500, level: 'PARTNER 1' };
-      return { rate: 0.10, base: 0, level: 'PARTNER BASIC' };
-    }
-
-    return { rate: 0, base: 0, level: 'SUPER ADMIN' };
+    await delay(300);
+    return calcMetrics(user);
   },
 
-  // 4. REGISTER SALE + UPDATE BALANCE
+  // 4. SALES
   async registerSale(userId, planKey, customerData, currentRate, isCertified) {
-    const plan = PLANS[planKey];
+    await delay();
+    const plan       = PLANS[planKey];
     const commission = isCertified ? plan.price * (currentRate || 0) : 0;
 
-    const saleData = {
-      seller_id: userId,
-      plan_type: planKey,
-      amount: plan.price,
+    const sale = {
+      id:               `sale-${Date.now()}`,
+      seller_id:        userId,
+      plan_type:        planKey,
+      amount:           plan.price,
       commission_earned: commission,
-      customer_name: customerData.name,
-      customer_phone: customerData.phone,
-      status: 'COMPLETED',
-      created_at: new Date()
+      customer_name:    customerData.name,
+      customer_phone:   customerData.phone,
+      status:           'COMPLETED',
+      created_at:       new Date().toISOString()
     };
 
-    const docRef = await addDoc(collection(db, "sales"), saleData);
+    _sales.unshift(sale);
 
-    // Atomically update wallet_balance in user profile
-    const profileRef = doc(db, "profiles", userId);
-    const profileSnap = await getDoc(profileRef);
-    if (profileSnap.exists()) {
-      const currentBalance = profileSnap.data().wallet_balance || 0;
-      await updateDoc(profileRef, { wallet_balance: currentBalance + commission });
-    }
+    // Actualizar billetera del perfil local
+    const profile = _profiles.find(p => p.uid === userId);
+    if (profile) profile.wallet_balance = (profile.wallet_balance || 0) + commission;
 
-    return { id: docRef.id, ...saleData };
+    return sale;
   },
 
-  // 5. CERTIFY USER
-  async certifyUser(userId) {
-    const profileRef = doc(db, "profiles", userId);
-    await updateDoc(profileRef, { is_certified: true });
+  async getSales(userId) {
+    await delay(300);
+    return _sales.filter(s => s.seller_id === userId);
   },
 
-  // 6. GET TEAM
+  // 5. TEAM
   async getTeam(parentId) {
-    const q = query(collection(db, "profiles"), where("parent_id", "==", parentId));
-    const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(d => ({ uid: d.id, id: d.id, ...d.data() }));
+    await delay(300);
+    return _profiles
+      .filter(p => p.parent_id === parentId)
+      .map(({ password: _, ...rest }) => rest); // No exponer contraseñas
   },
 
-  // 7. ADD TEAM MEMBER (creates Firebase Auth user + Firestore profile)
   async addTeamMember(parentId, userData) {
-    // NOTE: Creating Auth users requires Admin SDK (Cloud Functions) in production.
-    // For MVP, we add them directly to Firestore with a pending status.
-    const newProfileRef = doc(collection(db, "profiles"));
-    await setDoc(newProfileRef, {
-      full_name: userData.name,
-      email: userData.email,
-      role: userData.role || 'SELLER',
-      is_certified: false,
+    await delay();
+    const newProfile = {
+      uid:            `user-${Date.now()}`,
+      id:             `user-${Date.now()}`,
+      full_name:      userData.name,
+      email:          userData.email,
+      password:       userData.password || 'connexo123',
+      role:           userData.role || ROLES.SELLER,
+      is_certified:   false,
       wallet_balance: 0,
-      parent_id: parentId,
-      created_at: new Date()
-    });
-    return { uid: newProfileRef.id, id: newProfileRef.id, ...userData };
+      parent_id:      parentId,
+      created_at:     new Date().toISOString()
+    };
+    _profiles.push(newProfile);
+    const { password: _, ...safeProfile } = newProfile;
+    return safeProfile;
+  },
+
+  // 6. CERTIFICATION
+  async certifyUser(userId) {
+    await delay();
+    const profile = _profiles.find(p => p.uid === userId || p.id === userId);
+    if (!profile) throw new Error('Usuario no encontrado.');
+    profile.is_certified = true;
+    // Si el usuario actual es el mismo, actualizarlo
+    if (_currentUser && (_currentUser.uid === userId)) {
+      _currentUser.is_certified = true;
+    }
+    return true;
   }
 };
