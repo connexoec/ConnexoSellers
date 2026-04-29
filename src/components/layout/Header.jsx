@@ -1,11 +1,23 @@
-import { Bell } from 'lucide-react';
+import { Bell, ArrowLeft } from 'lucide-react';
 
-const Header = ({ user, notificationCount = 0, onShowNotifications }) => {
+const Header = ({ user, notificationCount = 0, onShowNotifications, activeTab, onBack }) => {
   return (
     <header style={{ padding: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontFamily: 'Verdana, sans-serif' }}>
-      <div>
-        <p style={{ fontSize: '0.7rem', marginBottom: '2px', opacity: 0.6, textTransform: 'uppercase' }}>Sesión Activa</p>
-        <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700 }}>{user.name}</h3>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+        {activeTab !== 'dashboard' && (
+          <button 
+            onClick={onBack} 
+            className="btn glass" 
+            style={{ padding: '8px', border: '1px solid var(--accent)' }}
+            aria-label="Volver al dashboard"
+          >
+            <ArrowLeft size={18} color="var(--accent)" />
+          </button>
+        )}
+        <div>
+          <p style={{ fontSize: '0.7rem', marginBottom: '2px', opacity: 0.6, textTransform: 'uppercase' }}>Sesión Activa</p>
+          <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700 }}>{user.name}</h3>
+        </div>
       </div>
       
       <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>

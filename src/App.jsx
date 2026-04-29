@@ -22,6 +22,7 @@ function App() {
   const [notifications,   setNotifications]   = useState([
     { id: 1, message: 'Ecosistema Connexo v2.2 iniciado', type: 'INFO', read: false }
   ]);
+  const [highContrast,    setHighContrast]    = useState(false);
 
   // Refrescar métricas y equipo cuando cambia el usuario
   useEffect(() => {
@@ -121,14 +122,20 @@ function App() {
           <div className="card glass" style={{ marginBottom: '1.5rem', border: '1px solid var(--accent)' }}>
             <p style={{ fontSize: '0.65rem', opacity: 0.6, textTransform: 'uppercase' }}>Nivel Actual</p>
             <h2 style={{ color: 'var(--accent)', margin: '4px 0', fontSize: '1.2rem' }}>{metrics.level}</h2>
-            <div style={{ height: 4, background: 'rgba(255,255,255,0.08)', borderRadius: 2, overflow: 'hidden', margin: '12px 0' }}>
-              <motion.div
-                initial={{ width: 0 }}
-                animate={{ width: user?.is_certified ? '100%' : '20%' }}
-                transition={{ duration: 0.8 }}
-                style={{ height: '100%', background: user?.is_certified ? 'var(--success)' : 'var(--danger)' }}
-              />
+            
+            <div style={{ margin: '16px 0' }}>
+              <p style={{ fontSize: '0.7rem', marginBottom: '4px', opacity: 0.8 }}>Progreso a Nivel ULTRA</p>
+              <progress 
+                aria-label="Progreso para nivel Ultra" 
+                aria-valuenow={Math.min(sales.length, 100)} 
+                aria-valuemax="100"
+                value={Math.min(sales.length, 100)}
+                max="100"
+                style={{ width: '100%', height: '10px', accentColor: 'var(--accent)' }}
+              ></progress>
+              <p style={{ fontSize: '0.65rem', textAlign: 'right', marginTop: '4px', opacity: 0.6 }}>{Math.min(sales.length, 100)} / 100 ventas</p>
             </div>
+
             <p style={{ fontSize: '0.75rem', fontWeight: 700, color: user?.is_certified ? 'var(--success)' : 'var(--danger)' }}>
               {user?.is_certified ? '✓ CERTIFICADO CONNEXO' : '⚠ CERTIFICACIÓN PENDIENTE'}
             </p>
@@ -250,6 +257,17 @@ function App() {
               </p>
             </div>
           </div>
+          <button 
+            onClick={() => {
+              setHighContrast(!highContrast);
+              document.documentElement.style.setProperty('--bg-primary', !highContrast ? '#000000' : '#210900');
+              document.documentElement.style.setProperty('--accent', !highContrast ? '#ffff00' : '#ff6600');
+            }} 
+            className="btn" 
+            style={{ background: 'var(--bg-secondary)', color: 'var(--text-primary)', width: '100%', padding: '1rem', textTransform: 'uppercase', marginBottom: '1rem', border: '1px solid var(--accent)' }}
+          >
+            [Configuración de Accesibilidad]
+          </button>
           <button onClick={handleLogout} className="btn" style={{ background: 'var(--danger)', color: 'white', width: '100%', padding: '1rem', textTransform: 'uppercase' }}>
             Cerrar Sesión
           </button>
@@ -281,9 +299,13 @@ function App() {
               alert(notifications.map(n => n.message).join('\n'));
               setNotifications(prev => prev.map(n => ({ ...n, read: true })));
             }}
+            activeTab={activeTab}
+            onBack={() => setActiveTab('dashboard')}
           />
-          <main style={{ flex: 1 }}>{renderContent()}</main>
-          <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} role={user?.role} />
+          <main role="main" style={{ flex: 1 }}>{renderContent()}</main>
+          <nav role="navigation">
+            <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} role={user?.role} />
+          </nav>
         </motion.div>
       )}
     </AnimatePresence>

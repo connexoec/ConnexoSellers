@@ -1,8 +1,4 @@
-// ============================================================
-// dataService.js — Modo Local (Sin Backend)
-// Toda la lógica de negocio y datos viven en memoria.
-// Listo para conectar a cualquier backend en el futuro.
-// ============================================================
+import { supabase } from '../lib/supabase';
 
 export const PLANS = {
   PRO:   { id: 'PRO',   price: 97.00,  label: 'Plan PRO' },
@@ -15,146 +11,174 @@ export const ROLES = {
   SELLER:      'SELLER'
 };
 
-// ---------- Estado local en memoria ----------
 let _currentUser = null;
-let _sales = [];
-let _profiles = [
-  {
-    uid: 'admin-001',
-    id:  'admin-001',
-    full_name:      'Super Admin',
-    email:          'admin@connexo.com',
-    password:       'admin123',
-    role:           'SUPER_ADMIN',
-    is_certified:   true,
-    wallet_balance: 0,
-    parent_id:      ''
-  }
-];
 
-// ---------- Utilidades ----------
-const delay = (ms = 400) => new Promise(r => setTimeout(r, ms));
-
-function calcMetrics(user) {
-  const uid = user.uid || user.id;
+async function calcMetrics(user) {
+  const uid = user.id || user.uid;
 
   if (!user.is_certified) return { rate: 0, base: 0, level: 'BLOQUEADO' };
 
-  // Ventas propias
-  const mySales   = _sales.filter(s => s.seller_id === uid).length;
-  // Ventas del equipo (propias + de hijos directos)
-  const teamIds   = _profiles.filter(p => p.parent_id === uid).map(p => p.uid);
-  const teamSales = _sales.filter(s => teamIds.includes(s.seller_id) || s.seller_id === uid).length;
-
   if (user.role === ROLES.SELLER) {
-    if (mySales >= 31) return { rate: 0.09, base: 300, level: 'VENDEDOR ULTRA' };
-    if (mySales >= 20) return { rate: 0.07, base: 250, level: 'VENDEDOR PRO'   };
-    return              { rate: 0.05, base: 0,   level: 'VENDEDOR BASIC'        };
+    const { count: mySales, error } = await supabase
+      .from('sales')
+      .select('*', { count: 'exact', head: true })
+      .eq('seller_id', uid);
+    
+    if (error) console.error(error);
+    const total = mySales || 0;
+
+    if (total >= 31) return { rate: 0.09, base: 300, level: 'VENDEDOR ULTRA' };
+    if (total >= 20) return { rate: 0.07, base: 250, level: 'VENDEDOR PRO'   };
+    return           { rate: 0.05, base: 0,   level: 'VENDEDOR BASIC'        };
   }
 
   if (user.role === ROLES.DISTRIBUTOR) {
-    if (teamSales >= 201) return { rate: 0.18, base: 600, level: 'PARTNER 3'    };
-    if (teamSales >= 101) return { rate: 0.15, base: 600, level: 'PARTNER 2'    };
-    if (teamSales >= 50)  return { rate: 0.12, base: 500, level: 'PARTNER 1'    };
-    return                { rate: 0.10, base: 0,   level: 'PARTNER BASIC'       };
+    // get team members
+    const { data: team } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('parent_id', uid);
+    
+    const teamIds = [uid, ...(team?.map(t => t.id) || [])];
+    
+    const { count: teamSales, error } = await supabase
+      .from('sales')
+      .select('*', { count: 'exact', head: true })
+      .in('seller_id', teamIds);
+      
+    if (error) console.error(error);
+    const total = teamSales || 0;
+
+    if (total >= 201) return { rate: 0.18, base: 600, level: 'PARTNER 3'    };
+    if (total >= 101) return { rate: 0.15, base: 600, level: 'PARTNER 2'    };
+    if (total >= 50)  return { rate: 0.12, base: 500, level: 'PARTNER 1'    };
+    return            { rate: 0.10, base: 0,   level: 'PARTNER BASIC'       };
   }
 
   return { rate: 0, base: 0, level: 'SUPER ADMIN' };
 }
 
-// ---------- Servicio ----------
 export const dataService = {
-
-  // 1. LOGIN
   async login(email, password) {
-    await delay();
-    const profile = _profiles.find(
-      p => p.email === email && p.password === password
-    );
-    if (!profile) throw new Error('Credenciales incorrectas. Verifica tu email y contraseña.');
-    _currentUser = { ...profile };
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('email', email)
+      .eq('password', password)
+      .single();
+      
+    if (error || !data) throw new Error('Credenciales incorrectas. Verifica tu email y contraseña.');
+    _currentUser = data;
     return _currentUser;
   },
 
-  // 2. LOGOUT
   async logout() {
-    await delay(200);
     _currentUser = null;
   },
 
-  // 3. METRICS
   async getMetrics(user) {
-    await delay(300);
-    return calcMetrics(user);
+    return await calcMetrics(user);
   },
 
-  // 4. SALES
   async registerSale(userId, planKey, customerData, currentRate, isCertified) {
-    await delay();
-    const plan       = PLANS[planKey];
+    const plan = PLANS[planKey];
     const commission = isCertified ? plan.price * (currentRate || 0) : 0;
 
-    const sale = {
-      id:               `sale-${Date.now()}`,
-      seller_id:        userId,
-      plan_type:        planKey,
-      amount:           plan.price,
+    const newSale = {
+      seller_id: userId,
+      plan_type: planKey,
+      amount: plan.price,
       commission_earned: commission,
-      customer_name:    customerData.name,
-      customer_phone:   customerData.phone,
-      status:           'COMPLETED',
-      created_at:       new Date().toISOString()
+      customer_name: customerData.name,
+      customer_phone: customerData.phone,
+      status: 'COMPLETED'
     };
 
-    _sales.unshift(sale);
+    const { data: sale, error } = await supabase
+      .from('sales')
+      .insert([newSale])
+      .select()
+      .single();
 
-    // Actualizar billetera del perfil local
-    const profile = _profiles.find(p => p.uid === userId);
-    if (profile) profile.wallet_balance = (profile.wallet_balance || 0) + commission;
+    if (error) throw new Error(error.message);
+
+    // Actualizar billetera localmente y en db
+    if (commission > 0) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('wallet_balance')
+        .eq('id', userId)
+        .single();
+        
+      if (profile) {
+        const newBalance = Number(profile.wallet_balance || 0) + commission;
+        await supabase
+          .from('profiles')
+          .update({ wallet_balance: newBalance })
+          .eq('id', userId);
+        
+        if (_currentUser && _currentUser.id === userId) {
+            _currentUser.wallet_balance = newBalance;
+        }
+      }
+    }
 
     return sale;
   },
 
   async getSales(userId) {
-    await delay(300);
-    return _sales.filter(s => s.seller_id === userId);
+    const { data, error } = await supabase
+      .from('sales')
+      .select('*')
+      .eq('seller_id', userId)
+      .order('created_at', { ascending: false });
+      
+    if (error) throw new Error(error.message);
+    return data;
   },
 
-  // 5. TEAM
   async getTeam(parentId) {
-    await delay(300);
-    return _profiles
-      .filter(p => p.parent_id === parentId)
-      .map(({ password: _, ...rest }) => rest); // No exponer contraseñas
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('parent_id', parentId)
+      .order('created_at', { ascending: true });
+      
+    if (error) throw new Error(error.message);
+    return data.map(({ password, ...rest }) => rest);
   },
 
   async addTeamMember(parentId, userData) {
-    await delay();
     const newProfile = {
-      uid:            `user-${Date.now()}`,
-      id:             `user-${Date.now()}`,
-      full_name:      userData.name,
-      email:          userData.email,
-      password:       userData.password || 'connexo123',
-      role:           userData.role || ROLES.SELLER,
-      is_certified:   false,
+      full_name: userData.name,
+      email: userData.email,
+      password: userData.password || 'connexo123',
+      role: userData.role || ROLES.SELLER,
+      is_certified: false,
       wallet_balance: 0,
-      parent_id:      parentId,
-      created_at:     new Date().toISOString()
+      parent_id: parentId
     };
-    _profiles.push(newProfile);
-    const { password: _, ...safeProfile } = newProfile;
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .insert([newProfile])
+      .select()
+      .single();
+
+    if (error) throw new Error(error.message);
+    const { password, ...safeProfile } = data;
     return safeProfile;
   },
 
-  // 6. CERTIFICATION
   async certifyUser(userId) {
-    await delay();
-    const profile = _profiles.find(p => p.uid === userId || p.id === userId);
-    if (!profile) throw new Error('Usuario no encontrado.');
-    profile.is_certified = true;
-    // Si el usuario actual es el mismo, actualizarlo
-    if (_currentUser && (_currentUser.uid === userId)) {
+    const { error } = await supabase
+      .from('profiles')
+      .update({ is_certified: true })
+      .eq('id', userId);
+      
+    if (error) throw new Error(error.message);
+    
+    if (_currentUser && (_currentUser.id === userId || _currentUser.uid === userId)) {
       _currentUser.is_certified = true;
     }
     return true;

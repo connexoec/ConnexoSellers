@@ -63,8 +63,8 @@ const TeamManager = ({ users, currentUser, onAddUser, sales }) => {
           <button onClick={generatePDF} className="btn glass" style={{ width: '44px', height: '44px', padding: 0 }} aria-label="Descargar PDF">
             <Download size={18} />
           </button>
-          <button onClick={() => setIsAdding(!isAdding)} className="btn btn-primary" style={{ width: '44px', height: '44px', padding: 0 }} aria-label="Agregar vendedor">
-            <UserPlus size={18} />
+          <button onClick={() => setIsAdding(!isAdding)} className="btn btn-primary" aria-label="Agregar vendedor" style={{ textTransform: 'uppercase', fontSize: '0.8rem' }}>
+            <UserPlus size={18} /> Crear Nuevo Vendedor
           </button>
         </div>
       </div>
@@ -99,8 +99,8 @@ const TeamManager = ({ users, currentUser, onAddUser, sales }) => {
               <option value="DISTRIBUTOR">Distribuidor</option>
             </select>
           )}
-          <p style={{ fontSize: '0.7rem', opacity: 0.5 }}>
-            ⓘ Se registrará en Firestore. El vendedor deberá crear su contraseña desde Firebase Auth.
+          <p style={{ fontSize: '0.7rem', opacity: 0.5 }} aria-live="polite">
+            ⓘ Se registrará en Supabase. Su contraseña inicial por defecto es 'connexo123'.
           </p>
           <button type="submit" disabled={isSubmitting} className="btn btn-primary" style={{ height: '44px', textTransform: 'uppercase' }}>
             {isSubmitting ? 'Registrando...' : 'Finalizar Registro'}
