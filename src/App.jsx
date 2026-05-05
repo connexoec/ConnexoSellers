@@ -370,35 +370,6 @@ function App() {
         </motion.div>
       );
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: '1.5rem' }}>
-            <div className="card glass">
-              <p style={{ fontSize: '0.6rem', opacity: 0.5 }}>ROL</p>
-              <p style={{ margin: 0, fontWeight: 700, fontSize: '0.8rem' }}>{user?.role?.replace('_', ' ')}</p>
-            </div>
-            <div className="card glass">
-              <p style={{ fontSize: '0.6rem', opacity: 0.5 }}>ESTADO</p>
-              <p style={{ margin: 0, fontWeight: 700, fontSize: '0.8rem', color: user?.is_certified ? 'var(--success)' : 'var(--danger)' }}>
-                {user?.is_certified ? 'CERTIFICADO' : 'PENDIENTE'}
-              </p>
-            </div>
-          </div>
-          <button 
-            onClick={() => {
-              setHighContrast(!highContrast);
-              document.documentElement.style.setProperty('--bg-primary', !highContrast ? '#000000' : '#210900');
-              document.documentElement.style.setProperty('--accent', !highContrast ? '#ffff00' : '#ff6600');
-            }} 
-            className="btn" 
-            style={{ background: 'var(--bg-secondary)', color: 'var(--text-primary)', width: '100%', padding: '1rem', textTransform: 'uppercase', marginBottom: '1rem', border: '1px solid var(--accent)' }}
-          >
-            [Configuración de Accesibilidad]
-          </button>
-          <button onClick={handleLogout} className="btn" style={{ background: 'var(--danger)', color: 'white', width: '100%', padding: '1rem', textTransform: 'uppercase' }}>
-            Cerrar Sesión
-          </button>
-        </motion.div>
-      );
-
       default: return null;
     }
   };
