@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { UserPlus, Download } from 'lucide-react';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 import { dataService, TIERS } from '../../services/dataService';
 
 const TeamManager = ({ users, currentUser, onAddUser, sales }) => {
@@ -53,7 +53,7 @@ const TeamManager = ({ users, currentUser, onAddUser, sales }) => {
       const doc = new jsPDF();
       doc.setFont('helvetica');
       doc.text(`Reporte de Red - ${currentUser?.full_name || currentUser?.name || ''}`, 14, 20);
-      doc.autoTable({
+      autoTable(doc, {
         startY: 30,
         head: [['Vendedor', 'Email', 'Certificado', 'Ventas']],
         body: myTeam.map(u => [

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Package, Plus, Minus, Send, Download, Trash2, Edit, Save, X } from 'lucide-react';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 import { dataService } from '../../services/dataService';
 
 const InventoryManager = ({ user, team, addNotification }) => {
@@ -125,14 +125,14 @@ const InventoryManager = ({ user, team, addNotification }) => {
     doc.text(`Fecha: ${new Date().toLocaleDateString()}`, 14, 36);
     doc.text(`Distribuidor ID: ${req.distributor_id}`, 14, 42);
 
-    doc.autoTable({
+    autoTable(doc, {
       startY: 50,
       head: [['Producto', 'Cantidad']],
       body: req.items.map(i => [i.product_name, i.quantity])
     });
 
     if (req.notes) {
-      doc.text(`Notas Adicionales: ${req.notes}`, 14, doc.autoTable.previous.finalY + 15);
+      doc.text(`Notas Adicionales: ${req.notes}`, 14, doc.lastAutoTable.finalY + 15);
     }
 
     doc.save(`despacho_connexo_${req.id || Date.now()}.pdf`);

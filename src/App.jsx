@@ -10,7 +10,7 @@ import Academy      from './components/academy/Academy';
 import InventoryManager from './components/inventory/InventoryManager';
 import { dataService, PLANS } from './services/dataService';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 
 const SESSION_KEY = 'connexo_session';
 
@@ -286,7 +286,7 @@ function App() {
                       doc.setFontSize(12);
                       doc.text(`Categoría: Plan ${plan}`, 14, currentY);
                       
-                      doc.autoTable({
+                      autoTable(doc, {
                         startY: currentY + 5,
                         head: [['Cliente', 'Teléfono', 'Email', 'Vendedor', 'Fecha']],
                         body: groupedSales[plan].map(s => {
