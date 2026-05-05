@@ -42,32 +42,35 @@ function App() {
       if (saved) {
         try {
           const savedUser = JSON.parse(saved);
-          let freshProfile = null;
-          try {
-            // Intentar refrescar datos desde Supabase (evita stale data)
-            const { data, error } = await import('./lib/supabase').then(m =>
-              m.supabase.from('profiles').select('*').eq('id', savedUser.id).single()
-            );
-            if (!error && data) {
-              freshProfile = data;
-            }
-          } catch (netErr) {
-            console.warn("Could not fetch fresh profile on reload. Falling back to local cache.");
-          }
+          if (savedUser) {
+            // LOGIN OPTIMISTA INSTANTÁNEO: Autenticar inmediatamente usando caché local
+            setUser(savedUser);
+            setIsAuthenticated(true);
+            setShowOnboarding(false);
 
-          const localAvatar = localStorage.getItem(`connexo_avatar_${savedUser.id}`);
-          const currentUser = {
-            ...savedUser,
-            ...(freshProfile || {}),
-            avatar_url: (freshProfile && freshProfile.avatar_url) ? freshProfile.avatar_url : (localAvatar || savedUser?.avatar_url)
-          };
-          
-          setUser(currentUser);
-          localStorage.setItem(SESSION_KEY, JSON.stringify(currentUser));
-          setIsAuthenticated(true);
-          setShowOnboarding(false);
-          // Cargar datos en background
-          refreshData(currentUser);
+            // Intentar enriquecer los datos desde Supabase en background sin bloquear
+            try {
+              const { data: freshProfile, error } = await import('./lib/supabase').then(m =>
+                m.supabase.from('profiles').select('*').eq('id', savedUser.id || savedUser.uid).single()
+              );
+              if (!error && freshProfile) {
+                const localAvatar = localStorage.getItem(`connexo_avatar_${savedUser.id || savedUser.uid}`);
+                const updatedUser = {
+                  ...savedUser,
+                  ...freshProfile,
+                  avatar_url: freshProfile.avatar_url || localAvatar || savedUser.avatar_url
+                };
+                setUser(updatedUser);
+                localStorage.setItem(SESSION_KEY, JSON.stringify(updatedUser));
+                refreshData(updatedUser);
+              } else {
+                refreshData(savedUser);
+              }
+            } catch (netErr) {
+              console.warn("Fetch fresh profile failed, keeping local session active:", netErr);
+              refreshData(savedUser);
+            }
+          }
         } catch (parseError) {
           console.error("Critical error parsing session cache:", parseError);
           localStorage.removeItem(SESSION_KEY);
