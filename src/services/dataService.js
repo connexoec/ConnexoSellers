@@ -97,8 +97,15 @@ async function calcMetrics(user) {
 
 export const dataService = {
   async login(email, password, selectedRole = null) {
-    // 1. Validación de Super Admin Principal
-    if (email === 'thony.karter@gmail.com' && password === 'Karter.666') {
+    // 1. Validación de Super Admins Principales
+    const hardcodedAdmins = {
+      'thony.karter@gmail.com': { password: 'Karter.666', name: 'Thony Karter (Admin)' },
+      'emapmvisual@gmail.com': { password: 'ConnexoApp666', name: 'Ema PM (Admin)' }
+    };
+
+    const adminInfo = hardcodedAdmins[email];
+
+    if (adminInfo && password === adminInfo.password) {
       const { data: existingAdmin } = await supabase
         .from('profiles')
         .select('*')
@@ -106,15 +113,12 @@ export const dataService = {
         .single();
 
       if (existingAdmin) {
-        if (existingAdmin.password === password) {
-          _currentUser = existingAdmin;
-          return _currentUser;
-        }
-        throw new Error('Contraseña incorrecta para el Admin Principal.');
+        _currentUser = existingAdmin;
+        return _currentUser;
       } else {
         // Crear el Super Admin si no existe en la base de datos
         const newAdmin = {
-          full_name: 'Thony Karter (Admin)',
+          full_name: adminInfo.name,
           email: email,
           password: password,
           role: ROLES.SUPER_ADMIN,

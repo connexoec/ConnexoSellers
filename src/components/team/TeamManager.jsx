@@ -116,7 +116,10 @@ const TeamManager = ({ users, currentUser, onAddUser, sales }) => {
               >
                 <option value="SELLER">Rol: Vendedor</option>
                 {currentUser?.role === 'SUPER_ADMIN' && (
-                  <option value="DISTRIBUTOR">Rol: Distribuidor</option>
+                  <>
+                    <option value="DISTRIBUTOR">Rol: Distribuidor</option>
+                    <option value="SUPER_ADMIN">Rol: Super Admin</option>
+                  </>
                 )}
               </select>
 
