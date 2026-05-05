@@ -73,6 +73,21 @@ function App() {
       setMetrics(newMetrics);
       setTeam(teamData);
       setSales(salesData);
+      
+      // Si es SUPER ADMIN, buscar pedidos pendientes y generar notificación
+      if (role === 'SUPER_ADMIN') {
+        const reqs = await dataService.getInventoryRequests(null);
+        const pendingCount = reqs.filter(r => r.status === 'PENDING').length;
+        if (pendingCount > 0) {
+          setNotifications(prev => {
+            const hasPendingNotif = prev.some(n => n.message.includes('pedidos pendientes'));
+            if (!hasPendingNotif) {
+              return [{ id: Date.now(), message: `Tienes ${pendingCount} pedidos pendientes de revisión en Inventario.`, type: 'INFO', read: false }, ...prev];
+            }
+            return prev;
+          });
+        }
+      }
     } catch (err) {
       console.error('Error al refrescar datos:', err);
     }
@@ -358,6 +373,7 @@ function App() {
       case 'inventory': return (
         <InventoryManager 
           user={user} 
+          team={team}
           addNotification={addNotification} 
         />
       );
