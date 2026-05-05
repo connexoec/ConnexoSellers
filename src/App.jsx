@@ -149,7 +149,7 @@ function App() {
   if (isLoading && !isAuthenticated) {
     return (
       <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-primary)', color: 'var(--accent)', fontFamily: 'var(--font-main)', padding: '2rem', textAlign: 'center', gap: '1.5rem' }}>
-        <div style={{ width: 40, height: 40, border: '4px solid rgba(0,210,255,0.1)', borderTop: '4px solid var(--accent)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+        <div style={{ width: 40, height: 40, border: '4px solid rgba(255,102,0,0.1)', borderTop: '4px solid var(--accent)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
         <p style={{ letterSpacing: '2px', textTransform: 'uppercase', fontSize: '0.8rem', fontWeight: 600 }}>Iniciando Ecosistema...</p>
       </div>
     );
@@ -163,7 +163,7 @@ function App() {
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="slide-up" style={{ padding: '0 1.5rem 100px', fontFamily: 'var(--font-main)' }}>
 
           {/* Status Card */}
-          <div className="card glass glow-pulse" style={{ marginBottom: '2rem', border: '1px solid var(--accent-glow)', background: 'linear-gradient(135deg, var(--bg-secondary) 0%, #0d1629 100%)' }}>
+          <div className="card glass glow-pulse" style={{ marginBottom: '2rem', border: '1px solid var(--accent-glow)', background: 'linear-gradient(135deg, var(--bg-secondary) 0%, #2b1208 100%)' }}>
             <p style={{ fontSize: '0.6rem', opacity: 0.6, textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '8px' }}>Estatus de Agente</p>
             <h2 style={{ color: 'var(--accent)', margin: '0', fontSize: '1.4rem', textShadow: '0 0 10px var(--accent-glow)' }}>{metrics.level}</h2>
             
@@ -206,7 +206,7 @@ function App() {
               <p style={{ fontSize: '0.55rem', opacity: 0.5, letterSpacing: '1px' }}>COMISIÓN</p>
               <h3 style={{ margin: '4px 0', fontSize: '1.25rem', color: 'var(--accent)' }}>{(metrics.rate * 100).toFixed(0)}%</h3>
               {metrics.isPreview && (
-                <span style={{ position: 'absolute', top: '8px', right: '8px', fontSize: '0.5rem', background: 'rgba(0,210,255,0.15)', color: 'var(--accent)', padding: '2px 6px', borderRadius: '100px', fontWeight: 700 }}>
+                <span style={{ position: 'absolute', top: '8px', right: '8px', fontSize: '0.5rem', background: 'rgba(255,102,0,0.15)', color: 'var(--accent)', padding: '2px 6px', borderRadius: '100px', fontWeight: 700 }}>
                   OBJETIVO
                 </span>
               )}
@@ -295,7 +295,7 @@ function App() {
             <div 
               className="card glass" 
               onClick={() => !isLoading && setSelectedPlan('ULTRA')}
-              style={{ cursor: 'pointer', borderLeft: '4px solid var(--tier-ultra)', padding: '1.5rem', background: 'linear-gradient(135deg, rgba(189,0,255,0.05) 0%, rgba(10,17,31,0) 100%)' }}
+              style={{ cursor: 'pointer', borderLeft: '4px solid var(--tier-ultra)', padding: '1.5rem', background: 'linear-gradient(135deg, rgba(189,0,255,0.05) 0%, rgba(43,18,8,0) 100%)' }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div>
@@ -364,13 +364,13 @@ function App() {
           </div>
           
           <h2 style={{ textTransform: 'uppercase', fontSize: '1.4rem', fontFamily: 'var(--font-heading)', letterSpacing: '2px' }}>{user?.full_name}</h2>
-          <div style={{ display: 'inline-block', padding: '4px 16px', background: 'rgba(0,210,255,0.1)', borderRadius: '100px', border: '1px solid var(--accent-glow)', marginTop: '8px' }}>
+          <div style={{ display: 'inline-block', padding: '4px 16px', background: 'rgba(255,102,0,0.1)', borderRadius: '100px', border: '1px solid var(--accent-glow)', marginTop: '8px' }}>
             <p style={{ color: 'var(--accent)', fontWeight: 700, margin: 0, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px' }}>{metrics.level}</p>
           </div>
           <p style={{ fontSize: '0.8rem', opacity: 0.5, marginTop: '12px' }}>{user?.email}</p>
 
           {/* Commission Breakdown */}
-          <div className="card glass" style={{ margin: '2rem 0', textAlign: 'left', padding: '1.5rem', background: 'rgba(0,210,255,0.02)' }}>
+          <div className="card glass" style={{ margin: '2rem 0', textAlign: 'left', padding: '1.5rem', background: 'rgba(255,102,0,0.02)' }}>
             <p style={{ fontSize: '0.65rem', textTransform: 'uppercase', opacity: 0.6, marginBottom: '1.5rem', letterSpacing: '2px', fontWeight: 700 }}>Estructura de Comisiones</p>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
               <div style={{ textAlign: 'center', padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
@@ -392,7 +392,7 @@ function App() {
             </div>
 
             {/* Next tier hint */}
-            <div style={{ marginTop: '1.5rem', padding: '1rem', background: 'rgba(0,210,255,0.05)', borderRadius: '12px', border: '1px solid var(--accent-glow)' }}>
+            <div style={{ marginTop: '1.5rem', padding: '1rem', background: 'rgba(255,102,0,0.05)', borderRadius: '12px', border: '1px solid var(--accent-glow)' }}>
                 <p style={{ fontSize: '0.6rem', opacity: 0.7, marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '1px' }}>Objetivo de Rango:</p>
                 {user?.role === 'SELLER' ? (
                   <>
