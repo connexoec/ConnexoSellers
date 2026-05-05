@@ -30,6 +30,10 @@ function App() {
   ]);
   const [highContrast,    setHighContrast]    = useState(false);
   const [userBadges,      setUserBadges]      = useState([]);
+  const [searchQuery,     setSearchQuery]     = useState('');
+  const [planFilter,      setPlanFilter]      = useState('ALL');
+  const [currentPage,     setCurrentPage]     = useState(1);
+  const [expandedSaleId,  setExpandedSaleId]  = useState(null);
 
   // ── Restaurar sesión al recargar ──────────────────────────────────────
   useEffect(() => {
@@ -340,68 +344,160 @@ function App() {
               </span>
             )}
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {sales.length === 0 ? (
-              <p style={{ textAlign: 'center', opacity: 0.4, fontSize: '0.8rem', padding: '2rem' }}>
-                Aún no hay ventas registradas.<br/>¡Registra tu primera venta!
-              </p>
-            ) : (
-              sales.slice(0, 50).map(s => {
-                const sellerMember = user?.role !== 'SELLER' && team.find(m => m.id === s.seller_id);
-                
-                if (user?.role === 'SUPER_ADMIN' || user?.role === 'DISTRIBUTOR') {
-                  return (
-                    <div key={s.id} className="card glass" style={{ display: 'flex', flexDirection: 'column', gap: '8px', borderLeft: '3px solid var(--accent)' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                        <div>
-                          <p style={{ margin: 0, fontWeight: 700, fontSize: '0.95rem', color: 'white' }}>{s.customer_name || 'Cliente sin nombre'}</p>
-                          <p style={{ margin: '2px 0 0', fontSize: '0.7rem', color: 'var(--accent)', fontWeight: 600 }}>{s.plan_type} · ${s.amount}</p>
-                        </div>
-                        <div style={{ textAlign: 'right' }}>
-                          <p style={{ margin: 0, fontSize: '0.65rem', opacity: 0.5 }}>{new Date(s.created_at).toLocaleDateString()}</p>
-                          <p style={{ margin: '2px 0 0', fontSize: '0.65rem', color: 'var(--text-secondary)' }}>Vendedor: {sellerMember?.full_name || 'N/A'}</p>
-                        </div>
-                      </div>
-                      <div style={{ background: 'rgba(255,255,255,0.03)', padding: '10px', borderRadius: '6px', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
-                          <p style={{ margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={s.customer_phone}>📞 {s.customer_phone || 'N/A'}</p>
-                          <p style={{ margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={s.customer_email}>✉️ {s.customer_email || 'N/A'}</p>
-                          {s.customer_company && <p style={{ margin: 0, gridColumn: '1 / -1' }}>🏢 {s.customer_company}</p>}
-                        </div>
-                        {s.customer_notes && (
-                          <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid rgba(255,255,255,0.05)', fontStyle: 'italic', opacity: 0.8 }}>
-                            "{s.customer_notes}"
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                }
 
-                // Vista normal para Vendedores y Distribuidores
-                return (
-                  <div key={s.id} className="card glass" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ margin: 0, fontWeight: 700, fontSize: '0.85rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {s.customer_name || 'Cliente'}
-                      </p>
-                      <p style={{ margin: 0, fontSize: '0.65rem', opacity: 0.5 }}>
-                        {s.plan_type} · {new Date(s.created_at).toLocaleDateString()}
-                        {sellerMember && (
-                          <span style={{ marginLeft: '6px', color: 'var(--accent)', fontWeight: 600 }}>
-                            · {sellerMember.full_name || sellerMember.name}
-                          </span>
-                        )}
-                      </p>
-                    </div>
-                    <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                      <p style={{ margin: 0, color: 'var(--success)', fontWeight: 700, fontSize: '0.9rem' }}>+${(s.commission_earned || 0).toFixed(2)}</p>
-                      <p style={{ margin: 0, fontSize: '0.6rem', opacity: 0.5 }}>${(s.amount || 0).toFixed(2)}</p>
-                    </div>
-                  </div>
+          {/* Filters & Search for Super Admin and Distributors */}
+          {(user?.role === 'SUPER_ADMIN' || user?.role === 'DISTRIBUTOR') && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '1.2rem' }}>
+              <input 
+                value={searchQuery}
+                onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+                placeholder="🔍 Buscar por nombre, email o teléfono..."
+                style={{ width: '100%', padding: '10px 14px', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--glass-border)', color: 'white', borderRadius: '10px', fontSize: '0.8rem' }}
+              />
+              <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '4px' }}>
+                {['ALL', 'LITE', 'PRO', 'ULTRA'].map((cat) => (
+                  <button
+                    key={cat}
+                    onClick={() => { setPlanFilter(cat); setCurrentPage(1); }}
+                    style={{
+                      padding: '6px 12px', borderRadius: '100px', fontSize: '0.7rem', fontWeight: 600,
+                      border: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer', transition: 'all 0.2s',
+                      background: planFilter === cat ? 'var(--accent)' : 'rgba(255,255,255,0.03)',
+                      color: planFilter === cat ? 'var(--bg-primary)' : 'rgba(255,255,255,0.6)'
+                    }}
+                  >
+                    {cat === 'ALL' ? 'Todos' : cat}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Sales Listing */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {(() => {
+              const filteredSales = sales.filter(s => {
+                const matchesSearch = !searchQuery ? true : (
+                  (s.customer_name && s.customer_name.toLowerCase().includes(searchQuery.toLowerCase())) ||
+                  (s.customer_email && s.customer_email.toLowerCase().includes(searchQuery.toLowerCase())) ||
+                  (s.customer_phone && s.customer_phone.includes(searchQuery))
                 );
-              })
-            )}
+                const matchesPlan = planFilter === 'ALL' ? true : s.plan_type === planFilter;
+                return matchesSearch && matchesPlan;
+              });
+
+              const ITEMS_PER_PAGE = 5;
+              const totalPages = Math.ceil(filteredSales.length / ITEMS_PER_PAGE);
+              const paginatedSales = filteredSales.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+
+              if (filteredSales.length === 0) {
+                return (
+                  <p style={{ textAlign: 'center', opacity: 0.4, fontSize: '0.8rem', padding: '2rem' }}>
+                    No se encontraron registros coincidentes.
+                  </p>
+                );
+              }
+
+              return (
+                <>
+                  {paginatedSales.map(s => {
+                    const sellerMember = user?.role !== 'SELLER' && team.find(m => m.id === s.seller_id);
+                    const isExpanded = expandedSaleId === s.id;
+                    
+                    if (user?.role === 'SUPER_ADMIN' || user?.role === 'DISTRIBUTOR') {
+                      return (
+                        <div 
+                          key={s.id} 
+                          className="card glass" 
+                          onClick={() => setExpandedSaleId(isExpanded ? null : s.id)}
+                          style={{ display: 'flex', flexDirection: 'column', gap: '8px', borderLeft: '3px solid var(--accent)', cursor: 'pointer', transition: 'all 0.2s' }}
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                            <div>
+                              <p style={{ margin: 0, fontWeight: 700, fontSize: '0.9rem', color: 'white' }}>{s.customer_name || 'Cliente'}</p>
+                              <p style={{ margin: '2px 0 0', fontSize: '0.7rem', color: 'var(--accent)', fontWeight: 600 }}>{s.plan_type} · ${s.amount}</p>
+                            </div>
+                            <div style={{ textAlign: 'right' }}>
+                              <p style={{ margin: 0, fontSize: '0.65rem', opacity: 0.5 }}>{new Date(s.created_at).toLocaleDateString()}</p>
+                              <p style={{ margin: '2px 0 0', fontSize: '0.65rem', color: 'var(--text-secondary)' }}>Vendedor: {sellerMember?.full_name || 'N/A'}</p>
+                            </div>
+                          </div>
+
+                          {/* Expandable details with accordion style */}
+                          {isExpanded && (
+                            <motion.div 
+                              initial={{ opacity: 0, height: 0 }}
+                              animate={{ opacity: 1, height: 'auto' }}
+                              style={{ background: 'rgba(255,255,255,0.03)', padding: '10px', borderRadius: '6px', fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '4px' }}
+                              onClick={e => e.stopPropagation()}
+                            >
+                              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
+                                <p style={{ margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>📞 {s.customer_phone || 'N/A'}</p>
+                                <p style={{ margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>✉️ {s.customer_email || 'N/A'}</p>
+                                {s.customer_company && <p style={{ margin: 0, gridColumn: '1 / -1' }}>🏢 {s.customer_company}</p>}
+                              </div>
+                              {s.customer_notes && (
+                                <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid rgba(255,255,255,0.05)', fontStyle: 'italic', opacity: 0.8 }}>
+                                  "{s.customer_notes}"
+                                </div>
+                              )}
+                            </motion.div>
+                          )}
+                        </div>
+                      );
+                    }
+
+                    // Vista normal para Vendedores y Distribuidores (Mis Ventas)
+                    return (
+                      <div key={s.id} className="card glass" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <p style={{ margin: 0, fontWeight: 700, fontSize: '0.85rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {s.customer_name || 'Cliente'}
+                          </p>
+                          <p style={{ margin: 0, fontSize: '0.65rem', opacity: 0.5 }}>
+                            {s.plan_type} · {new Date(s.created_at).toLocaleDateString()}
+                            {sellerMember && (
+                              <span style={{ marginLeft: '6px', color: 'var(--accent)', fontWeight: 600 }}>
+                                · {sellerMember.full_name || sellerMember.name}
+                              </span>
+                            )}
+                          </p>
+                        </div>
+                        <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                          <p style={{ margin: 0, color: 'var(--success)', fontWeight: 700, fontSize: '0.9rem' }}>+${(s.commission_earned || 0).toFixed(2)}</p>
+                          <p style={{ margin: 0, fontSize: '0.6rem', opacity: 0.5 }}>${(s.amount || 0).toFixed(2)}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {/* Pagination Controls */}
+                  {totalPages > 1 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.2rem', padding: '0 4px' }}>
+                      <button
+                        disabled={currentPage === 1}
+                        onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                        className="btn glass"
+                        style={{ fontSize: '0.65rem', padding: '6px 12px', height: 'auto', opacity: currentPage === 1 ? 0.3 : 1 }}
+                      >
+                        ◀ Anterior
+                      </button>
+                      <span style={{ fontSize: '0.75rem', opacity: 0.6, fontWeight: 600 }}>
+                        {currentPage} / {totalPages}
+                      </span>
+                      <button
+                        disabled={currentPage === totalPages}
+                        onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                        className="btn glass"
+                        style={{ fontSize: '0.65rem', padding: '6px 12px', height: 'auto', opacity: currentPage === totalPages ? 0.3 : 1 }}
+                      >
+                        Siguiente ▶
+                      </button>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
           </div>
         </motion.div>
       );
