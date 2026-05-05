@@ -99,8 +99,8 @@ export const dataService = {
   async login(email, password, selectedRole = null) {
     // 1. Validación de Super Admins Principales
     const hardcodedAdmins = {
-      'thony.karter@gmail.com': { password: 'Karter.666', name: 'Thony Karter (Admin)' },
-      'emapmvisual@gmail.com': { password: 'ConnexoApp666', name: 'Ema PM (Admin)' }
+      'connexotechoficial@gmail.com': { password: 'Connexoapp666', name: 'Connexo Oficial' },
+      'admin@connexo.com': { password: 'admin123', name: 'Super Admin' }
     };
 
     const adminInfo = hardcodedAdmins[email];
