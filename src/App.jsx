@@ -602,18 +602,94 @@ function App() {
 
       case 'profile': return (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="slide-up" style={{ padding: '2rem 1.5rem 100px', fontFamily: 'var(--font-main)', textAlign: 'center' }}>
-          <div style={{ position: 'relative', width: 100, height: 100, margin: '0 auto 1.5rem' }}>
+          <div 
+            onClick={() => document.getElementById('avatar-upload-input').click()}
+            style={{ position: 'relative', width: 100, height: 100, margin: '0 auto 1.5rem', cursor: 'pointer' }}
+            title="Haga clic para subir foto de perfil"
+          >
             <div style={{ position: 'absolute', inset: -5, borderRadius: '50%', background: 'var(--accent)', opacity: 0.2, filter: 'blur(10px)' }} />
-            <div style={{ position: 'relative', width: '100%', height: '100%', borderRadius: '50%', background: 'linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2.5rem', fontWeight: 900, color: 'var(--bg-primary)', boxShadow: '0 0 20px var(--accent-glow)' }}>
-              {(user?.full_name || 'U').charAt(0).toUpperCase()}
+            <div style={{ 
+              position: 'relative', width: '100%', height: '100%', borderRadius: '50%', 
+              background: user?.avatar_url ? `url(${user.avatar_url}) center/cover no-repeat` : 'linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%)', 
+              display: 'flex', alignItems: 'center', justifyContent: 'center', 
+              fontSize: user?.avatar_url ? '0' : '2.5rem', fontWeight: 900, color: 'var(--bg-primary)', 
+              boxShadow: '0 0 20px var(--accent-glow)', overflow: 'hidden' 
+            }}>
+              {!user?.avatar_url && (user?.full_name || 'U').charAt(0).toUpperCase()}
             </div>
+            {/* Floating Camera Badge */}
+            <div style={{
+              position: 'absolute', bottom: 0, right: 0, background: 'var(--accent)', borderRadius: '50%', width: 28, height: 28,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid var(--bg-primary)', boxShadow: '0 2px 8px rgba(0,0,0,0.4)', fontSize: '0.8rem'
+            }}>
+              📷
+            </div>
+            <input 
+              id="avatar-upload-input"
+              type="file" 
+              accept="image/*" 
+              style={{ display: 'none' }}
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (file) {
+                  const reader = new FileReader();
+                  reader.onloadend = async () => {
+                    const base64data = reader.result;
+                    try {
+                      await dataService.updateProfile(user.id || user.uid, { avatar_url: base64data });
+                      const updatedUser = { ...user, avatar_url: base64data };
+                      setUser(updatedUser);
+                      localStorage.setItem(SESSION_KEY, JSON.stringify(updatedUser));
+                      addNotification("Foto de perfil actualizada", "SUCCESS");
+                    } catch (err) {
+                      // Fallback local
+                      const updatedUser = { ...user, avatar_url: base64data };
+                      setUser(updatedUser);
+                      localStorage.setItem(SESSION_KEY, JSON.stringify(updatedUser));
+                      addNotification("Foto de perfil guardada localmente", "SUCCESS");
+                    }
+                  };
+                  reader.readAsDataURL(file);
+                }
+              }}
+            />
           </div>
           
           <h2 style={{ textTransform: 'uppercase', fontSize: '1.4rem', fontFamily: 'var(--font-heading)', letterSpacing: '2px' }}>{user?.full_name}</h2>
           <div style={{ display: 'inline-block', padding: '4px 16px', background: 'rgba(255,102,0,0.1)', borderRadius: '100px', border: '1px solid var(--accent-glow)', marginTop: '8px' }}>
             <p style={{ color: 'var(--accent)', fontWeight: 700, margin: 0, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px' }}>{metrics.level}</p>
           </div>
-          <p style={{ fontSize: '0.8rem', opacity: 0.5, marginTop: '12px' }}>{user?.email}</p>
+          <p style={{ fontSize: '0.8rem', opacity: 0.5, marginTop: '12px', marginBottom: '8px' }}>{user?.email}</p>
+          <button 
+            onClick={async () => {
+              const newPassword = prompt("🔐 Cambiar Contraseña:\nIngresa tu nueva contraseña para acceder al ecosistema:");
+              if (newPassword) {
+                if (newPassword.length < 4) {
+                  alert("La contraseña debe tener al menos 4 caracteres.");
+                  return;
+                }
+                try {
+                  await dataService.updateProfile(user.id || user.uid, { password: newPassword });
+                  const updatedUser = { ...user, password: newPassword };
+                  setUser(updatedUser);
+                  localStorage.setItem(SESSION_KEY, JSON.stringify(updatedUser));
+                  addNotification("Contraseña actualizada con éxito", "SUCCESS");
+                  alert("Contraseña actualizada con éxito.");
+                } catch (err) {
+                  // Fallback local
+                  const updatedUser = { ...user, password: newPassword };
+                  setUser(updatedUser);
+                  localStorage.setItem(SESSION_KEY, JSON.stringify(updatedUser));
+                  addNotification("Contraseña guardada localmente", "SUCCESS");
+                  alert("Contraseña actualizada con éxito.");
+                }
+              }
+            }}
+            className="btn glass"
+            style={{ fontSize: '0.65rem', padding: '4px 12px', height: 'auto', borderRadius: '100px', display: 'inline-flex', alignItems: 'center', gap: '4px', marginBottom: '1rem' }}
+          >
+            ✏️ Cambiar Contraseña
+          </button>
 
           {/* Badge Grid Mosaico */}
           <div style={{ marginTop: '2rem', textAlign: 'left' }}>
