@@ -400,6 +400,48 @@ export const dataService = {
     }
   },
 
+  async editInventoryItem(itemId, updates) {
+    try {
+      const { data, error } = await supabase
+        .from('inventory')
+        .update(updates)
+        .eq('id', itemId)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    } catch (err) {
+      console.warn("⚠️ Usando LocalStorage para editar ítem:", err.message);
+      const items = await this.getInventory();
+      const idx = items.findIndex(i => i.id === itemId);
+      if (idx !== -1) {
+        items[idx] = { ...items[idx], ...updates };
+        localStorage.setItem('connexo_inventory', JSON.stringify(items));
+        return items[idx];
+      }
+      throw new Error('Producto no encontrado en caché local');
+    }
+  },
+
+  async deleteInventoryItem(itemId) {
+    try {
+      const { error } = await supabase
+        .from('inventory')
+        .delete()
+        .eq('id', itemId);
+      
+      if (error) throw error;
+      return true;
+    } catch (err) {
+      console.warn("⚠️ Usando LocalStorage para eliminar ítem:", err.message);
+      const items = await this.getInventory();
+      const filtered = items.filter(i => i.id !== itemId);
+      localStorage.setItem('connexo_inventory', JSON.stringify(filtered));
+      return true;
+    }
+  },
+
   async updateInventoryStock(itemId, quantity, type = 'add') {
     try {
       const items = await this.getInventory();
