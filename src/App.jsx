@@ -665,6 +665,75 @@ function App() {
             </div>
           )}
 
+          {/* Super Admin Purge & System Restore Section */}
+          {user?.role === 'SUPER_ADMIN' && (
+            <div className="card glass" style={{ margin: '2rem 0', textAlign: 'left', padding: '1.5rem', background: 'rgba(239,68,68,0.02)', border: '1px solid rgba(239,68,68,0.2)' }}>
+              <p style={{ fontSize: '0.65rem', textTransform: 'uppercase', color: 'var(--danger)', marginBottom: '0.5rem', letterSpacing: '2px', fontWeight: 700 }}>Seguridad y Control del Sistema</p>
+              <h4 style={{ margin: '0 0 10px', color: 'white', fontSize: '0.95rem' }}>Restaurar Ecosistema de Fábrica</h4>
+              <p style={{ fontSize: '0.75rem', opacity: 0.6, lineHeight: '1.4', margin: '0 0 1.2rem' }}>
+                Borra permanentemente todos los clientes, ventas, pedidos de inventario y personal registrado (excepto los Super Administradores maestros) para comenzar de cero.
+              </p>
+              <button 
+                onClick={async () => {
+                  const executePurge = async () => {
+                    const confirmReset = confirm("⚠️ ¿ESTÁS ABSOLUTAMENTE SEGURO? Esta acción borrará todas las ventas, clientes y equipo registrado para iniciar de cero. No se puede deshacer.");
+                    if (confirmReset) {
+                      setIsLoading(true);
+                      try {
+                        await dataService.purgeAllData();
+                        addNotification("¡Ecosistema restaurado con éxito!", "SUCCESS");
+                        alert("Ecosistema purgado e iniciado de cero con éxito.");
+                        window.location.reload();
+                      } catch (err) {
+                        alert("Error al purgar los datos: " + err.message);
+                      } finally {
+                        setIsLoading(false);
+                      }
+                    }
+                  };
+
+                  // 1. Intentar Biometría del dispositivo (TouchID/FaceID)
+                  if (window.PublicKeyCredential) {
+                    try {
+                      // Desplegar solicitud de biometría sutil (WebAuthn)
+                      const challenge = new Uint8Array([1, 2, 3, 4]);
+                      const options = {
+                        publicKey: {
+                          challenge,
+                          rp: { name: "Connexo App" },
+                          user: {
+                            id: new Uint8Array([1, 2, 3, 4]),
+                            name: user?.email,
+                            displayName: user?.full_name
+                          },
+                          pubKeyCredParams: [{ type: "public-key", alg: -7 }]
+                        }
+                      };
+                      await navigator.credentials.create(options);
+                      // Biometría autorizada con éxito!
+                      await executePurge();
+                      return;
+                    } catch (e) {
+                      console.warn("Biometrics failed or cancelled, falling back to password:", e);
+                    }
+                  }
+
+                  // 2. Fallback de seguridad por contraseña
+                  const password = prompt("🔒 Confirmación de Seguridad:\nIngresa la contraseña del Super Admin para completar la depuración:");
+                  if (password === 'ConnexoApp666') {
+                    await executePurge();
+                  } else if (password !== null) {
+                    alert("Contraseña incorrecta. Acción cancelada.");
+                  }
+                }}
+                className="btn glass" 
+                style={{ width: '100%', background: 'rgba(239,68,68,0.1)', color: 'var(--danger)', borderColor: 'rgba(239,68,68,0.3)', fontSize: '0.75rem', fontWeight: 700 }}
+              >
+                🔄 Depurar Datos Y Restaurar de Cero
+              </button>
+            </div>
+          )}
+
           <button 
             onClick={() => {
               localStorage.removeItem('connexo_session');

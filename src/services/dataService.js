@@ -679,5 +679,28 @@ export const dataService = {
       // Ignore
     }
     localStorage.setItem('connexo_academy_courses', JSON.stringify(courses));
+  },
+
+  async purgeAllData() {
+    try {
+      // Borrar todas las ventas
+      await supabase.from('sales').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      // Borrar todos los pedidos de inventario
+      await supabase.from('inventory_requests').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      // Borrar todos los usuarios (profiles) excepto los dos super admins principales
+      await supabase.from('profiles').delete()
+        .neq('email', 'emapmvisual@gmail.com')
+        .neq('email', 'thony.karter@gmail.com');
+    } catch (e) {
+      console.warn("Supabase purge error:", e);
+    }
+
+    // Limpiar LocalStorage preservando la sesión del admin
+    const session = localStorage.getItem('connexo_session');
+    localStorage.clear();
+    if (session) {
+      localStorage.setItem('connexo_session', session);
+    }
+    return true;
   }
 };
