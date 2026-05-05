@@ -11,6 +11,20 @@ export const ROLES = {
   SELLER:      'SELLER'
 };
 
+export const TIERS = {
+  SELLER: [
+    { id: 'BASIC', label: 'VENDEDOR BASIC', rate: 0, base: 0 },
+    { id: 'PRO',   label: 'VENDEDOR PRO',   rate: 0.07, base: 250 },
+    { id: 'ULTRA', label: 'VENDEDOR ULTRA', rate: 0.09, base: 300 },
+  ],
+  DISTRIBUTOR: [
+    { id: 'BASIC', label: 'DISTRIBUIDOR BASIC', rate: 0, base: 0 },
+    { id: 'D1',    label: 'DISTRIBUIDOR 1',     rate: 0.12, base: 500 },
+    { id: 'D2',    label: 'DISTRIBUIDOR 2',     rate: 0.15, base: 600 },
+    { id: 'D3',    label: 'DISTRIBUIDOR 3',     rate: 0.18, base: 600 },
+  ]
+};
+
 let _currentUser = null;
 
 async function calcMetrics(user) {
@@ -18,45 +32,39 @@ async function calcMetrics(user) {
 
   if (!user.is_certified) return { rate: 0, base: 0, level: 'BLOQUEADO' };
 
-  // ─── VENDEDOR ──────────────────────────────────────────────────────────
-  // Vendedor BASIC  (0–19 ventas)  : sin sueldo base, sin comisión
-  // Vendedor PRO    (20–30 ventas) : 7% comisión + $250 base
-  // Vendedor ULTRA  (31+ ventas)   : 9% comisión + $300 base
+  // Priorizar nivel manual si existe
+  if (user.tier) {
+    const roleTiers = user.role === ROLES.SELLER ? TIERS.SELLER : TIERS.DISTRIBUTOR;
+    const manualTier = roleTiers.find(t => t.id === user.tier);
+    if (manualTier) {
+      return { rate: manualTier.rate, base: manualTier.base, level: manualTier.label };
+    }
+  }
+
+  // ─── VENDEDOR (Auto) ──────────────────────────────────────────────────
   if (user.role === ROLES.SELLER) {
-    const { count: mySales, error } = await supabase
+    const { count: mySales } = await supabase
       .from('sales')
       .select('*', { count: 'exact', head: true })
       .eq('seller_id', uid);
 
-    if (error) console.error(error);
     const total = mySales || 0;
-
     if (total >= 31) return { rate: 0.09, base: 300, level: 'VENDEDOR ULTRA' };
     if (total >= 20) return { rate: 0.07, base: 250, level: 'VENDEDOR PRO'   };
     return           { rate: 0,    base: 0,   level: 'VENDEDOR BASIC'        };
   }
 
-  // ─── DISTRIBUIDOR ──────────────────────────────────────────────────────
-  // Distribuidor BASIC (0–49 ventas totales)   : sin sueldo base, sin comisión
-  // Distribuidor 1     (50–100 ventas totales) : 12% comisión + $500 base
-  // Distribuidor 2     (101–200 ventas totales): 15% comisión + $600 base
-  // Distribuidor 3     (201+ ventas totales)   : 18% comisión + $600 base
+  // ─── DISTRIBUIDOR (Auto) ──────────────────────────────────────────────
   if (user.role === ROLES.DISTRIBUTOR) {
-    const { data: team } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('parent_id', uid);
-
+    const { data: team } = await supabase.from('profiles').select('id').eq('parent_id', uid);
     const teamIds = [uid, ...(team?.map(t => t.id) || [])];
 
-    const { count: teamSales, error } = await supabase
+    const { count: teamSales } = await supabase
       .from('sales')
       .select('*', { count: 'exact', head: true })
       .in('seller_id', teamIds);
 
-    if (error) console.error(error);
     const total = teamSales || 0;
-
     if (total >= 201) return { rate: 0.18, base: 600, level: 'DISTRIBUIDOR 3'    };
     if (total >= 101) return { rate: 0.15, base: 600, level: 'DISTRIBUIDOR 2'    };
     if (total >= 50)  return { rate: 0.12, base: 500, level: 'DISTRIBUIDOR 1'    };
@@ -219,6 +227,7 @@ export const dataService = {
       email: userData.email,
       password: userData.password || 'connexo123',
       role: userData.role || ROLES.SELLER,
+      tier: userData.tier || null,
       is_certified: false,
       wallet_balance: 0,
       parent_id: parentId
@@ -247,5 +256,25 @@ export const dataService = {
       _currentUser.is_certified = true;
     }
     return true;
+  },
+
+  async getAllProfiles() {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) throw new Error(error.message);
+    return data;
+  },
+
+  async updateProfile(userId, updates) {
+    const { data, error } = await supabase
+      .from('profiles')
+      .update(updates)
+      .eq('id', userId)
+      .select()
+      .single();
+    if (error) throw new Error(error.message);
+    return data;
   }
 };

@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { UserPlus, Download } from 'lucide-react';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
-import { dataService } from '../../services/dataService';
+import { dataService, TIERS } from '../../services/dataService';
 
 const TeamManager = ({ users, currentUser, onAddUser, sales }) => {
   const canAddMembers = currentUser?.role === 'SUPER_ADMIN' || currentUser?.role === 'DISTRIBUTOR';
@@ -13,8 +13,12 @@ const TeamManager = ({ users, currentUser, onAddUser, sales }) => {
   // Firebase uses uid, fallback to id for compatibility
   const currentUid = currentUser?.uid || currentUser?.id;
 
-  const myTeam = users.filter(u => (u.parent_id === currentUid));
-  const teamIds = myTeam.map(u => u.uid || u.id);
+  // Si es Super Admin, ve a todos. Si es Distribuidor, solo a sus hijos.
+  const myTeam = currentUser?.role === 'SUPER_ADMIN' 
+    ? users.filter(u => u.id !== currentUid) // Ver todos menos a sí mismo
+    : users.filter(u => u.parent_id === currentUid);
+
+  const teamIds = myTeam.map(u => u.id);
   const teamSales = sales.filter(s => teamIds.includes(s.seller_id));
   const teamVolume = teamSales.reduce((acc, s) => acc + (s.amount || 0), 0);
 
@@ -26,6 +30,7 @@ const TeamManager = ({ users, currentUser, onAddUser, sales }) => {
         name: e.target.name.value,
         email: e.target.email.value,
         role: e.target.role?.value || 'SELLER',
+        tier: e.target.tier?.value || null,
         parent_id: currentUid
       };
       const newUser = await dataService.addTeamMember(currentUid, userData);
@@ -101,15 +106,32 @@ const TeamManager = ({ users, currentUser, onAddUser, sales }) => {
             style={{ width: '100%', padding: '12px', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--glass-border)', color: 'white', borderRadius: '8px', fontSize: '0.9rem' }} 
           />
           {canAddMembers && (
-            <select
-              name="role"
-              style={{ width: '100%', padding: '12px', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--glass-border)', color: 'white', borderRadius: '8px', fontSize: '0.9rem' }}
-            >
-              <option value="SELLER">Rol: Vendedor</option>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <select
+                name="role"
+                style={{ flex: 1, padding: '12px', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--glass-border)', color: 'white', borderRadius: '8px', fontSize: '0.9rem' }}
+              >
+                <option value="SELLER">Rol: Vendedor</option>
+                {currentUser?.role === 'SUPER_ADMIN' && (
+                  <option value="DISTRIBUTOR">Rol: Distribuidor</option>
+                )}
+              </select>
+
               {currentUser?.role === 'SUPER_ADMIN' && (
-                <option value="DISTRIBUTOR">Rol: Distribuidor</option>
+                <select
+                  name="tier"
+                  style={{ flex: 1, padding: '12px', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--glass-border)', color: 'white', borderRadius: '8px', fontSize: '0.9rem' }}
+                >
+                  <option value="">Rango: AUTO</option>
+                  <optgroup label="Vendedores">
+                    {TIERS.SELLER.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
+                  </optgroup>
+                  <optgroup label="Distribuidores">
+                    {TIERS.DISTRIBUTOR.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
+                  </optgroup>
+                </select>
               )}
-            </select>
+            </div>
           )}
           <div style={{ padding: '10px', background: 'rgba(0,210,255,0.05)', borderRadius: '8px', border: '1px solid rgba(0,210,255,0.1)' }}>
             <p style={{ fontSize: '0.65rem', opacity: 0.7, margin: 0 }}>
@@ -130,21 +152,42 @@ const TeamManager = ({ users, currentUser, onAddUser, sales }) => {
           </p>
         ) : (
           myTeam.map(u => (
-            <div key={u.uid || u.id} className="card glass" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div key={u.id} className="card glass" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '15px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
                 <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: 'var(--accent)' }}>
                   {(u.full_name || u.name || 'U').charAt(0)}
                 </div>
-                <div>
-                  <p style={{ margin: 0, fontWeight: 700, fontSize: '0.9rem' }}>{u.full_name || u.name}</p>
-                  <p style={{ margin: 0, fontSize: '0.7rem', color: u.is_certified ? 'var(--success)' : 'var(--text-secondary)' }}>
-                    {u.is_certified ? '✓ Certificado' : '⏳ Verificación Pendiente'}
-                  </p>
+                <div style={{ minWidth: 0 }}>
+                  <p style={{ margin: 0, fontWeight: 700, fontSize: '0.9rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.full_name || u.name}</p>
+                  
+                  {/* Selector de Nivel para Super Admin */}
+                  {currentUser?.role === 'SUPER_ADMIN' ? (
+                    <select 
+                      value={u.tier || 'AUTO'}
+                      onChange={async (e) => {
+                        const newTier = e.target.value === 'AUTO' ? null : e.target.value;
+                        await dataService.updateProfile(u.id, { tier: newTier });
+                        window.location.reload(); // Recarga simple para ver cambios
+                      }}
+                      style={{ background: 'none', border: 'none', color: 'var(--accent)', fontSize: '0.7rem', fontWeight: 700, padding: 0, cursor: 'pointer' }}
+                    >
+                      <option value="AUTO" style={{ background: 'var(--bg-primary)' }}>🤖 CÁLCULO AUTO</option>
+                      {(u.role === 'SELLER' ? TIERS.SELLER : TIERS.DISTRIBUTOR).map(t => (
+                        <option key={t.id} value={t.id} style={{ background: 'var(--bg-primary)' }}>
+                          💎 {t.label}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <p style={{ margin: 0, fontSize: '0.7rem', color: u.is_certified ? 'var(--success)' : 'var(--text-secondary)' }}>
+                      {u.is_certified ? '✓ Certificado' : '⏳ Verificación Pendiente'}
+                    </p>
+                  )}
                 </div>
               </div>
               <div style={{ textAlign: 'right' }}>
                 <p style={{ margin: 0, fontWeight: 700, color: 'var(--text-primary)', fontSize: '1rem' }}>
-                  ${sales.filter(s => s.seller_id === (u.uid || u.id)).reduce((acc, s) => acc + (s.amount || 0), 0).toFixed(0)}
+                  ${sales.filter(s => s.seller_id === u.id).reduce((acc, s) => acc + (s.amount || 0), 0).toFixed(0)}
                 </p>
                 <p style={{ margin: 0, fontSize: '0.6rem', opacity: 0.4, textTransform: 'uppercase' }}>volumen</p>
               </div>

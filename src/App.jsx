@@ -52,7 +52,9 @@ function App() {
     try {
       const [newMetrics, teamData, salesData] = await Promise.all([
         dataService.getMetrics(user),
-        user.role !== 'SELLER' ? dataService.getTeam(user.uid || user.id) : Promise.resolve([]),
+        user.role === 'SUPER_ADMIN' 
+          ? dataService.getAllProfiles() 
+          : (user.role === 'DISTRIBUTOR' ? dataService.getTeam(user.uid || user.id) : Promise.resolve([])),
         dataService.getSales(user.uid || user.id)
       ]);
       setMetrics(newMetrics);
