@@ -28,25 +28,30 @@ function App() {
 
   // ── Restaurar sesión al recargar ──────────────────────────────────────
   useEffect(() => {
-    const saved = localStorage.getItem(SESSION_KEY);
-    if (saved) {
-      try {
-        const savedUser = JSON.parse(saved);
-        setUser(savedUser);
-        setIsAuthenticated(true);
-        // No mostramos onboarding al recargar, ya pasó antes
-        setShowOnboarding(false);
-      } catch {
-        localStorage.removeItem(SESSION_KEY);
+    const restoreSession = async () => {
+      const saved = localStorage.getItem(SESSION_KEY);
+      if (saved) {
+        try {
+          const savedUser = JSON.parse(saved);
+          // Refrescar datos frescos del perfil desde la DB (evita is_certified stale)
+          const { data: freshProfile } = await import('./lib/supabase').then(m =>
+            m.supabase.from('profiles').select('*').eq('id', savedUser.id).single()
+          );
+          const currentUser = freshProfile || savedUser;
+          setUser(currentUser);
+          localStorage.setItem(SESSION_KEY, JSON.stringify(currentUser));
+          setIsAuthenticated(true);
+          setShowOnboarding(false);
+          // Cargar datos en background
+          refreshData(currentUser);
+        } catch {
+          localStorage.removeItem(SESSION_KEY);
+        }
       }
-    }
-    setIsLoading(false);
+      setIsLoading(false);
+    };
+    restoreSession();
   }, []);
-
-  // ── Refrescar métricas y equipo cuando cambia el usuario ──────────────
-  useEffect(() => {
-    if (isAuthenticated && user) refreshData();
-  }, [isAuthenticated, user?.id]);
 
   const refreshData = async (currentUser = user) => {
     if (!currentUser) return;
@@ -119,10 +124,17 @@ function App() {
         metrics.rate,
         user.is_certified
       );
+      // Actualizar estado local optimistamente (sin re-query)
       setSales(prev => [newSale, ...prev]);
+      // Actualizar wallet en el user local
+      const earned = newSale.commission_earned || 0;
+      const updatedUser = { ...user, wallet_balance: (user.wallet_balance || 0) + earned };
+      setUser(updatedUser);
+      localStorage.setItem(SESSION_KEY, JSON.stringify(updatedUser));
       setSelectedPlan(null);
-      addNotification(`Venta de ${customerData.name} registrada — +$${newSale.commission_earned.toFixed(2)}`);
-      refreshData();
+      addNotification(`Venta de ${customerData.name} registrada — +$${earned.toFixed(2)}`);
+      // Recalcular métricas en background (no bloqueante)
+      dataService.getMetrics(user).then(m => setMetrics(m));
     } catch (err) {
       alert('Error al registrar venta: ' + err.message);
     } finally {
@@ -341,9 +353,13 @@ function App() {
           onCertify={async () => {
             try {
               await dataService.certifyUser(user.uid || user.id);
-              setUser(prev => ({ ...prev, is_certified: true }));
+              // Actualizar estado local Y localStorage para que persista al recargar
+              const updatedUser = { ...user, is_certified: true };
+              setUser(updatedUser);
+              localStorage.setItem(SESSION_KEY, JSON.stringify(updatedUser));
               addNotification('¡Certificación completada! Comisiones desbloqueadas.', 'SUCCESS');
-              refreshData();
+              // Recalcular métricas en background
+              dataService.getMetrics(updatedUser).then(m => setMetrics(m));
             } catch (err) {
               alert('Error: ' + err.message);
             }

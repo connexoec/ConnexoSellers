@@ -27,18 +27,24 @@ export const TIERS = {
 
 let _currentUser = null;
 
+// Cache simple de métricas (30 segundos TTL) para no spamear Supabase
+const _metricsCache = new Map();
+
 async function calcMetrics(user) {
   const uid = user.id || user.uid;
+  const cacheKey = `${uid}-${user.role}-${user.tier || 'auto'}-${user.is_certified}`;
+  const cached = _metricsCache.get(cacheKey);
+  if (cached && Date.now() - cached.ts < 30_000) return cached.data;
 
-  if (!user.is_certified) return { rate: 0, base: 0, level: 'BLOQUEADO' };
+  const cache = (data) => { _metricsCache.set(cacheKey, { data, ts: Date.now() }); return data; };
+
+  if (!user.is_certified) return cache({ rate: 0, base: 0, level: 'BLOQUEADO' });
 
   // Priorizar nivel manual si existe
   if (user.tier) {
     const roleTiers = user.role === ROLES.SELLER ? TIERS.SELLER : TIERS.DISTRIBUTOR;
     const manualTier = roleTiers.find(t => t.id === user.tier);
-    if (manualTier) {
-      return { rate: manualTier.rate, base: manualTier.base, level: manualTier.label };
-    }
+    if (manualTier) return cache({ rate: manualTier.rate, base: manualTier.base, level: manualTier.label });
   }
 
   // ─── VENDEDOR (Auto) ──────────────────────────────────────────────────
@@ -49,9 +55,9 @@ async function calcMetrics(user) {
       .eq('seller_id', uid);
 
     const total = mySales || 0;
-    if (total >= 31) return { rate: 0.09, base: 300, level: 'VENDEDOR ULTRA' };
-    if (total >= 20) return { rate: 0.07, base: 250, level: 'VENDEDOR PRO'   };
-    return           { rate: 0,    base: 0,   level: 'VENDEDOR BASIC'        };
+    if (total >= 31) return cache({ rate: 0.09, base: 300, level: 'VENDEDOR ULTRA' });
+    if (total >= 20) return cache({ rate: 0.07, base: 250, level: 'VENDEDOR PRO'   });
+    return cache(      { rate: 0,    base: 0,   level: 'VENDEDOR BASIC'            });
   }
 
   // ─── DISTRIBUIDOR (Auto) ──────────────────────────────────────────────
@@ -65,13 +71,13 @@ async function calcMetrics(user) {
       .in('seller_id', teamIds);
 
     const total = teamSales || 0;
-    if (total >= 201) return { rate: 0.18, base: 600, level: 'DISTRIBUIDOR 3'    };
-    if (total >= 101) return { rate: 0.15, base: 600, level: 'DISTRIBUIDOR 2'    };
-    if (total >= 50)  return { rate: 0.12, base: 500, level: 'DISTRIBUIDOR 1'    };
-    return            { rate: 0,    base: 0,   level: 'DISTRIBUIDOR BASIC'       };
+    if (total >= 201) return cache({ rate: 0.18, base: 600, level: 'DISTRIBUIDOR 3'    });
+    if (total >= 101) return cache({ rate: 0.15, base: 600, level: 'DISTRIBUIDOR 2'    });
+    if (total >= 50)  return cache({ rate: 0.12, base: 500, level: 'DISTRIBUIDOR 1'    });
+    return cache(      { rate: 0,    base: 0,   level: 'DISTRIBUIDOR BASIC'             });
   }
 
-  return { rate: 0, base: 0, level: 'SUPER ADMIN' };
+  return cache({ rate: 0, base: 0, level: 'SUPER ADMIN' });
 }
 
 export const dataService = {
