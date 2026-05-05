@@ -6,6 +6,9 @@ import autoTable from 'jspdf-autotable';
 import { dataService, TIERS } from '../../services/dataService';
 import BadgeGrid, { BADGES_INFO } from '../badges/BadgeGrid';
 
+const BASIC_BADGE_KEYS = ['FIRST_BLOOD', 'SAAS_STARTER', 'ACADEMY_LV1', 'GOLD_HAMMER', 'BRILLIANT_MIND', 'LEAD_HUNTER'];
+const ELITE_BADGE_KEYS = ['PIONEER', 'RECURRING_LORD', 'VERIFIED_DIST', 'CORPORATE_CLOSER', 'SAAS_TITAN', 'CERTIFIED_MASTER'];
+
 const TeamManager = ({ users, currentUser, onAddUser, sales }) => {
   const canAddMembers = currentUser?.role === 'SUPER_ADMIN' || currentUser?.role === 'DISTRIBUTOR';
   const [isAdding, setIsAdding] = useState(false);
@@ -259,10 +262,11 @@ const TeamManager = ({ users, currentUser, onAddUser, sales }) => {
                   animate={{ opacity: 1, height: 'auto' }}
                   style={{ borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '12px', marginTop: '4px' }}
                 >
-                  <p style={{ fontSize: '0.7rem', textTransform: 'uppercase', opacity: 0.6, letterSpacing: '1px', marginBottom: '12px', fontWeight: 700 }}>Insignias del Distribuidor</p>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                    {Object.keys(BADGES_INFO).map((badgeKey) => {
+                  <p style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: 'rgba(255,255,255,0.4)', letterSpacing: '1px', margin: '10px 0 6px', fontWeight: 700 }}>Insignias de Inicio (Básicas)</p>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '14px' }}>
+                    {BASIC_BADGE_KEYS.map((badgeKey) => {
                       const badge = BADGES_INFO[badgeKey];
+                      if (!badge) return null;
                       const isUnlocked = (memberBadges[u.id] || []).includes(badgeKey);
                       return (
                         <div 
@@ -275,16 +279,55 @@ const TeamManager = ({ users, currentUser, onAddUser, sales }) => {
                             transition: 'all 0.2s ease'
                           }}
                         >
-                          <div style={{ fontSize: '1.2rem', filter: isUnlocked ? 'none' : 'grayscale(100%) opacity(0.4)' }}>
+                          <div style={{ fontSize: '1.2rem', filter: isUnlocked ? 'none' : 'grayscale(100%) opacity(0.4)', flexShrink: 0 }}>
                             {badge.icon}
                           </div>
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            <p style={{ margin: 0, fontSize: '0.75rem', fontWeight: 600, color: isUnlocked ? 'white' : '#888' }}>{badge.title}</p>
+                            <p style={{ margin: 0, fontSize: '0.75rem', fontWeight: 600, color: isUnlocked ? 'white' : '#888', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{badge.title}</p>
                           </div>
                           <div style={{
                             width: '32px', height: '18px', borderRadius: '100px',
                             background: isUnlocked ? 'var(--accent)' : 'rgba(255,255,255,0.1)',
-                            position: 'relative', transition: 'all 0.2s ease'
+                            position: 'relative', transition: 'all 0.2s ease', flexShrink: 0
+                          }}>
+                            <div style={{
+                              width: '12px', height: '12px', borderRadius: '50%', background: 'white',
+                              position: 'absolute', top: '3px', left: isUnlocked ? '17px' : '3px',
+                              transition: 'all 0.2s ease'
+                            }} />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <p style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: 'var(--accent)', letterSpacing: '1px', margin: '10px 0 6px', fontWeight: 700 }}>Insignias de Élite (Avanzadas)</p>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                    {ELITE_BADGE_KEYS.map((badgeKey) => {
+                      const badge = BADGES_INFO[badgeKey];
+                      if (!badge) return null;
+                      const isUnlocked = (memberBadges[u.id] || []).includes(badgeKey);
+                      return (
+                        <div 
+                          key={badgeKey} 
+                          onClick={() => handleToggleBadge(u.id, badgeKey)}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: '8px', padding: '8px',
+                            background: 'rgba(255,255,255,0.02)', borderRadius: '8px', cursor: 'pointer',
+                            border: isUnlocked ? '1px solid var(--accent-glow)' : '1px solid transparent',
+                            transition: 'all 0.2s ease'
+                          }}
+                        >
+                          <div style={{ fontSize: '1.2rem', filter: isUnlocked ? 'none' : 'grayscale(100%) opacity(0.4)', flexShrink: 0 }}>
+                            {badge.icon}
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <p style={{ margin: 0, fontSize: '0.75rem', fontWeight: 600, color: isUnlocked ? 'white' : '#888', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{badge.title}</p>
+                          </div>
+                          <div style={{
+                            width: '32px', height: '18px', borderRadius: '100px',
+                            background: isUnlocked ? 'var(--accent)' : 'rgba(255,255,255,0.1)',
+                            position: 'relative', transition: 'all 0.2s ease', flexShrink: 0
                           }}>
                             <div style={{
                               width: '12px', height: '12px', borderRadius: '50%', background: 'white',
