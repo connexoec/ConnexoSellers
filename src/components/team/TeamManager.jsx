@@ -45,20 +45,29 @@ const TeamManager = ({ users, currentUser, onAddUser, sales }) => {
   };
 
   const generatePDF = () => {
-    const doc = new jsPDF();
-    doc.setFont('helvetica');
-    doc.text(`Reporte de Red - ${currentUser?.full_name || currentUser?.name || ''}`, 14, 20);
-    doc.autoTable({
-      startY: 30,
-      head: [['Vendedor', 'Email', 'Certificado', 'Ventas']],
-      body: myTeam.map(u => [
-        u.full_name || u.name || 'N/A',
-        u.email || '',
-        u.is_certified ? 'Sí' : 'No',
-        `$${sales.filter(s => s.seller_id === (u.uid || u.id)).reduce((acc, s) => acc + (s.amount || 0), 0).toFixed(2)}`
-      ])
-    });
-    doc.save('reporte_red_connexo.pdf');
+    try {
+      if (myTeam.length === 0) {
+        alert("No hay miembros en la red para generar el reporte.");
+        return;
+      }
+      const doc = new jsPDF();
+      doc.setFont('helvetica');
+      doc.text(`Reporte de Red - ${currentUser?.full_name || currentUser?.name || ''}`, 14, 20);
+      doc.autoTable({
+        startY: 30,
+        head: [['Vendedor', 'Email', 'Certificado', 'Ventas']],
+        body: myTeam.map(u => [
+          u.full_name || u.name || 'N/A',
+          u.email || '',
+          u.is_certified ? 'Sí' : 'No',
+          `$${sales.filter(s => s.seller_id === (u.uid || u.id)).reduce((acc, s) => acc + (s.amount || 0), 0).toFixed(2)}`
+        ])
+      });
+      doc.save('reporte_red_connexo.pdf');
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      alert("Hubo un error al generar el documento. Verifica los datos.");
+    }
   };
 
   return (
