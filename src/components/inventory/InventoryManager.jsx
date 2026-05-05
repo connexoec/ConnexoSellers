@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Package, Plus, Minus, Send, ArchiveBox } from 'lucide-react';
+import { Package, Plus, Minus, Send } from 'lucide-react';
 import { dataService } from '../../services/dataService';
 
 const InventoryManager = ({ user, addNotification }) => {
