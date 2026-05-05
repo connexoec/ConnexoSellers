@@ -46,7 +46,12 @@ function App() {
           const { data: freshProfile } = await import('./lib/supabase').then(m =>
             m.supabase.from('profiles').select('*').eq('id', savedUser.id).single()
           );
-          const currentUser = freshProfile || savedUser;
+          const localAvatar = localStorage.getItem(`connexo_avatar_${savedUser.id}`);
+          const currentUser = {
+            ...savedUser,
+            ...freshProfile,
+            avatar_url: freshProfile?.avatar_url || localAvatar || savedUser?.avatar_url
+          };
           setUser(currentUser);
           localStorage.setItem(SESSION_KEY, JSON.stringify(currentUser));
           setIsAuthenticated(true);
@@ -635,8 +640,11 @@ function App() {
                   const reader = new FileReader();
                   reader.onloadend = async () => {
                     const base64data = reader.result;
+                    const uid = user.id || user.uid;
+                    // Guardar de inmediato en almacenamiento local persistente
+                    localStorage.setItem(`connexo_avatar_${uid}`, base64data);
                     try {
-                      await dataService.updateProfile(user.id || user.uid, { avatar_url: base64data });
+                      await dataService.updateProfile(uid, { avatar_url: base64data });
                       const updatedUser = { ...user, avatar_url: base64data };
                       setUser(updatedUser);
                       localStorage.setItem(SESSION_KEY, JSON.stringify(updatedUser));
