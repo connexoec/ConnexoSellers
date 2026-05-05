@@ -334,5 +334,209 @@ export const dataService = {
       .single();
     if (error) throw new Error(error.message);
     return data;
+  },
+
+  // ─── GESTIÓN DE INVENTARIO (Real + LocalStorage Fallback) ──────────────────
+  async getInventory() {
+    try {
+      const { data, error } = await supabase
+        .from('inventory')
+        .select('*')
+        .order('name', { ascending: true });
+      
+      if (error) throw error;
+      return data || [];
+    } catch (err) {
+      console.warn("⚠️ No se pudo cargar inventario de Supabase, usando LocalStorage fallback:", err.message);
+      const cached = localStorage.getItem('connexo_inventory');
+      if (cached) return JSON.parse(cached);
+
+      const defaultInventory = [
+        { id: 'inv-1', name: 'Tarjetas NFC', description: 'Tarjetas de presentación inteligente con tecnología NFC', category: 'NFC', stock_quantity: 500, unit_type: 'UNIDAD', detail_packaging: 'Cajas de 100 u.' },
+        { id: 'inv-2', name: 'Pulseras NFC', description: 'Pulseras ajustables con chip NFC integrado', category: 'NFC', stock_quantity: 300, unit_type: 'UNIDAD', detail_packaging: 'Bolsas de 50 u.' },
+        { id: 'inv-3', name: 'Chips NFC', description: 'Stickers / Chips NFC adhesivos pequeños', category: 'NFC', stock_quantity: 1000, unit_type: 'UNIDAD', detail_packaging: 'Empaques de 200 u.' },
+        { id: 'inv-4', name: 'Cajas de Presentación', description: 'Cajas elegantes de empaque para productos NFC', category: 'PACKAGING', stock_quantity: 200, unit_type: 'UNIDAD', detail_packaging: 'Caja Kraft Premium' },
+        { id: 'inv-5', name: 'Empaques Connexo', description: 'Empaques sellados con branding de Connexo', category: 'PACKAGING', stock_quantity: 400, unit_type: 'UNIDAD', detail_packaging: 'Sobres acolchados' }
+      ];
+      localStorage.setItem('connexo_inventory', JSON.stringify(defaultInventory));
+      return defaultInventory;
+    }
+  },
+
+  async addInventoryItem(itemData) {
+    try {
+      const newItem = {
+        name: itemData.name,
+        description: itemData.description || '',
+        category: itemData.category || 'NFC',
+        stock_quantity: Number(itemData.stock_quantity) || 0,
+        unit_type: itemData.unit_type || 'UNIDAD',
+        detail_packaging: itemData.detail_packaging || ''
+      };
+
+      const { data, error } = await supabase
+        .from('inventory')
+        .insert([newItem])
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (err) {
+      console.warn("⚠️ Usando LocalStorage para agregar ítem:", err.message);
+      const items = await this.getInventory();
+      const newItem = {
+        id: `inv-${Date.now()}`,
+        name: itemData.name,
+        description: itemData.description || '',
+        category: itemData.category || 'NFC',
+        stock_quantity: Number(itemData.stock_quantity) || 0,
+        unit_type: itemData.unit_type || 'UNIDAD',
+        detail_packaging: itemData.detail_packaging || ''
+      };
+      items.push(newItem);
+      localStorage.setItem('connexo_inventory', JSON.stringify(items));
+      return newItem;
+    }
+  },
+
+  async updateInventoryStock(itemId, quantity, type = 'add') {
+    try {
+      const items = await this.getInventory();
+      const item = items.find(i => i.id === itemId);
+      if (!item) throw new Error('Producto no encontrado');
+
+      let newStock = item.stock_quantity;
+      if (type === 'add') newStock += Number(quantity);
+      if (type === 'set') newStock = Number(quantity);
+      if (type === 'sub') {
+        if (newStock < quantity) throw new Error('Stock insuficiente');
+        newStock -= Number(quantity);
+      }
+
+      const { data, error } = await supabase
+        .from('inventory')
+        .update({ stock_quantity: newStock })
+        .eq('id', itemId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (err) {
+      console.warn("⚠️ Usando LocalStorage para actualizar stock:", err.message);
+      const items = await this.getInventory();
+      const idx = items.findIndex(i => i.id === itemId);
+      if (idx !== -1) {
+        let newStock = items[idx].stock_quantity;
+        if (type === 'add') newStock += Number(quantity);
+        if (type === 'set') newStock = Number(quantity);
+        if (type === 'sub') {
+          if (newStock < quantity) throw new Error('Stock insuficiente');
+          newStock -= Number(quantity);
+        }
+        items[idx].stock_quantity = newStock;
+        localStorage.setItem('connexo_inventory', JSON.stringify(items));
+        return items[idx];
+      }
+      throw new Error('Producto no encontrado en caché local');
+    }
+  },
+
+  async createInventoryRequest(distributorId, itemsList, notes = '') {
+    try {
+      const newRequest = {
+        distributor_id: distributorId,
+        items: itemsList, // Array de { product_id, quantity, product_name }
+        status: 'PENDING',
+        notes: notes
+      };
+
+      const { data, error } = await supabase
+        .from('inventory_requests')
+        .insert([newRequest])
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (err) {
+      console.warn("⚠️ Usando LocalStorage para solicitar stock:", err.message);
+      const requests = await this.getInventoryRequests();
+      const newReq = {
+        id: `req-${Date.now()}`,
+        distributor_id: distributorId,
+        items: itemsList,
+        status: 'PENDING',
+        notes: notes,
+        created_at: new Date().toISOString()
+      };
+      requests.push(newReq);
+      localStorage.setItem('connexo_inventory_requests', JSON.stringify(requests));
+      return newReq;
+    }
+  },
+
+  async getInventoryRequests(distributorId = null) {
+    try {
+      let query = supabase.from('inventory_requests').select('*');
+      if (distributorId) {
+        query = query.eq('distributor_id', distributorId);
+      }
+      const { data, error } = await query.order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return data || [];
+    } catch (err) {
+      console.warn("⚠️ Cargar solicitudes usando LocalStorage fallback:", err.message);
+      const cached = localStorage.getItem('connexo_inventory_requests');
+      const reqs = cached ? JSON.parse(cached) : [];
+      if (distributorId) {
+        return reqs.filter(r => r.distributor_id === distributorId);
+      }
+      return reqs;
+    }
+  },
+
+  async updateRequestStatus(requestId, status) {
+    try {
+      // Si se aprueba, descontar stock automáticamente
+      if (status === 'APPROVED') {
+        const requests = await this.getInventoryRequests();
+        const req = requests.find(r => r.id === requestId);
+        if (req && req.status !== 'APPROVED') {
+          // Descontar cada ítem del stock
+          for (const item of req.items) {
+            await this.updateInventoryStock(item.product_id, item.quantity, 'sub');
+          }
+        }
+      }
+
+      const { data, error } = await supabase
+        .from('inventory_requests')
+        .update({ status })
+        .eq('id', requestId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (err) {
+      console.warn("⚠️ Usando LocalStorage para actualizar estado del pedido:", err.message);
+      const requests = localStorage.getItem('connexo_inventory_requests');
+      const reqs = requests ? JSON.parse(requests) : [];
+      const idx = reqs.findIndex(r => r.id === requestId);
+      if (idx !== -1) {
+        if (status === 'APPROVED' && reqs[idx].status !== 'APPROVED') {
+          for (const item of reqs[idx].items) {
+            await this.updateInventoryStock(item.product_id, item.quantity, 'sub');
+          }
+        }
+        reqs[idx].status = status;
+        localStorage.setItem('connexo_inventory_requests', JSON.stringify(reqs));
+        return reqs[idx];
+      }
+      throw new Error('Pedido no encontrado en caché local');
+    }
   }
 };

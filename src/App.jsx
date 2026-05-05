@@ -7,6 +7,7 @@ import TeamManager  from './components/team/TeamManager';
 import Onboarding   from './components/onboarding/Onboarding';
 import SaleForm     from './components/sales/SaleForm';
 import Academy      from './components/academy/Academy';
+import InventoryManager from './components/inventory/InventoryManager';
 import { dataService, PLANS } from './services/dataService';
 
 const SESSION_KEY = 'connexo_session';
@@ -351,6 +352,13 @@ function App() {
               alert('Error: ' + err.message);
             }
           }}
+        />
+      );
+
+      case 'inventory': return (
+        <InventoryManager 
+          user={user} 
+          addNotification={addNotification} 
         />
       );
 
