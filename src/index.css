@@ -2,13 +2,13 @@
 
 :root {
   /* Core Colors from Palette - Futuristic Cold Style */
-  --bg-primary: #210900;
-  --bg-secondary: #2b1208;
+  --bg-primary: #0d0500;
+  --bg-secondary: #160a04;
   --text-primary: #ffefe5;
   --text-secondary: #ffa35d;
-  --accent: #ff6600;
-  --accent-dark: #962700;
-  --accent-glow: rgba(255, 102, 0, 0.3);
+  --accent: #f97316;
+  --accent-dark: #ea580c;
+  --accent-glow: rgba(249, 115, 22, 0.15);
   --success: #10b981;
   --danger: #ef4444;
 
@@ -28,8 +28,8 @@
   --font-main: 'Space Grotesk', sans-serif;
   --font-heading: 'Tomorrow', sans-serif;
 
-  --glass-bg: rgba(33, 9, 0, 0.7);
-  --glass-border: rgba(255, 102, 0, 0.15);
+  --glass-bg: rgba(13, 5, 0, 0.85);
+  --glass-border: rgba(249, 115, 22, 0.1);
   --glass-blur: blur(12px);
 
   color-scheme: dark;
@@ -49,7 +49,7 @@ body {
   min-height: 100vh;
   line-height: 1.5;
   overflow-x: hidden;
-  background-image: radial-gradient(circle at 50% 0%, #3a1505 0%, transparent 70%);
+  background-image: radial-gradient(circle at 50% 0%, #1a0a04 0%, transparent 80%);
 }
 
 #root {
@@ -206,26 +206,7 @@ p {
   transform: scale(1.2);
 }
 
-/* Animations */
-@keyframes float {
-  0% { transform: translateY(0px); }
-  50% { transform: translateY(-10px); }
-  100% { transform: translateY(0px); }
-}
 
-.float {
-  animation: float 4s ease-in-out infinite;
-}
-
-@keyframes glowPulse {
-  0% { box-shadow: 0 0 5px var(--accent-glow); }
-  50% { box-shadow: 0 0 20px var(--accent-glow); }
-  100% { box-shadow: 0 0 5px var(--accent-glow); }
-}
-
-.glow-pulse {
-  animation: glowPulse 2s infinite;
-}
 
 @keyframes slideUp {
   from { opacity: 0; transform: translateY(20px); }

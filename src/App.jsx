@@ -163,7 +163,7 @@ function App() {
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="slide-up" style={{ padding: '0 1.5rem 100px', fontFamily: 'var(--font-main)' }}>
 
           {/* Status Card */}
-          <div className="card glass glow-pulse" style={{ marginBottom: '2rem', border: '1px solid var(--accent-glow)', background: 'linear-gradient(135deg, var(--bg-secondary) 0%, #2b1208 100%)' }}>
+          <div className="card glass" style={{ marginBottom: '2rem', border: '1px solid var(--accent-glow)', background: 'linear-gradient(135deg, var(--bg-secondary) 0%, #2b1208 100%)' }}>
             <p style={{ fontSize: '0.6rem', opacity: 0.6, textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '8px' }}>Estatus de Agente</p>
             <h2 style={{ color: 'var(--accent)', margin: '0', fontSize: '1.4rem', textShadow: '0 0 10px var(--accent-glow)' }}>{metrics.level}</h2>
             
@@ -356,7 +356,7 @@ function App() {
 
       case 'profile': return (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="slide-up" style={{ padding: '2rem 1.5rem 100px', fontFamily: 'var(--font-main)', textAlign: 'center' }}>
-          <div className="float" style={{ position: 'relative', width: 100, height: 100, margin: '0 auto 1.5rem' }}>
+          <div style={{ position: 'relative', width: 100, height: 100, margin: '0 auto 1.5rem' }}>
             <div style={{ position: 'absolute', inset: -5, borderRadius: '50%', background: 'var(--accent)', opacity: 0.2, filter: 'blur(10px)' }} />
             <div style={{ position: 'relative', width: '100%', height: '100%', borderRadius: '50%', background: 'linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2.5rem', fontWeight: 900, color: 'var(--bg-primary)', boxShadow: '0 0 20px var(--accent-glow)' }}>
               {(user?.full_name || 'U').charAt(0).toUpperCase()}

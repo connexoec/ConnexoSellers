@@ -79,7 +79,7 @@ const TeamManager = ({ users, currentUser, onAddUser, sales }) => {
 
       {/* Volumen grupal — solo para Admin y Distribuidor */}
       {currentUser?.role !== 'SELLER' && (
-        <div className="card glass glow-pulse" style={{ marginBottom: '2.5rem', border: '1px solid var(--success)', background: 'linear-gradient(135deg, var(--bg-secondary) 0%, rgba(0,255,157,0.05) 100%)' }}>
+        <div className="card glass" style={{ marginBottom: '2.5rem', border: '1px solid var(--success)', background: 'linear-gradient(135deg, var(--bg-secondary) 0%, rgba(0,255,157,0.05) 100%)' }}>
           <p style={{ fontSize: '0.6rem', textTransform: 'uppercase', letterSpacing: '2px', opacity: 0.8 }}>Volumen Grupal de Red</p>
           <h2 style={{ margin: '8px 0', color: 'var(--success)', fontSize: '2rem', textShadow: '0 0 10px rgba(0,255,157,0.3)' }}>${teamVolume.toFixed(2)}</h2>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px' }}>
