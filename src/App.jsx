@@ -179,61 +179,84 @@ function App() {
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="slide-up" style={{ padding: '0 1.5rem 100px', fontFamily: 'var(--font-main)' }}>
 
           {/* Status Card */}
-          <div className="card glass" style={{ marginBottom: '2rem', border: '1px solid var(--accent-glow)', background: 'linear-gradient(135deg, var(--bg-secondary) 0%, #2b1208 100%)' }}>
-            <p style={{ fontSize: '0.6rem', opacity: 0.6, textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '8px' }}>Estatus de Agente</p>
-            <h2 style={{ color: 'var(--accent)', margin: '0', fontSize: '1.4rem', textShadow: '0 0 10px var(--accent-glow)' }}>{metrics.level}</h2>
-            
-            <div style={{ margin: '20px 0' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                <p style={{ fontSize: '0.65rem', opacity: 0.8 }}>Progreso de Nivel</p>
-                <p style={{ fontSize: '0.65rem', color: 'var(--accent)' }}>{Math.min(sales.length, 100)}%</p>
-              </div>
-              <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '10px', overflow: 'hidden' }}>
-                <motion.div 
-                  initial={{ width: 0 }}
-                  animate={{ width: `${Math.min(sales.length, 100)}%` }}
-                  transition={{ duration: 1, ease: "easeOut" }}
-                  style={{ height: '100%', background: 'linear-gradient(90deg, var(--accent-dark), var(--accent))', boxShadow: '0 0 10px var(--accent-glow)' }} 
-                />
+          {user?.role === 'SUPER_ADMIN' ? (
+            <div className="card glass" style={{ marginBottom: '2rem', border: '1px solid var(--accent-glow)', background: 'linear-gradient(135deg, var(--bg-secondary) 0%, #2b1208 100%)' }}>
+              <p style={{ fontSize: '0.6rem', opacity: 0.6, textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '8px' }}>Control Maestro</p>
+              <h2 style={{ color: 'var(--accent)', margin: '0', fontSize: '1.4rem', textShadow: '0 0 10px var(--accent-glow)' }}>Vista Global de Red</h2>
+              <div style={{ marginTop: '20px', display: 'flex', gap: '20px' }}>
+                <div style={{ flex: 1 }}>
+                  <p style={{ fontSize: '0.65rem', opacity: 0.8, margin: 0, textTransform: 'uppercase' }}>Vendedores</p>
+                  <p style={{ fontSize: '1.8rem', fontWeight: 'bold', color: 'white', margin: '4px 0 0' }}>{team.filter(t => t.role === 'SELLER').length}</p>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <p style={{ fontSize: '0.65rem', opacity: 0.8, margin: 0, textTransform: 'uppercase' }}>Distribuidores</p>
+                  <p style={{ fontSize: '1.8rem', fontWeight: 'bold', color: 'white', margin: '4px 0 0' }}>{team.filter(t => t.role === 'DISTRIBUTOR').length}</p>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <p style={{ fontSize: '0.65rem', opacity: 0.8, margin: 0, textTransform: 'uppercase' }}>Total Ventas</p>
+                  <p style={{ fontSize: '1.8rem', fontWeight: 'bold', color: 'var(--accent)', margin: '4px 0 0' }}>{sales.length}</p>
+                </div>
               </div>
             </div>
+          ) : (
+            <div className="card glass" style={{ marginBottom: '2rem', border: '1px solid var(--accent-glow)', background: 'linear-gradient(135deg, var(--bg-secondary) 0%, #2b1208 100%)' }}>
+              <p style={{ fontSize: '0.6rem', opacity: 0.6, textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '8px' }}>Estatus de Agente</p>
+              <h2 style={{ color: 'var(--accent)', margin: '0', fontSize: '1.4rem', textShadow: '0 0 10px var(--accent-glow)' }}>{metrics.level}</h2>
+              
+              <div style={{ margin: '20px 0' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                  <p style={{ fontSize: '0.65rem', opacity: 0.8 }}>Progreso de Nivel</p>
+                  <p style={{ fontSize: '0.65rem', color: 'var(--accent)' }}>{Math.min(sales.length, 100)}%</p>
+                </div>
+                <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '10px', overflow: 'hidden' }}>
+                  <motion.div 
+                    initial={{ width: 0 }}
+                    animate={{ width: `${Math.min(sales.length, 100)}%` }}
+                    transition={{ duration: 1, ease: "easeOut" }}
+                    style={{ height: '100%', background: 'linear-gradient(90deg, var(--accent-dark), var(--accent))', boxShadow: '0 0 10px var(--accent-glow)' }} 
+                  />
+                </div>
+              </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-               <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: user?.is_certified ? 'var(--success)' : 'var(--danger)', boxShadow: `0 0 10px ${user?.is_certified ? 'var(--success)' : 'var(--danger)'}` }} />
-               <p style={{ fontSize: '0.7rem', fontWeight: 700, color: user?.is_certified ? 'var(--success)' : 'var(--danger)', fontFamily: 'var(--font-heading)', margin: 0 }}>
-                 {user?.is_certified ? 'CERTIFICADO CONNEXO' : 'CERTIFICACIÓN PENDIENTE'}
-               </p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                 <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: user?.is_certified ? 'var(--success)' : 'var(--danger)', boxShadow: `0 0 10px ${user?.is_certified ? 'var(--success)' : 'var(--danger)'}` }} />
+                 <p style={{ fontSize: '0.7rem', fontWeight: 700, color: user?.is_certified ? 'var(--success)' : 'var(--danger)', fontFamily: 'var(--font-heading)', margin: 0 }}>
+                   {user?.is_certified ? 'CERTIFICADO CONNEXO' : 'CERTIFICACIÓN PENDIENTE'}
+                 </p>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Stats Grid — único, contextualizado por rol */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: '2.5rem' }}>
-            <div className="card glass" style={{ borderLeft: '3px solid var(--accent)' }}>
-              <p style={{ fontSize: '0.55rem', opacity: 0.5, letterSpacing: '1px' }}>BILLETERA</p>
-              <h3 style={{ margin: '4px 0', fontSize: '1.25rem', color: 'white' }}>${(user?.wallet_balance || 0).toFixed(2)}</h3>
+          {user?.role !== 'SUPER_ADMIN' && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: '2.5rem' }}>
+              <div className="card glass" style={{ borderLeft: '3px solid var(--accent)' }}>
+                <p style={{ fontSize: '0.55rem', opacity: 0.5, letterSpacing: '1px' }}>BILLETERA</p>
+                <h3 style={{ margin: '4px 0', fontSize: '1.25rem', color: 'white' }}>${(user?.wallet_balance || 0).toFixed(2)}</h3>
+              </div>
+              <div className="card glass" style={{ borderLeft: '3px solid var(--success)' }}>
+                <p style={{ fontSize: '0.55rem', opacity: 0.5, letterSpacing: '1px' }}>
+                  SUELDO BASE {metrics.isPreview && <span style={{ opacity: 0.4 }}>🔒</span>}
+                </p>
+                <h3 style={{ margin: '4px 0', fontSize: '1.25rem', color: metrics.base > 0 ? 'var(--success)' : 'rgba(255,255,255,0.3)' }}>${metrics.base.toFixed(0)}</h3>
+              </div>
+              <div className="card glass" style={{ borderLeft: `3px solid ${metrics.rate > 0 ? 'var(--accent)' : 'rgba(255,255,255,0.3)'}`, position: 'relative' }}>
+                <p style={{ fontSize: '0.55rem', opacity: 0.5, letterSpacing: '1px' }}>COMISIÓN</p>
+                <h3 style={{ margin: '4px 0', fontSize: '1.25rem', color: 'var(--accent)' }}>{(metrics.rate * 100).toFixed(0)}%</h3>
+                {metrics.isPreview && (
+                  <span style={{ position: 'absolute', top: '8px', right: '8px', fontSize: '0.5rem', background: 'rgba(255,102,0,0.15)', color: 'var(--accent)', padding: '2px 6px', borderRadius: '100px', fontWeight: 700 }}>
+                    OBJETIVO
+                  </span>
+                )}
+              </div>
+              <div className="card glass" style={{ borderLeft: '3px solid white' }}>
+                <p style={{ fontSize: '0.55rem', opacity: 0.5, letterSpacing: '1px' }}>
+                  {user?.role === 'SELLER' ? 'MIS VENTAS' : 'VENTAS RED'}
+                </p>
+                <h3 style={{ margin: '4px 0', fontSize: '1.25rem', color: 'white' }}>{sales.length}</h3>
+              </div>
             </div>
-            <div className="card glass" style={{ borderLeft: '3px solid var(--success)' }}>
-              <p style={{ fontSize: '0.55rem', opacity: 0.5, letterSpacing: '1px' }}>
-                SUELDO BASE {metrics.isPreview && <span style={{ opacity: 0.4 }}>🔒</span>}
-              </p>
-              <h3 style={{ margin: '4px 0', fontSize: '1.25rem', color: metrics.base > 0 ? 'var(--success)' : 'rgba(255,255,255,0.3)' }}>${metrics.base.toFixed(0)}</h3>
-            </div>
-            <div className="card glass" style={{ borderLeft: `3px solid ${metrics.rate > 0 ? 'var(--accent)' : 'rgba(255,255,255,0.3)'}`, position: 'relative' }}>
-              <p style={{ fontSize: '0.55rem', opacity: 0.5, letterSpacing: '1px' }}>COMISIÓN</p>
-              <h3 style={{ margin: '4px 0', fontSize: '1.25rem', color: 'var(--accent)' }}>{(metrics.rate * 100).toFixed(0)}%</h3>
-              {metrics.isPreview && (
-                <span style={{ position: 'absolute', top: '8px', right: '8px', fontSize: '0.5rem', background: 'rgba(255,102,0,0.15)', color: 'var(--accent)', padding: '2px 6px', borderRadius: '100px', fontWeight: 700 }}>
-                  OBJETIVO
-                </span>
-              )}
-            </div>
-            <div className="card glass" style={{ borderLeft: '3px solid white' }}>
-              <p style={{ fontSize: '0.55rem', opacity: 0.5, letterSpacing: '1px' }}>
-                {user?.role === 'SELLER' ? 'MIS VENTAS' : 'VENTAS RED'}
-              </p>
-              <h3 style={{ margin: '4px 0', fontSize: '1.25rem', color: 'white' }}>{sales.length}</h3>
-            </div>
-          </div>
+          )}
 
           {/* Sales Feed */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
@@ -394,46 +417,48 @@ function App() {
           <p style={{ fontSize: '0.8rem', opacity: 0.5, marginTop: '12px' }}>{user?.email}</p>
 
           {/* Commission Breakdown */}
-          <div className="card glass" style={{ margin: '2rem 0', textAlign: 'left', padding: '1.5rem', background: 'rgba(255,102,0,0.02)' }}>
-            <p style={{ fontSize: '0.65rem', textTransform: 'uppercase', opacity: 0.6, marginBottom: '1.5rem', letterSpacing: '2px', fontWeight: 700 }}>Estructura de Comisiones</p>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-              <div style={{ textAlign: 'center', padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                <p style={{ fontSize: '0.55rem', opacity: 0.5, textTransform: 'uppercase', marginBottom: '8px' }}>Tasa Activa</p>
-                <h3 style={{ margin: 0, color: 'var(--accent)', fontSize: '1.6rem' }}>{(metrics.rate * 100).toFixed(0)}%</h3>
+          {user?.role !== 'SUPER_ADMIN' && (
+            <div className="card glass" style={{ margin: '2rem 0', textAlign: 'left', padding: '1.5rem', background: 'rgba(255,102,0,0.02)' }}>
+              <p style={{ fontSize: '0.65rem', textTransform: 'uppercase', opacity: 0.6, marginBottom: '1.5rem', letterSpacing: '2px', fontWeight: 700 }}>Estructura de Comisiones</p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                <div style={{ textAlign: 'center', padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                  <p style={{ fontSize: '0.55rem', opacity: 0.5, textTransform: 'uppercase', marginBottom: '8px' }}>Tasa Activa</p>
+                  <h3 style={{ margin: 0, color: 'var(--accent)', fontSize: '1.6rem' }}>{(metrics.rate * 100).toFixed(0)}%</h3>
+                </div>
+                <div style={{ textAlign: 'center', padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                  <p style={{ fontSize: '0.55rem', opacity: 0.5, textTransform: 'uppercase', marginBottom: '8px' }}>Sueldo Base</p>
+                  <h3 style={{ margin: 0, color: metrics.base > 0 ? 'var(--success)' : 'inherit', fontSize: '1.6rem' }}>${metrics.base.toFixed(0)}</h3>
+                </div>
+                <div style={{ textAlign: 'center', padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                  <p style={{ fontSize: '0.55rem', opacity: 0.5, textTransform: 'uppercase', marginBottom: '8px' }}>Wallet</p>
+                  <h3 style={{ margin: 0, fontSize: '1.6rem', color: 'white' }}>${(user?.wallet_balance || 0).toFixed(0)}</h3>
+                </div>
+                <div style={{ textAlign: 'center', padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                  <p style={{ fontSize: '0.55rem', opacity: 0.5, textTransform: 'uppercase', marginBottom: '8px' }}>Ventas</p>
+                  <h3 style={{ margin: 0, fontSize: '1.6rem', color: 'white' }}>{sales.length}</h3>
+                </div>
               </div>
-              <div style={{ textAlign: 'center', padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                <p style={{ fontSize: '0.55rem', opacity: 0.5, textTransform: 'uppercase', marginBottom: '8px' }}>Sueldo Base</p>
-                <h3 style={{ margin: 0, color: metrics.base > 0 ? 'var(--success)' : 'inherit', fontSize: '1.6rem' }}>${metrics.base.toFixed(0)}</h3>
-              </div>
-              <div style={{ textAlign: 'center', padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                <p style={{ fontSize: '0.55rem', opacity: 0.5, textTransform: 'uppercase', marginBottom: '8px' }}>Wallet</p>
-                <h3 style={{ margin: 0, fontSize: '1.6rem', color: 'white' }}>${(user?.wallet_balance || 0).toFixed(0)}</h3>
-              </div>
-              <div style={{ textAlign: 'center', padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                <p style={{ fontSize: '0.55rem', opacity: 0.5, textTransform: 'uppercase', marginBottom: '8px' }}>Ventas</p>
-                <h3 style={{ margin: 0, fontSize: '1.6rem', color: 'white' }}>{sales.length}</h3>
-              </div>
-            </div>
 
-            {/* Next tier hint */}
-            <div style={{ marginTop: '1.5rem', padding: '1rem', background: 'rgba(255,102,0,0.05)', borderRadius: '12px', border: '1px solid var(--accent-glow)' }}>
-                <p style={{ fontSize: '0.6rem', opacity: 0.7, marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '1px' }}>Objetivo de Rango:</p>
-                {user?.role === 'SELLER' ? (
-                  <>
-                    {sales.length < 20 && <p style={{ fontSize: '0.75rem', color: 'var(--accent)', margin: 0, fontWeight: 600 }}>Próximo: PRO ({(20 - sales.length)} ventas restantes)</p>}
-                    {sales.length >= 20 && sales.length < 31 && <p style={{ fontSize: '0.75rem', color: 'var(--accent)', margin: 0, fontWeight: 600 }}>Próximo: ULTRA ({(31 - sales.length)} ventas restantes)</p>}
-                    {sales.length >= 31 && <p style={{ fontSize: '0.75rem', color: 'var(--success)', margin: 0, fontWeight: 700 }}>Nivel de Élite Alcanzado 🏆</p>}
-                  </>
-                ) : (
-                  <>
-                    {metrics.level === 'DISTRIBUIDOR BASIC' && <p style={{ fontSize: '0.75rem', color: 'var(--accent)', margin: 0, fontWeight: 600 }}>D1: Faltan {(50 - sales.length)} ventas de equipo</p>}
-                    {metrics.level === 'DISTRIBUIDOR 1' && <p style={{ fontSize: '0.75rem', color: 'var(--accent)', margin: 0, fontWeight: 600 }}>D2: Objetivo 101 ventas de equipo</p>}
-                    {metrics.level === 'DISTRIBUIDOR 2' && <p style={{ fontSize: '0.75rem', color: 'var(--accent)', margin: 0, fontWeight: 600 }}>D3: Objetivo 201 ventas de equipo</p>}
-                    {metrics.level === 'DISTRIBUIDOR 3' && <p style={{ fontSize: '0.75rem', color: 'var(--success)', margin: 0, fontWeight: 700 }}>Máxima Jerarquía 🏆</p>}
-                  </>
-                )}
+              {/* Next tier hint */}
+              <div style={{ marginTop: '1.5rem', padding: '1rem', background: 'rgba(255,102,0,0.05)', borderRadius: '12px', border: '1px solid var(--accent-glow)' }}>
+                  <p style={{ fontSize: '0.6rem', opacity: 0.7, marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '1px' }}>Objetivo de Rango:</p>
+                  {user?.role === 'SELLER' ? (
+                    <>
+                      {sales.length < 20 && <p style={{ fontSize: '0.75rem', color: 'var(--accent)', margin: 0, fontWeight: 600 }}>Próximo: PRO ({(20 - sales.length)} ventas restantes)</p>}
+                      {sales.length >= 20 && sales.length < 31 && <p style={{ fontSize: '0.75rem', color: 'var(--accent)', margin: 0, fontWeight: 600 }}>Próximo: ULTRA ({(31 - sales.length)} ventas restantes)</p>}
+                      {sales.length >= 31 && <p style={{ fontSize: '0.75rem', color: 'var(--success)', margin: 0, fontWeight: 700 }}>Nivel de Élite Alcanzado 🏆</p>}
+                    </>
+                  ) : (
+                    <>
+                      {metrics.level === 'DISTRIBUIDOR BASIC' && <p style={{ fontSize: '0.75rem', color: 'var(--accent)', margin: 0, fontWeight: 600 }}>D1: Faltan {(50 - sales.length)} ventas de equipo</p>}
+                      {metrics.level === 'DISTRIBUIDOR 1' && <p style={{ fontSize: '0.75rem', color: 'var(--accent)', margin: 0, fontWeight: 600 }}>D2: Objetivo 101 ventas de equipo</p>}
+                      {metrics.level === 'DISTRIBUIDOR 2' && <p style={{ fontSize: '0.75rem', color: 'var(--accent)', margin: 0, fontWeight: 600 }}>D3: Objetivo 201 ventas de equipo</p>}
+                      {metrics.level === 'DISTRIBUIDOR 3' && <p style={{ fontSize: '0.75rem', color: 'var(--success)', margin: 0, fontWeight: 700 }}>Máxima Jerarquía 🏆</p>}
+                    </>
+                  )}
+              </div>
             </div>
-          </div>
+          )}
 
           <button 
             onClick={() => {
