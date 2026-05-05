@@ -175,6 +175,27 @@ export const dataService = {
     return await calcMetrics(user);
   },
 
+  async getUserBadges(userId) {
+    // Intentar leer de base de datos si existiera, o usar fallback
+    try {
+      const { data, error } = await supabase.from('profiles').select('badges').eq('id', userId).single();
+      if (!error && data?.badges) return data.badges;
+    } catch (e) {
+      // Ignore if column doesn't exist
+    }
+    const local = localStorage.getItem(`connexo_badges_${userId}`);
+    return local ? JSON.parse(local) : [];
+  },
+
+  async saveUserBadges(userId, badges) {
+    try {
+      await supabase.from('profiles').update({ badges }).eq('id', userId);
+    } catch (e) {
+      // Ignore if column doesn't exist
+    }
+    localStorage.setItem(`connexo_badges_${userId}`, JSON.stringify(badges));
+  },
+
   async registerSale(userId, planKey, customerData, currentRate, isCertified) {
     const plan = PLANS[planKey];
     // Siempre aplicar la tasa si está certificado (desde venta #1 con 7%)

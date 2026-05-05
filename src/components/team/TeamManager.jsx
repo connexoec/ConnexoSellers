@@ -4,11 +4,44 @@ import { UserPlus, Download } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { dataService, TIERS } from '../../services/dataService';
+import BadgeGrid, { BADGES_INFO } from '../badges/BadgeGrid';
 
 const TeamManager = ({ users, currentUser, onAddUser, sales }) => {
   const canAddMembers = currentUser?.role === 'SUPER_ADMIN' || currentUser?.role === 'DISTRIBUTOR';
   const [isAdding, setIsAdding] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [expandedUserId, setExpandedUserId] = useState(null);
+  const [memberBadges, setMemberBadges] = useState({});
+
+  const toggleExpand = async (userId) => {
+    if (expandedUserId === userId) {
+      setExpandedUserId(null);
+    } else {
+      setExpandedUserId(userId);
+      if (!memberBadges[userId]) {
+        try {
+          const badges = await dataService.getUserBadges(userId);
+          setMemberBadges(prev => ({ ...prev, [userId]: badges }));
+        } catch (e) {
+          console.error("Error loading user badges:", e);
+        }
+      }
+    }
+  };
+
+  const handleToggleBadge = async (userId, badgeKey) => {
+    const current = memberBadges[userId] || [];
+    const updated = current.includes(badgeKey)
+      ? current.filter(b => b !== badgeKey)
+      : [...current, badgeKey];
+    
+    setMemberBadges(prev => ({ ...prev, [userId]: updated }));
+    try {
+      await dataService.saveUserBadges(userId, updated);
+    } catch (e) {
+      console.error("Error saving user badges:", e);
+    }
+  };
 
   // Firebase uses uid, fallback to id for compatibility
   const currentUid = currentUser?.uid || currentUser?.id;
@@ -167,51 +200,104 @@ const TeamManager = ({ users, currentUser, onAddUser, sales }) => {
           </p>
         ) : (
           myTeam.map(u => (
-            <div key={u.id} className="card glass" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '15px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
-                <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: 'var(--accent)' }}>
-                  {(u.full_name || u.name || 'U').charAt(0)}
+            <div key={u.id} className="card glass" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div 
+                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '15px', cursor: currentUser?.role === 'SUPER_ADMIN' ? 'pointer' : 'default', width: '100%' }}
+                onClick={() => currentUser?.role === 'SUPER_ADMIN' && toggleExpand(u.id)}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
+                  <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: 'var(--accent)' }}>
+                    {(u.full_name || u.name || 'U').charAt(0)}
+                  </div>
+                  <div style={{ minWidth: 0 }}>
+                    <p style={{ margin: 0, fontWeight: 700, fontSize: '0.9rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.full_name || u.name}</p>
+                    
+                    {/* Selector de Nivel para Super Admin */}
+                    {currentUser?.role === 'SUPER_ADMIN' ? (
+                      <select 
+                        value={u.tier || 'AUTO'}
+                        onClick={(e) => e.stopPropagation()} // Prevent expand
+                        onChange={async (e) => {
+                          const newTier = e.target.value === 'AUTO' ? null : e.target.value;
+                          const updates = {
+                            tier: newTier,
+                            // Al asignar categoría, inicia nuevo conteo desde ahora
+                            tier_start_date: newTier ? new Date().toISOString() : null
+                          };
+                          await dataService.updateProfile(u.id, updates);
+                          // Invalidar cache de métricas para este usuario
+                          window.location.reload();
+                        }}
+                        style={{ background: 'none', border: 'none', color: 'var(--accent)', fontSize: '0.7rem', fontWeight: 700, padding: 0, cursor: 'pointer' }}
+                      >
+                        <option value="AUTO" style={{ background: 'var(--bg-primary)' }}>🤖 CÁLCULO AUTO</option>
+                        {(u.role === 'SELLER' ? TIERS.SELLER : TIERS.DISTRIBUTOR).map(t => (
+                          <option key={t.id} value={t.id} style={{ background: 'var(--bg-primary)' }}>
+                            💎 {t.label}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <p style={{ margin: 0, fontSize: '0.7rem', color: u.is_certified ? 'var(--success)' : 'var(--text-secondary)' }}>
+                        {u.is_certified ? '✓ Certificado' : '⏳ Verificación Pendiente'}
+                      </p>
+                    )}
+                  </div>
                 </div>
-                <div style={{ minWidth: 0 }}>
-                  <p style={{ margin: 0, fontWeight: 700, fontSize: '0.9rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.full_name || u.name}</p>
-                  
-                  {/* Selector de Nivel para Super Admin */}
-                  {currentUser?.role === 'SUPER_ADMIN' ? (
-                    <select 
-                      value={u.tier || 'AUTO'}
-                      onChange={async (e) => {
-                        const newTier = e.target.value === 'AUTO' ? null : e.target.value;
-                        const updates = {
-                          tier: newTier,
-                          // Al asignar categoría, inicia nuevo conteo desde ahora
-                          tier_start_date: newTier ? new Date().toISOString() : null
-                        };
-                        await dataService.updateProfile(u.id, updates);
-                        // Invalidar cache de métricas para este usuario
-                        window.location.reload();
-                      }}
-                      style={{ background: 'none', border: 'none', color: 'var(--accent)', fontSize: '0.7rem', fontWeight: 700, padding: 0, cursor: 'pointer' }}
-                    >
-                      <option value="AUTO" style={{ background: 'var(--bg-primary)' }}>🤖 CÁLCULO AUTO</option>
-                      {(u.role === 'SELLER' ? TIERS.SELLER : TIERS.DISTRIBUTOR).map(t => (
-                        <option key={t.id} value={t.id} style={{ background: 'var(--bg-primary)' }}>
-                          💎 {t.label}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <p style={{ margin: 0, fontSize: '0.7rem', color: u.is_certified ? 'var(--success)' : 'var(--text-secondary)' }}>
-                      {u.is_certified ? '✓ Certificado' : '⏳ Verificación Pendiente'}
-                    </p>
-                  )}
+                <div style={{ textAlign: 'right' }}>
+                  <p style={{ margin: 0, fontWeight: 700, color: 'var(--text-primary)', fontSize: '1rem' }}>
+                    ${sales.filter(s => s.seller_id === u.id).reduce((acc, s) => acc + (s.amount || 0), 0).toFixed(0)}
+                  </p>
+                  <p style={{ margin: 0, fontSize: '0.6rem', opacity: 0.4, textTransform: 'uppercase' }}>volumen</p>
                 </div>
               </div>
-              <div style={{ textAlign: 'right' }}>
-                <p style={{ margin: 0, fontWeight: 700, color: 'var(--text-primary)', fontSize: '1rem' }}>
-                  ${sales.filter(s => s.seller_id === u.id).reduce((acc, s) => acc + (s.amount || 0), 0).toFixed(0)}
-                </p>
-                <p style={{ margin: 0, fontSize: '0.6rem', opacity: 0.4, textTransform: 'uppercase' }}>volumen</p>
-              </div>
+
+              {/* Seccion de Insignias Expandida (Solo Super Admin) */}
+              {currentUser?.role === 'SUPER_ADMIN' && expandedUserId === u.id && (
+                <motion.div 
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  style={{ borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '12px', marginTop: '4px' }}
+                >
+                  <p style={{ fontSize: '0.7rem', textTransform: 'uppercase', opacity: 0.6, letterSpacing: '1px', marginBottom: '12px', fontWeight: 700 }}>Insignias del Distribuidor</p>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                    {Object.keys(BADGES_INFO).map((badgeKey) => {
+                      const badge = BADGES_INFO[badgeKey];
+                      const isUnlocked = (memberBadges[u.id] || []).includes(badgeKey);
+                      return (
+                        <div 
+                          key={badgeKey} 
+                          onClick={() => handleToggleBadge(u.id, badgeKey)}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: '8px', padding: '8px',
+                            background: 'rgba(255,255,255,0.02)', borderRadius: '8px', cursor: 'pointer',
+                            border: isUnlocked ? '1px solid var(--accent-glow)' : '1px solid transparent',
+                            transition: 'all 0.2s ease'
+                          }}
+                        >
+                          <div style={{ fontSize: '1.2rem', filter: isUnlocked ? 'none' : 'grayscale(100%) opacity(0.4)' }}>
+                            {badge.icon}
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <p style={{ margin: 0, fontSize: '0.75rem', fontWeight: 600, color: isUnlocked ? 'white' : '#888' }}>{badge.title}</p>
+                          </div>
+                          <div style={{
+                            width: '32px', height: '18px', borderRadius: '100px',
+                            background: isUnlocked ? 'var(--accent)' : 'rgba(255,255,255,0.1)',
+                            position: 'relative', transition: 'all 0.2s ease'
+                          }}>
+                            <div style={{
+                              width: '12px', height: '12px', borderRadius: '50%', background: 'white',
+                              position: 'absolute', top: '3px', left: isUnlocked ? '17px' : '3px',
+                              transition: 'all 0.2s ease'
+                            }} />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </motion.div>
+              )}
             </div>
           ))
         )}

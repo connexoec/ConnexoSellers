@@ -11,6 +11,7 @@ import InventoryManager from './components/inventory/InventoryManager';
 import { dataService, PLANS } from './services/dataService';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import BadgeGrid from './components/badges/BadgeGrid';
 
 const SESSION_KEY = 'connexo_session';
 
@@ -28,6 +29,7 @@ function App() {
     { id: 1, message: 'Ecosistema Connexo v2.2 iniciado', type: 'INFO', read: false }
   ]);
   const [highContrast,    setHighContrast]    = useState(false);
+  const [userBadges,      setUserBadges]      = useState([]);
 
   // ── Restaurar sesión al recargar ──────────────────────────────────────
   useEffect(() => {
@@ -61,7 +63,7 @@ function App() {
     const uid = currentUser.uid || currentUser.id;
     const role = currentUser.role;
     try {
-      const [newMetrics, teamData, salesData] = await Promise.all([
+      const [newMetrics, teamData, salesData, badges] = await Promise.all([
         dataService.getMetrics(currentUser),
         role === 'SUPER_ADMIN'
           ? dataService.getAllProfiles()
@@ -70,11 +72,13 @@ function App() {
             : Promise.resolve([]),
         role === 'SELLER'
           ? dataService.getSales(uid)
-          : dataService.getSalesForTeam(uid, role)
+          : dataService.getSalesForTeam(uid, role),
+        dataService.getUserBadges(uid)
       ]);
       setMetrics(newMetrics);
       setTeam(teamData);
       setSales(salesData);
+      setUserBadges(badges);
       
       // Si es SUPER ADMIN, buscar pedidos pendientes y generar notificación
       if (role === 'SUPER_ADMIN') {
@@ -500,6 +504,12 @@ function App() {
             <p style={{ color: 'var(--accent)', fontWeight: 700, margin: 0, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px' }}>{metrics.level}</p>
           </div>
           <p style={{ fontSize: '0.8rem', opacity: 0.5, marginTop: '12px' }}>{user?.email}</p>
+
+          {/* Badge Grid Mosaico */}
+          <div style={{ marginTop: '2rem', textAlign: 'left' }}>
+            <p style={{ fontSize: '0.65rem', textTransform: 'uppercase', opacity: 0.6, marginBottom: '0.5rem', letterSpacing: '2px', fontWeight: 700, textAlign: 'center' }}>Insignias de Logro</p>
+            <BadgeGrid activeBadges={userBadges} />
+          </div>
 
           {/* Commission Breakdown */}
           {user?.role !== 'SUPER_ADMIN' && (
