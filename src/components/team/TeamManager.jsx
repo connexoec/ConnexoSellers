@@ -169,8 +169,14 @@ const TeamManager = ({ users, currentUser, onAddUser, sales }) => {
                       value={u.tier || 'AUTO'}
                       onChange={async (e) => {
                         const newTier = e.target.value === 'AUTO' ? null : e.target.value;
-                        await dataService.updateProfile(u.id, { tier: newTier });
-                        window.location.reload(); // Recarga simple para ver cambios
+                        const updates = {
+                          tier: newTier,
+                          // Al asignar categoría, inicia nuevo conteo desde ahora
+                          tier_start_date: newTier ? new Date().toISOString() : null
+                        };
+                        await dataService.updateProfile(u.id, updates);
+                        // Invalidar cache de métricas para este usuario
+                        window.location.reload();
                       }}
                       style={{ background: 'none', border: 'none', color: 'var(--accent)', fontSize: '0.7rem', fontWeight: 700, padding: 0, cursor: 'pointer' }}
                     >

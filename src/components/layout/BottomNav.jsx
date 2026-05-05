@@ -2,13 +2,17 @@ import React from 'react';
 import { Home, BarChart3, GraduationCap, Users, User, Settings } from 'lucide-react';
 
 const BottomNav = ({ activeTab, setActiveTab, role }) => {
-  const navItems = [
-    { id: 'dashboard', label: 'Inicio', icon: <Home size={20} /> },
-    { id: 'sales', label: 'Ventas', icon: <BarChart3 size={20} /> },
-    { id: 'academy', label: 'Academia', icon: <GraduationCap size={20} /> },
-    { id: 'network', label: role === 'SUPER_ADMIN' ? 'Admin' : 'Red', icon: role === 'SUPER_ADMIN' ? <Settings size={20} /> : <Users size={20} /> },
-    { id: 'profile', label: 'Perfil', icon: <User size={20} /> },
+  const isSuperAdmin = role === 'SUPER_ADMIN';
+
+  const allNavItems = [
+    { id: 'dashboard', label: 'Dashboard', icon: <Home size={20} />,        roles: ['SUPER_ADMIN', 'DISTRIBUTOR', 'SELLER'] },
+    { id: 'sales',     label: 'Ventas',    icon: <BarChart3 size={20} />,   roles: ['DISTRIBUTOR', 'SELLER'] },
+    { id: 'academy',   label: 'Academia',  icon: <GraduationCap size={20} />, roles: ['DISTRIBUTOR', 'SELLER'] },
+    { id: 'network',   label: isSuperAdmin ? 'Admin' : 'Red', icon: isSuperAdmin ? <Settings size={20} /> : <Users size={20} />, roles: ['SUPER_ADMIN', 'DISTRIBUTOR'] },
+    { id: 'profile',   label: 'Perfil',   icon: <User size={20} />,         roles: ['SUPER_ADMIN', 'DISTRIBUTOR', 'SELLER'] },
   ];
+
+  const navItems = allNavItems.filter(item => item.roles.includes(role));
 
   return (
     <nav className="bottom-nav glass">

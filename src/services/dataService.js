@@ -40,25 +40,40 @@ async function calcMetrics(user) {
 
   if (!user.is_certified) return cache({ rate: 0, base: 0, level: 'BLOQUEADO' });
 
-  // Priorizar nivel manual si existe
+  // Fecha de inicio del conteo (cuando el admin asigna categoría)
+  const startDate = user.tier_start_date || null;
+
+  // Helper para contar ventas (filtra por fecha si hay tier_start_date)
+  const countSales = (query) => startDate ? query.gte('created_at', startDate) : query;
+
+  // Priorizar nivel manual si existe — pero seguir contando desde tier_start_date
+  // para saber cuándo debe subir al siguiente nivel
   if (user.tier) {
     const roleTiers = user.role === ROLES.SELLER ? TIERS.SELLER : TIERS.DISTRIBUTOR;
     const manualTier = roleTiers.find(t => t.id === user.tier);
-    if (manualTier) return cache({ rate: manualTier.rate, base: manualTier.base, level: manualTier.label });
+    if (manualTier) {
+      // Contar ventas desde la asignación para detectar si ya subió de nivel
+      if (user.role === ROLES.SELLER) {
+        const { count: salesSinceAssignment } = await countSales(
+          supabase.from('sales').select('*', { count: 'exact', head: true }).eq('seller_id', uid)
+        );
+        const total = salesSinceAssignment || 0;
+        // Si ya superó los umbrales del siguiente nivel, subir automáticamente
+        if (total >= 31) return cache({ rate: 0.09, base: 300, level: 'VENDEDOR ULTRA', salesCount: total });
+        if (total >= 20) return cache({ rate: 0.07, base: 250, level: 'VENDEDOR PRO',   salesCount: total });
+      }
+      return cache({ rate: manualTier.rate, base: manualTier.base, level: manualTier.label, salesCount: 0 });
+    }
   }
 
   // ─── VENDEDOR (Auto) ──────────────────────────────────────────────────
   if (user.role === ROLES.SELLER) {
-    const { count: mySales } = await supabase
-      .from('sales')
-      .select('*', { count: 'exact', head: true })
-      .eq('seller_id', uid);
-
+    const { count: mySales } = await countSales(
+      supabase.from('sales').select('*', { count: 'exact', head: true }).eq('seller_id', uid)
+    );
     const total = mySales || 0;
-    // Siempre mostrar la comisión del próximo nivel como preview desde venta 1
     if (total >= 31) return cache({ rate: 0.09, base: 300, level: 'VENDEDOR ULTRA', salesCount: total });
     if (total >= 20) return cache({ rate: 0.07, base: 250, level: 'VENDEDOR PRO',   salesCount: total });
-    // BASIC: mostrar comisión objetivo del nivel PRO como preview (no bloqueado)
     return cache({ rate: 0.07, base: 0, level: 'VENDEDOR BASIC', salesCount: total, isPreview: true });
   }
 
@@ -67,16 +82,13 @@ async function calcMetrics(user) {
     const { data: team } = await supabase.from('profiles').select('id').eq('parent_id', uid);
     const teamIds = [uid, ...(team?.map(t => t.id) || [])];
 
-    const { count: teamSales } = await supabase
-      .from('sales')
-      .select('*', { count: 'exact', head: true })
-      .in('seller_id', teamIds);
-
+    const { count: teamSales } = await countSales(
+      supabase.from('sales').select('*', { count: 'exact', head: true }).in('seller_id', teamIds)
+    );
     const total = teamSales || 0;
     if (total >= 201) return cache({ rate: 0.18, base: 600, level: 'DISTRIBUIDOR 3', salesCount: total });
     if (total >= 101) return cache({ rate: 0.15, base: 600, level: 'DISTRIBUIDOR 2', salesCount: total });
     if (total >= 50)  return cache({ rate: 0.12, base: 500, level: 'DISTRIBUIDOR 1', salesCount: total });
-    // Mostrar D1 como preview
     return cache({ rate: 0.12, base: 0, level: 'DISTRIBUIDOR BASIC', salesCount: total, isPreview: true });
   }
 
@@ -269,6 +281,7 @@ export const dataService = {
       password: userData.password || 'connexo123',
       role: userData.role || ROLES.SELLER,
       tier: userData.tier || null,
+      tier_start_date: userData.tier ? new Date().toISOString() : null,
       is_certified: false,
       wallet_balance: 0,
       parent_id: parentId
