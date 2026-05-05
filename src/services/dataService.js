@@ -55,9 +55,11 @@ async function calcMetrics(user) {
       .eq('seller_id', uid);
 
     const total = mySales || 0;
-    if (total >= 31) return cache({ rate: 0.09, base: 300, level: 'VENDEDOR ULTRA' });
-    if (total >= 20) return cache({ rate: 0.07, base: 250, level: 'VENDEDOR PRO'   });
-    return cache(      { rate: 0,    base: 0,   level: 'VENDEDOR BASIC'            });
+    // Siempre mostrar la comisión del próximo nivel como preview desde venta 1
+    if (total >= 31) return cache({ rate: 0.09, base: 300, level: 'VENDEDOR ULTRA', salesCount: total });
+    if (total >= 20) return cache({ rate: 0.07, base: 250, level: 'VENDEDOR PRO',   salesCount: total });
+    // BASIC: mostrar comisión objetivo del nivel PRO como preview (no bloqueado)
+    return cache({ rate: 0.07, base: 0, level: 'VENDEDOR BASIC', salesCount: total, isPreview: true });
   }
 
   // ─── DISTRIBUIDOR (Auto) ──────────────────────────────────────────────
@@ -71,10 +73,11 @@ async function calcMetrics(user) {
       .in('seller_id', teamIds);
 
     const total = teamSales || 0;
-    if (total >= 201) return cache({ rate: 0.18, base: 600, level: 'DISTRIBUIDOR 3'    });
-    if (total >= 101) return cache({ rate: 0.15, base: 600, level: 'DISTRIBUIDOR 2'    });
-    if (total >= 50)  return cache({ rate: 0.12, base: 500, level: 'DISTRIBUIDOR 1'    });
-    return cache(      { rate: 0,    base: 0,   level: 'DISTRIBUIDOR BASIC'             });
+    if (total >= 201) return cache({ rate: 0.18, base: 600, level: 'DISTRIBUIDOR 3', salesCount: total });
+    if (total >= 101) return cache({ rate: 0.15, base: 600, level: 'DISTRIBUIDOR 2', salesCount: total });
+    if (total >= 50)  return cache({ rate: 0.12, base: 500, level: 'DISTRIBUIDOR 1', salesCount: total });
+    // Mostrar D1 como preview
+    return cache({ rate: 0.12, base: 0, level: 'DISTRIBUIDOR BASIC', salesCount: total, isPreview: true });
   }
 
   return cache({ rate: 0, base: 0, level: 'SUPER ADMIN' });
@@ -158,7 +161,8 @@ export const dataService = {
 
   async registerSale(userId, planKey, customerData, currentRate, isCertified) {
     const plan = PLANS[planKey];
-    const commission = isCertified ? plan.price * (currentRate || 0) : 0;
+    // Siempre aplicar la tasa si está certificado (desde venta #1 con 7%)
+    const commission = isCertified && currentRate > 0 ? plan.price * currentRate : 0;
 
     const newSale = {
       seller_id: userId,

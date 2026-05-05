@@ -190,39 +190,26 @@ function App() {
             </div>
           </div>
 
-          {/* Stats Grid */}
+          {/* Stats Grid — único, contextualizado por rol */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: '2.5rem' }}>
             <div className="card glass" style={{ borderLeft: '3px solid var(--accent)' }}>
               <p style={{ fontSize: '0.55rem', opacity: 0.5, letterSpacing: '1px' }}>BILLETERA</p>
               <h3 style={{ margin: '4px 0', fontSize: '1.25rem', color: 'white' }}>${(user?.wallet_balance || 0).toFixed(2)}</h3>
             </div>
             <div className="card glass" style={{ borderLeft: '3px solid var(--success)' }}>
-              <p style={{ fontSize: '0.55rem', opacity: 0.5, letterSpacing: '1px' }}>BASE</p>
-              <h3 style={{ margin: '4px 0', fontSize: '1.25rem', color: 'white' }}>${metrics.base.toFixed(0)}</h3>
+              <p style={{ fontSize: '0.55rem', opacity: 0.5, letterSpacing: '1px' }}>
+                SUELDO BASE {metrics.isPreview && <span style={{ opacity: 0.4 }}>🔒</span>}
+              </p>
+              <h3 style={{ margin: '4px 0', fontSize: '1.25rem', color: metrics.base > 0 ? 'var(--success)' : 'rgba(255,255,255,0.3)' }}>${metrics.base.toFixed(0)}</h3>
             </div>
-            <div className="card glass" style={{ borderLeft: '3px solid var(--accent)' }}>
+            <div className="card glass" style={{ borderLeft: `3px solid ${metrics.rate > 0 ? 'var(--accent)' : 'rgba(255,255,255,0.3)'}`, position: 'relative' }}>
               <p style={{ fontSize: '0.55rem', opacity: 0.5, letterSpacing: '1px' }}>COMISIÓN</p>
-              <h3 style={{ margin: '4px 0', fontSize: '1.25rem', color: 'white' }}>{(metrics.rate * 100).toFixed(0)}%</h3>
-            </div>
-            <div className="card glass" style={{ borderLeft: '3px solid white' }}>
-              <p style={{ fontSize: '0.55rem', opacity: 0.5, letterSpacing: '1px' }}>VENTAS</p>
-              <h3 style={{ margin: '4px 0', fontSize: '1.25rem', color: 'white' }}>{sales.length}</h3>
-            </div>
-          </div>
-
-          {/* Stats Grid — contextualized per role */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: '2.5rem' }}>
-            <div className="card glass" style={{ borderLeft: '3px solid var(--accent)' }}>
-              <p style={{ fontSize: '0.55rem', opacity: 0.5, letterSpacing: '1px' }}>BILLETERA</p>
-              <h3 style={{ margin: '4px 0', fontSize: '1.25rem', color: 'white' }}>${(user?.wallet_balance || 0).toFixed(2)}</h3>
-            </div>
-            <div className="card glass" style={{ borderLeft: '3px solid var(--success)' }}>
-              <p style={{ fontSize: '0.55rem', opacity: 0.5, letterSpacing: '1px' }}>SUELDO BASE</p>
-              <h3 style={{ margin: '4px 0', fontSize: '1.25rem', color: metrics.base > 0 ? 'var(--success)' : 'white' }}>${metrics.base.toFixed(0)}</h3>
-            </div>
-            <div className="card glass" style={{ borderLeft: '3px solid var(--accent)' }}>
-              <p style={{ fontSize: '0.55rem', opacity: 0.5, letterSpacing: '1px' }}>COMISIÓN</p>
-              <h3 style={{ margin: '4px 0', fontSize: '1.25rem', color: metrics.rate > 0 ? 'var(--accent)' : 'white' }}>{(metrics.rate * 100).toFixed(0)}%</h3>
+              <h3 style={{ margin: '4px 0', fontSize: '1.25rem', color: 'var(--accent)' }}>{(metrics.rate * 100).toFixed(0)}%</h3>
+              {metrics.isPreview && (
+                <span style={{ position: 'absolute', top: '8px', right: '8px', fontSize: '0.5rem', background: 'rgba(0,210,255,0.15)', color: 'var(--accent)', padding: '2px 6px', borderRadius: '100px', fontWeight: 700 }}>
+                  OBJETIVO
+                </span>
+              )}
             </div>
             <div className="card glass" style={{ borderLeft: '3px solid white' }}>
               <p style={{ fontSize: '0.55rem', opacity: 0.5, letterSpacing: '1px' }}>
