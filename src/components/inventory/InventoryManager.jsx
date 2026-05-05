@@ -5,7 +5,7 @@ import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { dataService } from '../../services/dataService';
 
-const InventoryManager = ({ user, addNotification }) => {
+const InventoryManager = ({ user, team, addNotification }) => {
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
   
   const [inventory, setInventory] = useState([]);
@@ -24,6 +24,10 @@ const InventoryManager = ({ user, addNotification }) => {
   const [isRequesting, setIsRequesting] = useState(false);
   const [requestCart, setRequestCart] = useState({}); // { itemId: quantity }
   const [requestNotes, setRequestNotes] = useState('');
+  
+  // States for filtering requests
+  const [filterStatus, setFilterStatus] = useState('ALL');
+  const [filterText, setFilterText] = useState('');
 
   useEffect(() => {
     loadData();
@@ -146,6 +150,19 @@ const InventoryManager = ({ user, addNotification }) => {
       addNotification(err.message, 'ERROR');
     }
   };
+
+  const filteredRequests = requests.filter(req => {
+    if (filterStatus !== 'ALL' && req.status !== filterStatus) return false;
+    
+    if (isSuperAdmin && filterText) {
+      const distributor = team?.find(t => t.id === req.distributor_id);
+      const distName = (distributor?.full_name || distributor?.name || `Distribuidor ${req.distributor_id}`).toLowerCase();
+      if (!distName.includes(filterText.toLowerCase()) && !req.id.toString().toLowerCase().includes(filterText.toLowerCase())) {
+        return false;
+      }
+    }
+    return true;
+  });
 
   if (isLoading) return <div style={{ textAlign: 'center', padding: '2rem', opacity: 0.5 }}>Cargando inventario...</div>;
 
@@ -309,11 +326,39 @@ const InventoryManager = ({ user, addNotification }) => {
           {isSuperAdmin ? 'Pedidos Entrantes' : 'Historial de Pedidos'}
         </h3>
         
-        {requests.length === 0 ? (
-          <p style={{ textAlign: 'center', opacity: 0.4, fontSize: '0.8rem', padding: '2rem' }}>No hay solicitudes de inventario.</p>
+        {/* Filters */}
+        <div style={{ display: 'flex', gap: '10px', marginBottom: '1rem', flexDirection: isSuperAdmin ? 'row' : 'column' }}>
+          <select 
+            value={filterStatus} 
+            onChange={e => setFilterStatus(e.target.value)} 
+            style={{...inputStyle, flex: 1, padding: '8px'}}
+          >
+            <option value="ALL">Todos los Estados</option>
+            <option value="PENDING">Pendientes</option>
+            <option value="APPROVED">Aprobados</option>
+            <option value="REJECTED">Rechazados</option>
+          </select>
+          
+          {isSuperAdmin && (
+            <input 
+              type="text" 
+              placeholder="Buscar por Nombre del Distribuidor o ID" 
+              value={filterText} 
+              onChange={e => setFilterText(e.target.value)} 
+              style={{...inputStyle, flex: 2, padding: '8px'}}
+            />
+          )}
+        </div>
+        
+        {filteredRequests.length === 0 ? (
+          <p style={{ textAlign: 'center', opacity: 0.4, fontSize: '0.8rem', padding: '2rem' }}>No hay solicitudes de inventario que coincidan con la búsqueda.</p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {requests.map(req => (
+            {filteredRequests.map(req => {
+              const distributor = team?.find(t => t.id === req.distributor_id);
+              const distName = distributor?.full_name || distributor?.name || `Distribuidor ${req.distributor_id?.substring(0, 5)}`;
+              
+              return (
               <div key={req.id} className="card glass" style={{ padding: '1rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                   <div>
@@ -324,9 +369,14 @@ const InventoryManager = ({ user, addNotification }) => {
                     }}>
                       {req.status}
                     </span>
-                    <p style={{ fontSize: '0.65rem', opacity: 0.5, marginTop: '4px' }}>
+                    <p style={{ fontSize: '0.65rem', opacity: 0.5, marginTop: '4px', margin: '4px 0 0' }}>
                       {new Date(req.created_at).toLocaleString()}
                     </p>
+                    {isSuperAdmin && (
+                      <p style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--accent)', margin: '4px 0 0' }}>
+                        👤 {distName}
+                      </p>
+                    )}
                   </div>
                   {isSuperAdmin && req.status === 'PENDING' && (
                     <div style={{ display: 'flex', gap: '8px' }}>
@@ -345,7 +395,7 @@ const InventoryManager = ({ user, addNotification }) => {
                 </div>
                 {req.notes && <p style={{ fontSize: '0.75rem', marginTop: '8px', opacity: 0.8 }}><em>Nota: {req.notes}</em></p>}
               </div>
-            ))}
+            )})}
           </div>
         )}
       </div>
