@@ -9,6 +9,8 @@ import SaleForm     from './components/sales/SaleForm';
 import Academy      from './components/academy/Academy';
 import InventoryManager from './components/inventory/InventoryManager';
 import { dataService, PLANS } from './services/dataService';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 
 const SESSION_KEY = 'connexo_session';
 
@@ -261,38 +263,58 @@ function App() {
           {/* Sales Feed / Customer DB */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
             <h3 style={{ fontSize: '0.85rem', textTransform: 'uppercase', opacity: 0.7, letterSpacing: '1px', margin: 0 }}>
-              {user?.role === 'SUPER_ADMIN' ? 'Base de Clientes & Activaciones' : (user?.role === 'SELLER' ? 'Mis Ventas' : 'Feed de Ventas — Red Completa')}
+              {user?.role === 'SUPER_ADMIN' || user?.role === 'DISTRIBUTOR' ? 'Base de Clientes & Activaciones' : 'Mis Ventas'}
             </h3>
-            {user?.role === 'SUPER_ADMIN' ? (
+            {user?.role === 'SUPER_ADMIN' || user?.role === 'DISTRIBUTOR' ? (
               <button 
                 onClick={() => {
-                  const headers = ["Cliente", "Telefono", "Email", "Empresa", "Plan", "Monto", "Fecha", "Vendedor"];
-                  const rows = sales.map(s => {
-                    const seller = team.find(m => m.id === s.seller_id)?.full_name || 'Desconocido';
-                    return [
-                      `"${s.customer_name || ''}"`,
-                      `"${s.customer_phone || ''}"`,
-                      `"${s.customer_email || ''}"`,
-                      `"${s.customer_company || ''}"`,
-                      `"${s.plan_type || ''}"`,
-                      `"${s.amount || 0}"`,
-                      `"${new Date(s.created_at).toLocaleDateString()}"`,
-                      `"${seller}"`
-                    ].join(',');
-                  });
-                  const csvContent = "data:text/csv;charset=utf-8," + [headers.join(','), ...rows].join('\n');
-                  const encodedUri = encodeURI(csvContent);
-                  const link = document.createElement("a");
-                  link.setAttribute("href", encodedUri);
-                  link.setAttribute("download", "base_clientes_connexo.csv");
-                  document.body.appendChild(link);
-                  link.click();
-                  document.body.removeChild(link);
+                  try {
+                    const doc = new jsPDF();
+                    doc.setFont('helvetica');
+                    doc.text(`Base de Clientes - ${user?.role === 'SUPER_ADMIN' ? 'Red Completa' : 'Mi Equipo'}`, 14, 20);
+                    
+                    const groupedSales = sales.reduce((acc, sale) => {
+                      const plan = sale.plan_type || 'Otros';
+                      if (!acc[plan]) acc[plan] = [];
+                      acc[plan].push(sale);
+                      return acc;
+                    }, {});
+
+                    let currentY = 30;
+                    Object.keys(groupedSales).forEach((plan, idx) => {
+                      // Usar autoTable para calcular las posiciones automáticamente
+                      doc.setFontSize(12);
+                      doc.text(`Categoría: Plan ${plan}`, 14, currentY);
+                      
+                      doc.autoTable({
+                        startY: currentY + 5,
+                        head: [['Cliente', 'Teléfono', 'Email', 'Vendedor', 'Fecha']],
+                        body: groupedSales[plan].map(s => {
+                          const seller = team.find(m => m.id === s.seller_id)?.full_name || 'Desconocido';
+                          return [
+                            s.customer_name || 'N/A',
+                            s.customer_phone || 'N/A',
+                            s.customer_email || 'N/A',
+                            seller,
+                            new Date(s.created_at).toLocaleDateString()
+                          ];
+                        }),
+                        theme: 'striped',
+                        headStyles: { fillColor: [255, 102, 0] }
+                      });
+                      currentY = doc.lastAutoTable.finalY + 15;
+                    });
+                    
+                    doc.save('base_clientes_connexo.pdf');
+                  } catch (err) {
+                    console.error("Error generating PDF:", err);
+                    alert("Error al generar el documento PDF.");
+                  }
                 }}
                 className="btn glass" 
                 style={{ fontSize: '0.65rem', padding: '4px 10px', height: 'auto', gap: '6px' }}
               >
-                📥 Descargar CSV
+                📥 Descargar PDF
               </button>
             ) : (
               <span style={{ fontSize: '0.65rem', color: 'var(--accent)', fontWeight: 700 }}>
@@ -309,7 +331,7 @@ function App() {
               sales.slice(0, 50).map(s => {
                 const sellerMember = user?.role !== 'SELLER' && team.find(m => m.id === s.seller_id);
                 
-                if (user?.role === 'SUPER_ADMIN') {
+                if (user?.role === 'SUPER_ADMIN' || user?.role === 'DISTRIBUTOR') {
                   return (
                     <div key={s.id} className="card glass" style={{ display: 'flex', flexDirection: 'column', gap: '8px', borderLeft: '3px solid var(--accent)' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
