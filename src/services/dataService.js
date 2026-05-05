@@ -500,7 +500,16 @@ export const dataService = {
 
   async updateRequestStatus(requestId, status) {
     try {
-      // Si se aprueba, descontar stock automáticamente
+      const { data, error } = await supabase
+        .from('inventory_requests')
+        .update({ status })
+        .eq('id', requestId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      
+      // Si se aprueba y actualizó bien en DB, descontar stock automáticamente
       if (status === 'APPROVED') {
         const requests = await this.getInventoryRequests();
         const req = requests.find(r => r.id === requestId);
@@ -511,15 +520,6 @@ export const dataService = {
           }
         }
       }
-
-      const { data, error } = await supabase
-        .from('inventory_requests')
-        .update({ status })
-        .eq('id', requestId)
-        .select()
-        .single();
-
-      if (error) throw error;
       return data;
     } catch (err) {
       console.warn("⚠️ Usando LocalStorage para actualizar estado del pedido:", err.message);

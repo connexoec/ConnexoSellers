@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Package, Plus, Minus, Send } from 'lucide-react';
+import { Package, Plus, Minus, Send, Download } from 'lucide-react';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 import { dataService } from '../../services/dataService';
 
 const InventoryManager = ({ user, addNotification }) => {
@@ -84,10 +86,35 @@ const InventoryManager = ({ user, addNotification }) => {
     }
   };
 
-  const handleStatusChange = async (reqId, newStatus) => {
+  const generateInvoicePDF = (req) => {
+    const doc = new jsPDF();
+    doc.setFont('helvetica');
+    doc.text(`Guía de Despacho Connexo`, 14, 20);
+    doc.setFontSize(10);
+    doc.text(`ID de Pedido: ${req.id || 'N/A'}`, 14, 30);
+    doc.text(`Fecha: ${new Date().toLocaleDateString()}`, 14, 36);
+    doc.text(`Distribuidor ID: ${req.distributor_id}`, 14, 42);
+
+    doc.autoTable({
+      startY: 50,
+      head: [['Producto', 'Cantidad']],
+      body: req.items.map(i => [i.product_name, i.quantity])
+    });
+
+    if (req.notes) {
+      doc.text(`Notas Adicionales: ${req.notes}`, 14, doc.autoTable.previous.finalY + 15);
+    }
+
+    doc.save(`despacho_connexo_${req.id || Date.now()}.pdf`);
+  };
+
+  const handleStatusChange = async (req, newStatus) => {
     try {
-      await dataService.updateRequestStatus(reqId, newStatus);
+      await dataService.updateRequestStatus(req.id, newStatus);
       addNotification(`Estado actualizado a ${newStatus}`);
+      if (newStatus === 'APPROVED') {
+        generateInvoicePDF(req);
+      }
       loadData(); // Recargar para ver stock deducido
     } catch (err) {
       addNotification(err.message, 'ERROR');
@@ -228,8 +255,8 @@ const InventoryManager = ({ user, addNotification }) => {
                   </div>
                   {isSuperAdmin && req.status === 'PENDING' && (
                     <div style={{ display: 'flex', gap: '8px' }}>
-                      <button onClick={() => handleStatusChange(req.id, 'REJECTED')} style={{...qtyBtnStyle, background: 'rgba(239,68,68,0.2)', color: 'var(--danger)', width: 'auto', padding: '0 10px'}}>Rechazar</button>
-                      <button onClick={() => handleStatusChange(req.id, 'APPROVED')} style={{...qtyBtnStyle, background: 'rgba(16,185,129,0.2)', color: 'var(--success)', width: 'auto', padding: '0 10px'}}>Aprobar y Descontar</button>
+                      <button onClick={() => handleStatusChange(req, 'REJECTED')} style={{...qtyBtnStyle, background: 'rgba(239,68,68,0.2)', color: 'var(--danger)', width: 'auto', padding: '0 10px'}}>Rechazar</button>
+                      <button onClick={() => handleStatusChange(req, 'APPROVED')} style={{...qtyBtnStyle, background: 'rgba(16,185,129,0.2)', color: 'var(--success)', width: 'auto', padding: '0 10px'}}>Aprobar y Descontar</button>
                     </div>
                   )}
                 </div>
