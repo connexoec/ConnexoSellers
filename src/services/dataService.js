@@ -601,5 +601,83 @@ export const dataService = {
       }
       throw new Error('Pedido no encontrado en caché local');
     }
+  },
+
+  async getAcademyCourses() {
+    try {
+      const { data, error } = await supabase.from('academy_courses').select('*');
+      if (!error && data && data.length > 0) return data;
+    } catch (e) {
+      // Ignore
+    }
+    const cached = localStorage.getItem('connexo_academy_courses');
+    if (cached) return JSON.parse(cached);
+    
+    // Default initial academy materials
+    const defaultCourses = [
+      {
+        id: '1',
+        title: "Fundamentos del Ecosistema",
+        type: "video",
+        url: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+        duration: "15 min",
+        description: "Aprende los principios básicos del funcionamiento del hardware NFC y la plataforma de Connexo."
+      },
+      {
+        id: '2',
+        title: "Técnicas de Cierre Efectivo",
+        type: "document",
+        url: "https://example.com/guia-ventas-connexo.pdf",
+        duration: "25 min",
+        description: "Guía maestra en PDF sobre objeciones de clientes y cómo colocar suscripciones recurrentes PRO y ULTRA."
+      },
+      {
+        id: '3',
+        title: "Examen de Certificación Oficial",
+        type: "quiz",
+        duration: "10 min",
+        description: "Responde este cuestionario interactivo de 3 preguntas para obtener tu certificación oficial de comisiones.",
+        questions: [
+          {
+            question: "¿Cuál es el beneficio principal de la cuenta ULTRA para un cliente?",
+            options: [
+              "No tiene ningún beneficio relevante",
+              "Mayor comisión y herramientas avanzadas de bio con IA",
+              "Solo un color de perfil diferente"
+            ],
+            answer: 1
+          },
+          {
+            question: "¿Qué rol tiene asignado un distribuidor en la jerarquía de red de Connexo?",
+            options: [
+              "No puede tener vendedores a su cargo",
+              "Vender directamente sin construir red",
+              "Crear y expandir una red de vendedores ganando comisiones por volumen"
+            ],
+            answer: 2
+          },
+          {
+            question: "¿Por qué es importante priorizar la venta de planes recurrentes?",
+            options: [
+              "Para asegurar ingresos constantes y retención de clientes SaaS",
+              "No tiene importancia, solo importa el hardware",
+              "Es obligatorio por ley"
+            ],
+            answer: 0
+          }
+        ]
+      }
+    ];
+    localStorage.setItem('connexo_academy_courses', JSON.stringify(defaultCourses));
+    return defaultCourses;
+  },
+
+  async saveAcademyCourses(courses) {
+    try {
+      await supabase.from('academy_courses').upsert(courses);
+    } catch (e) {
+      // Ignore
+    }
+    localStorage.setItem('connexo_academy_courses', JSON.stringify(courses));
   }
 };
