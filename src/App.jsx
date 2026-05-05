@@ -258,14 +258,47 @@ function App() {
             </div>
           )}
 
-          {/* Sales Feed */}
+          {/* Sales Feed / Customer DB */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
             <h3 style={{ fontSize: '0.85rem', textTransform: 'uppercase', opacity: 0.7, letterSpacing: '1px', margin: 0 }}>
-              {user?.role === 'SELLER' ? 'Mis Ventas' : 'Feed de Ventas — Red Completa'}
+              {user?.role === 'SUPER_ADMIN' ? 'Base de Clientes & Activaciones' : (user?.role === 'SELLER' ? 'Mis Ventas' : 'Feed de Ventas — Red Completa')}
             </h3>
-            <span style={{ fontSize: '0.65rem', color: 'var(--accent)', fontWeight: 700 }}>
-              Total: ${sales.reduce((a, s) => a + (s.amount || 0), 0).toFixed(2)}
-            </span>
+            {user?.role === 'SUPER_ADMIN' ? (
+              <button 
+                onClick={() => {
+                  const headers = ["Cliente", "Telefono", "Email", "Empresa", "Plan", "Monto", "Fecha", "Vendedor"];
+                  const rows = sales.map(s => {
+                    const seller = team.find(m => m.id === s.seller_id)?.full_name || 'Desconocido';
+                    return [
+                      `"${s.customer_name || ''}"`,
+                      `"${s.customer_phone || ''}"`,
+                      `"${s.customer_email || ''}"`,
+                      `"${s.customer_company || ''}"`,
+                      `"${s.plan_type || ''}"`,
+                      `"${s.amount || 0}"`,
+                      `"${new Date(s.created_at).toLocaleDateString()}"`,
+                      `"${seller}"`
+                    ].join(',');
+                  });
+                  const csvContent = "data:text/csv;charset=utf-8," + [headers.join(','), ...rows].join('\n');
+                  const encodedUri = encodeURI(csvContent);
+                  const link = document.createElement("a");
+                  link.setAttribute("href", encodedUri);
+                  link.setAttribute("download", "base_clientes_connexo.csv");
+                  document.body.appendChild(link);
+                  link.click();
+                  document.body.removeChild(link);
+                }}
+                className="btn glass" 
+                style={{ fontSize: '0.65rem', padding: '4px 10px', height: 'auto', gap: '6px' }}
+              >
+                📥 Descargar CSV
+              </button>
+            ) : (
+              <span style={{ fontSize: '0.65rem', color: 'var(--accent)', fontWeight: 700 }}>
+                Total: ${sales.reduce((a, s) => a + (s.amount || 0), 0).toFixed(2)}
+              </span>
+            )}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {sales.length === 0 ? (
@@ -273,9 +306,39 @@ function App() {
                 Aún no hay ventas registradas.<br/>¡Registra tu primera venta!
               </p>
             ) : (
-              sales.slice(0, 20).map(s => {
-                // Para admin/distribuidor mostrar quién hizo la venta
+              sales.slice(0, 50).map(s => {
                 const sellerMember = user?.role !== 'SELLER' && team.find(m => m.id === s.seller_id);
+                
+                if (user?.role === 'SUPER_ADMIN') {
+                  return (
+                    <div key={s.id} className="card glass" style={{ display: 'flex', flexDirection: 'column', gap: '8px', borderLeft: '3px solid var(--accent)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <div>
+                          <p style={{ margin: 0, fontWeight: 700, fontSize: '0.95rem', color: 'white' }}>{s.customer_name || 'Cliente sin nombre'}</p>
+                          <p style={{ margin: '2px 0 0', fontSize: '0.7rem', color: 'var(--accent)', fontWeight: 600 }}>{s.plan_type} · ${s.amount}</p>
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                          <p style={{ margin: 0, fontSize: '0.65rem', opacity: 0.5 }}>{new Date(s.created_at).toLocaleDateString()}</p>
+                          <p style={{ margin: '2px 0 0', fontSize: '0.65rem', color: 'var(--text-secondary)' }}>Vendedor: {sellerMember?.full_name || 'N/A'}</p>
+                        </div>
+                      </div>
+                      <div style={{ background: 'rgba(255,255,255,0.03)', padding: '10px', borderRadius: '6px', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
+                          <p style={{ margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={s.customer_phone}>📞 {s.customer_phone || 'N/A'}</p>
+                          <p style={{ margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={s.customer_email}>✉️ {s.customer_email || 'N/A'}</p>
+                          {s.customer_company && <p style={{ margin: 0, gridColumn: '1 / -1' }}>🏢 {s.customer_company}</p>}
+                        </div>
+                        {s.customer_notes && (
+                          <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid rgba(255,255,255,0.05)', fontStyle: 'italic', opacity: 0.8 }}>
+                            "{s.customer_notes}"
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                }
+
+                // Vista normal para Vendedores y Distribuidores
                 return (
                   <div key={s.id} className="card glass" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
