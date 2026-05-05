@@ -64,21 +64,35 @@ function App() {
     const role = currentUser.role;
     try {
       const [newMetrics, teamData, salesData, badges] = await Promise.all([
-        dataService.getMetrics(currentUser),
-        role === 'SUPER_ADMIN'
+        dataService.getMetrics(currentUser).catch(e => {
+          console.warn("Metrics error:", e);
+          return { rate: 0, base: 0, level: role === 'SUPER_ADMIN' ? 'SUPER ADMIN' : 'CARGANDO...' };
+        }),
+        (role === 'SUPER_ADMIN'
           ? dataService.getAllProfiles()
           : role === 'DISTRIBUTOR'
             ? dataService.getTeam(uid)
-            : Promise.resolve([]),
-        role === 'SELLER'
+            : Promise.resolve([])
+        ).catch(e => {
+          console.warn("Profiles/Team error:", e);
+          return [];
+        }),
+        (role === 'SELLER'
           ? dataService.getSales(uid)
-          : dataService.getSalesForTeam(uid, role),
-        dataService.getUserBadges(uid)
+          : dataService.getSalesForTeam(uid, role)
+        ).catch(e => {
+          console.warn("Sales error:", e);
+          return [];
+        }),
+        dataService.getUserBadges(uid).catch(e => {
+          console.warn("Badges error:", e);
+          return [];
+        })
       ]);
       setMetrics(newMetrics);
-      setTeam(teamData);
-      setSales(salesData);
-      setUserBadges(badges);
+      setTeam(teamData || []);
+      setSales(salesData || []);
+      setUserBadges(badges || []);
       
       // Si es SUPER ADMIN, buscar pedidos pendientes y generar notificación
       if (role === 'SUPER_ADMIN') {
