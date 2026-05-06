@@ -196,15 +196,16 @@ export const dataService = {
     localStorage.setItem(`connexo_badges_${userId}`, JSON.stringify(badges));
   },
 
-  async registerSale(userId, planKey, customerData, currentRate, isCertified) {
-    const plan = PLANS[planKey];
+  async registerSale(userId, planKey, customerData, currentRate, isCertified, billingCycle = 'annually') {
+    const isMonthly = billingCycle === 'monthly';
+    const basePrice = planKey === 'PRO' ? (isMonthly ? 7.00 : 97.00) : (isMonthly ? 15.00 : 179.00);
     // Siempre aplicar la tasa si está certificado (desde venta #1 con 7%)
-    const commission = isCertified && currentRate > 0 ? plan.price * currentRate : 0;
+    const commission = isCertified && currentRate > 0 ? basePrice * currentRate : 0;
 
     const newSale = {
       seller_id: userId,
-      plan_type: planKey,
-      amount: plan.price,
+      plan_type: `${planKey} ${isMonthly ? 'MENSUAL' : 'ANUAL'}`,
+      amount: basePrice,
       commission_earned: commission,
       customer_name: customerData.name,
       customer_phone: customerData.phone,

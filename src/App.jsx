@@ -181,7 +181,7 @@ function App() {
     setShowOnboarding(false);
   };
 
-  const handleRegisterSale = async (planKey, customerData) => {
+  const handleRegisterSale = async (planKey, customerData, billingCycle = 'annually') => {
     setIsLoading(true);
     try {
       const newSale = await dataService.registerSale(
@@ -189,7 +189,8 @@ function App() {
         planKey,
         customerData,
         metrics.rate,
-        user.is_certified
+        user.is_certified,
+        billingCycle
       );
       // Actualizar estado local optimistamente (sin re-query)
       setSales(prev => [newSale, ...prev]);
@@ -579,7 +580,7 @@ function App() {
           {selectedPlan && (
             <SaleForm
               plan={PLANS[selectedPlan]}
-              onConfirm={(data) => handleRegisterSale(selectedPlan, data)}
+              onConfirm={(data, billingCycle) => handleRegisterSale(selectedPlan, data, billingCycle)}
               onCancel={() => setSelectedPlan(null)}
             />
           )}
