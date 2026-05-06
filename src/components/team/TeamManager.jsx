@@ -147,7 +147,7 @@ const TeamManager = ({ users, currentUser, onAddUser, sales }) => {
               fontWeight: 700, transition: 'all 0.2s ease'
             }}
           >
-            👥 Agentes / Red
+            Agentes / Red
           </button>
           <button 
             onClick={() => setSubTab('badges')} 
@@ -159,7 +159,7 @@ const TeamManager = ({ users, currentUser, onAddUser, sales }) => {
               fontWeight: 700, transition: 'all 0.2s ease'
             }}
           >
-            🏅 Insignias / Logros
+            Insignias / Logros
           </button>
         </div>
       )}
