@@ -739,5 +739,84 @@ export const dataService = {
       localStorage.setItem(key, keysToPreserve[key]);
     });
     return true;
+  },
+
+  async seedTestData(parentId) {
+    const firstNames = ['Carlos', 'Andres', 'Daniel', 'Santiago', 'Mateo', 'Sebastian', 'Alejandro', 'Gabriel', 'Nicolas', 'Samuel'];
+    const lastNames = ['Gomez', 'Rodriguez', 'Perez', 'Sanchez', 'Martinez', 'Torres', 'Lopez', 'Diaz', 'Ramirez', 'Moreno'];
+
+    const sellers = [];
+    for (let i = 1; i <= 10; i++) {
+      const name = `${firstNames[i-1]} ${lastNames[i-1]}`;
+      const email = `vendedor.pro${i}@connexo.com`;
+      sellers.push({
+        full_name: name,
+        email: email,
+        password: 'connexo123',
+        role: ROLES.SELLER,
+        tier: 'PRO',
+        tier_start_date: new Date().toISOString(),
+        is_certified: true,
+        wallet_balance: 0,
+        parent_id: parentId || null
+      });
+    }
+
+    // 1. Insertar los 10 perfiles en Supabase
+    const { data: insertedSellers, error: sellerError } = await supabase
+      .from('profiles')
+      .insert(sellers)
+      .select();
+
+    if (sellerError) throw new Error("Error sembrando vendedores: " + sellerError.message);
+
+    // 2. Generar 40 ventas mensuales de prueba (PRO o ULTRA) para cada vendedor
+    const salesToInsert = [];
+    const customerFirstNames = ['Maria', 'Ana', 'Laura', 'Isabella', 'Lucia', 'Sofia', 'Camila', 'Valentina', 'Victoria', 'Juliana'];
+    const customerLastNames = ['Ruiz', 'Giraldo', 'Soto', 'Herrera', 'Castro', 'Vargas', 'Rios', 'Mendoza', 'Munoz', 'Ortega'];
+
+    for (const seller of insertedSellers) {
+      let totalSellerWallet = 0;
+      for (let j = 1; j <= 40; j++) {
+        const isProPlan = Math.random() > 0.4; // 60% PRO, 40% ULTRA
+        const planKey = isProPlan ? 'PRO' : 'ULTRA';
+        const basePrice = isProPlan ? 7.00 : 15.00; // Suscripción mensual
+        const rate = 0.07; // Vendedor PRO rate = 7%
+        const commission = basePrice * rate;
+        totalSellerWallet += commission;
+
+        const cName = `${customerFirstNames[Math.floor(Math.random() * 10)]} ${customerLastNames[Math.floor(Math.random() * 10)]}`;
+        const day = Math.floor(Math.random() * 28) + 1;
+
+        salesToInsert.push({
+          seller_id: seller.id,
+          plan_type: `${planKey} MENSUAL`,
+          amount: basePrice,
+          commission_earned: commission,
+          customer_name: cName,
+          customer_phone: `+593 9${Math.floor(Math.random() * 89999999 + 10000000)}`,
+          customer_email: `${cName.toLowerCase().replace(/\s+/g, '')}@gmail.com`,
+          customer_company: j % 3 === 0 ? `Empresa ${j}` : null,
+          customer_notes: `[COBRO MENSUAL: DÍA ${day} DE CADA MES] Sembrado de prueba.`,
+          status: 'COMPLETED'
+        });
+      }
+
+      // Actualizar billetera del vendedor con la suma acumulada de las comisiones
+      await supabase
+        .from('profiles')
+        .update({ wallet_balance: totalSellerWallet })
+        .eq('id', seller.id);
+    }
+
+    // Insertar todas las ventas juntas (batch insert)
+    const { error: salesError } = await supabase
+      .from('sales')
+      .insert(salesToInsert);
+
+    if (salesError) throw new Error("Error sembrando ventas: " + salesError.message);
+
+    _metricsCache.clear();
+    return true;
   }
 };
