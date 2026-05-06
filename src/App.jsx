@@ -872,7 +872,30 @@ function App() {
                   className="btn btn-primary" 
                   style={{ width: '100%', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase' }}
                 >
-                  ⚡ Sembrar 10 Vendedores PRO (400 Ventas)
+                  ⚡ Sembrar 10 Vendedores PRO Mensual (400 Ventas)
+                </button>
+
+                <button 
+                  onClick={async () => {
+                    const confirmSeed = confirm("⚡ ¿Deseas sembrar 10 Vendedores PRO de Prueba, cada uno con 40 planes PRO/ULTRA anuales (400 ventas en total)? Esto simulará un ecosistema activo de suscripciones anuales.");
+                    if (confirmSeed) {
+                      setIsLoading(true);
+                      try {
+                        await dataService.seedTestDataAnnual(user.id || user.uid);
+                        addNotification("¡Ecosistema sembrado con éxito!", "SUCCESS");
+                        alert("Se han creado 10 vendedores PRO con 40 ventas anuales cada uno de forma exitosa.");
+                        window.location.reload();
+                      } catch (err) {
+                        alert("Error al sembrar datos: " + err.message);
+                      } finally {
+                        setIsLoading(false);
+                      }
+                    }
+                  }}
+                  className="btn btn-primary" 
+                  style={{ width: '100%', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', background: 'linear-gradient(135deg, var(--accent-dark) 0%, var(--accent) 100%)' }}
+                >
+                  ⚡ Sembrar 10 Vendedores PRO Anual (400 Ventas)
                 </button>
               </div>
             </div>
