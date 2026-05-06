@@ -221,6 +221,12 @@ export const dataService = {
 
     const commission = isCertified && realRate > 0 ? basePrice * realRate : 0;
 
+    const currentDate = new Date();
+    const monthlyBillingDateNote = `[COBRO MENSUAL: DÍA ${currentDate.getDate()} DE CADA MES]`;
+    const notes = isMonthly
+      ? (customerData.notes ? `${monthlyBillingDateNote} ${customerData.notes}` : monthlyBillingDateNote)
+      : (customerData.notes || null);
+
     const newSale = {
       seller_id: userId,
       plan_type: `${planKey} ${isMonthly ? 'MENSUAL' : 'ANUAL'}`,
@@ -230,7 +236,7 @@ export const dataService = {
       customer_phone: customerData.phone,
       customer_email: customerData.email || null,
       customer_company: customerData.company || null,
-      customer_notes: customerData.notes || null,
+      customer_notes: notes,
       status: 'COMPLETED'
     };
 
