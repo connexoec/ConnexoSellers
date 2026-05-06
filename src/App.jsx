@@ -18,7 +18,9 @@ const SESSION_KEY = 'connexo_session';
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading,       setIsLoading]       = useState(true);   // true al inicio para restaurar sesión
-  const [activeTab,       setActiveTab]       = useState('dashboard');
+  const [activeTab,       setActiveTab]       = useState(() => {
+    return localStorage.getItem('connexo_active_tab') || 'dashboard';
+  });
   const [user,            setUser]            = useState(null);
   const [team,            setTeam]            = useState([]);
   const [sales,           setSales]           = useState([]);
@@ -34,6 +36,11 @@ function App() {
   const [planFilter,      setPlanFilter]      = useState('ALL');
   const [currentPage,     setCurrentPage]     = useState(1);
   const [expandedSaleId,  setExpandedSaleId]  = useState(null);
+
+  // ── Guardar pestaña activa al cambiar ───────────────────────────
+  useEffect(() => {
+    localStorage.setItem('connexo_active_tab', activeTab);
+  }, [activeTab]);
 
   // ── Restaurar sesión al recargar ──────────────────────────────────────
   useEffect(() => {
@@ -164,6 +171,7 @@ function App() {
   const handleLogout = async () => {
     await dataService.logout();
     localStorage.removeItem(SESSION_KEY); // 🗑️ Limpiar sesión guardada
+    localStorage.removeItem('connexo_active_tab'); // 🗑️ Limpiar pestaña guardada
     setIsAuthenticated(false);
     setUser(null);
     setSales([]);
