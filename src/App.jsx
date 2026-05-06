@@ -203,6 +203,18 @@ function App() {
       addNotification(`Venta de ${customerData.name} registrada — +$${earned.toFixed(2)}`);
       // Recalcular métricas e historial completo de inmediato para refrescar la interfaz en tiempo real
       refreshData(updatedUser);
+
+      // ─── Desbloquear Primera Insignia (FIRST_BLOOD) ─────────────────────────
+      const hasFirstBlood = userBadges.includes('FIRST_BLOOD');
+      if (!hasFirstBlood) {
+        const updatedBadges = [...userBadges, 'FIRST_BLOOD'];
+        setUserBadges(updatedBadges);
+        await dataService.saveUserBadges(user.uid || user.id, updatedBadges);
+        setTimeout(() => {
+          alert("🎉 ¡FELICIDADES! ¡Has concretado tu primera venta y desbloqueado tu primera insignia oficial: 'Primer Impacto'! 🏆🎴");
+        }, 800);
+        addNotification("¡Has obtenido tu primera insignia oficial: Primer Impacto! 🎴", "SUCCESS");
+      }
     } catch (err) {
       alert('Error al registrar venta: ' + err.message);
     } finally {
