@@ -17,6 +17,8 @@ const TeamManager = ({ users, currentUser, onAddUser, sales }) => {
   const [memberBadges, setMemberBadges] = useState({});
   const [subTab, setSubTab] = useState('network'); // 'network' o 'badges'
   const [selectedAgentId, setSelectedAgentId] = useState('');
+  const [agentSearchQuery, setAgentSearchQuery] = useState('');
+  const [agentPage, setAgentPage] = useState(1);
 
   const toggleExpand = async (userId) => {
     if (expandedUserId === userId) {
@@ -300,36 +302,96 @@ const TeamManager = ({ users, currentUser, onAddUser, sales }) => {
       ) : (
         /* PESTAÑA DEDICADA EXCLUSIVA PARA INSIGNIAS */
         <div className="fade-in">
-          <div style={{ marginBottom: '1.5rem' }}>
-            <label style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '1px', display: 'block', marginBottom: '8px', fontWeight: 700 }}>Seleccionar Miembro de Red</label>
-            <select
-              value={selectedAgentId}
-              onChange={async (e) => {
-                const uid = e.target.value;
-                setSelectedAgentId(uid);
-                if (uid && !memberBadges[uid]) {
-                  try {
-                    const badges = await dataService.getUserBadges(uid);
-                    setMemberBadges(prev => ({ ...prev, [uid]: badges }));
-                  } catch (err) {
-                    console.error("Error loading user badges:", err);
-                  }
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '1.5rem' }}>
+            <label style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 700 }}>Buscar Agente (Vendedor / Distribuidor)</label>
+            <input 
+              value={agentSearchQuery}
+              onChange={(e) => { setAgentSearchQuery(e.target.value); setAgentPage(1); }}
+              placeholder="🔍 Buscar por nombre o email..."
+              style={{ width: '100%', padding: '12px 14px', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--glass-border)', color: 'white', borderRadius: '10px', fontSize: '0.85rem' }}
+            />
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '4px' }}>
+              {(() => {
+                const filteredAgents = myTeam.filter(u => {
+                  const q = agentSearchQuery.toLowerCase();
+                  return (u.full_name || u.name || '').toLowerCase().includes(q) || (u.email || '').toLowerCase().includes(q);
+                });
+
+                const AGENTS_PER_PAGE = 3;
+                const totalAgentPages = Math.ceil(filteredAgents.length / AGENTS_PER_PAGE);
+                const paginatedAgents = filteredAgents.slice((agentPage - 1) * AGENTS_PER_PAGE, agentPage * AGENTS_PER_PAGE);
+
+                if (filteredAgents.length === 0) {
+                  return <p style={{ textAlign: 'center', opacity: 0.4, fontSize: '0.8rem', padding: '1rem' }}>No se encontraron agentes coincidentes.</p>;
                 }
-              }}
-              style={{
-                width: '100%', padding: '14px', borderRadius: '12px',
-                background: 'rgba(255,255,255,0.03)', color: 'white',
-                border: '1px solid rgba(255,255,255,0.08)', cursor: 'pointer',
-                fontSize: '0.9rem', outline: 'none', transition: 'all 0.2s'
-              }}
-            >
-              <option value="" style={{ background: 'var(--bg-primary)' }}>-- Elige un distribuidor o vendedor --</option>
-              {myTeam.map(u => (
-                <option key={u.id} value={u.id} style={{ background: 'var(--bg-primary)' }}>
-                  👤 {u.full_name || u.name} ({u.role === 'SELLER' ? 'Vendedor' : 'Distribuidor'})
-                </option>
-              ))}
-            </select>
+
+                return (
+                  <>
+                    {paginatedAgents.map(u => {
+                      const isSelected = selectedAgentId === u.id;
+                      const badgeCount = (memberBadges[u.id] || []).length;
+                      return (
+                        <div
+                          key={u.id}
+                          onClick={async () => {
+                            setSelectedAgentId(isSelected ? '' : u.id);
+                            if (u.id && !memberBadges[u.id]) {
+                              try {
+                                const badges = await dataService.getUserBadges(u.id);
+                                setMemberBadges(prev => ({ ...prev, [u.id]: badges }));
+                              } catch (err) {
+                                console.error("Error loading badges:", err);
+                              }
+                            }
+                          }}
+                          className="card glass"
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px',
+                            cursor: 'pointer', border: isSelected ? '1px solid var(--accent)' : '1px solid rgba(255,255,255,0.05)',
+                            background: isSelected ? 'linear-gradient(135deg, rgba(255,102,0,0.08) 0%, rgba(255,255,255,0.02) 100%)' : 'rgba(255,255,255,0.01)',
+                            transition: 'all 0.2s ease'
+                          }}
+                        >
+                          <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: isSelected ? 'rgba(255,102,0,0.15)' : 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: 'var(--accent)', fontSize: '0.85rem' }}>
+                            {(u.full_name || u.name || 'U').charAt(0)}
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <p style={{ margin: 0, fontSize: '0.8rem', fontWeight: 700, color: 'white' }}>{u.full_name || u.name}</p>
+                            <p style={{ margin: 0, fontSize: '0.65rem', opacity: 0.5 }}>{u.role === 'SELLER' ? 'Vendedor' : 'Distribuidor'} · {u.email}</p>
+                          </div>
+                          <div style={{ padding: '4px 8px', background: isSelected ? 'var(--accent)' : 'rgba(255,255,255,0.05)', color: isSelected ? 'var(--bg-primary)' : 'white', borderRadius: '100px', fontSize: '0.65rem', fontWeight: 700 }}>
+                            🏅 {badgeCount} / 12
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    {totalAgentPages > 1 && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0 0' }}>
+                        <button
+                          disabled={agentPage === 1}
+                          onClick={() => setAgentPage(prev => Math.max(prev - 1, 1))}
+                          className="btn glass"
+                          style={{ fontSize: '0.6rem', padding: '4px 10px', height: 'auto', opacity: agentPage === 1 ? 0.3 : 1 }}
+                        >
+                          Anterior
+                        </button>
+                        <span style={{ fontSize: '0.65rem', opacity: 0.6 }}>Pág. {agentPage} de {totalAgentPages}</span>
+                        <button
+                          disabled={agentPage === totalAgentPages}
+                          onClick={() => setAgentPage(prev => Math.min(prev + 1, totalAgentPages))}
+                          className="btn glass"
+                          style={{ fontSize: '0.6rem', padding: '4px 10px', height: 'auto', opacity: agentPage === totalAgentPages ? 0.3 : 1 }}
+                        >
+                          Siguiente
+                        </button>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
+            </div>
           </div>
 
           {selectedAgentId ? (
