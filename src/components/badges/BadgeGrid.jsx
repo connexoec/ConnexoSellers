@@ -5,7 +5,7 @@ export const BADGES_INFO = {
   // --- BÁSICAS / INICIO (Bordes plateados, colores suaves) ---
   FIRST_BLOOD: {
     id: 'FIRST_BLOOD',
-    title: 'Primer Impacto',
+    title: 'Primer\nImpacto',
     subtitle: 'Iniciación de Ventas.',
     description: 'Otorgado de forma oficial al registrar y entregar la primera tarjeta Connexo física del distribuidor. El primer paso para digitalizar el networking de toda una región.',
     color: '#4A6B82', // Gris azulado
@@ -14,7 +14,7 @@ export const BADGES_INFO = {
   },
   SAAS_STARTER: {
     id: 'SAAS_STARTER',
-    title: 'SaaS Starter',
+    title: 'SaaS\nStarter',
     subtitle: 'Primer Recurrente.',
     description: 'Otorgado al distribuidor que cierra su primera venta de software de pago (Plan PRO o ULTRA). Marca el ingreso oficial al modelo de ingresos recurrentes de Connexo.',
     color: '#40E0D0', // Turquesa suave
@@ -23,7 +23,7 @@ export const BADGES_INFO = {
   },
   ACADEMY_LV1: {
     id: 'ACADEMY_LV1',
-    title: 'Operador Iniciado',
+    title: 'Operador\nIniciado',
     subtitle: 'Capacitación Básica.',
     description: 'Otorgado tras completar satisfactoriamente los módulos de inducción sobre el ecosistema Connexo, configuración de perfiles y uso del panel de control.',
     color: '#98FF98', // Verde menta
@@ -32,7 +32,7 @@ export const BADGES_INFO = {
   },
   GOLD_HAMMER: {
     id: 'GOLD_HAMMER',
-    title: 'Martillo de Oro',
+    title: 'Martillo\nde Oro',
     subtitle: 'Maestría en Ventas',
     description: 'Otorgado manualmente a distribuidores que han demostrado una habilidad sobresaliente para cerrar tratos y colocar volumen de hardware NFC de manera consistente en el mercado.',
     color: '#0033A0', // Azul cobalto
@@ -41,7 +41,7 @@ export const BADGES_INFO = {
   },
   BRILLIANT_MIND: {
     id: 'BRILLIANT_MIND',
-    title: 'Mente Brillante',
+    title: 'Mente\nBrillante',
     subtitle: 'Networking Inteligente',
     description: 'Otorgado a distribuidores que promueven la optimización de perfiles mediante Inteligencia Artificial. Certifica la habilidad para guiar a los usuarios en la creación de biografías y copies de alta conversión dentro de la plataforma.',
     color: '#2F4F4F', // Gris espacial
@@ -50,7 +50,7 @@ export const BADGES_INFO = {
   },
   LEAD_HUNTER: {
     id: 'LEAD_HUNTER',
-    title: 'Cazador de Leads',
+    title: 'Cazador\nde Leads',
     subtitle: 'Especialista en Conversión',
     description: 'Otorgado a los distribuidores que dominan el discurso de venta de captura de datos. Reconoce a quienes configuran y educan activamente a sus clientes para explotar la integración del Mini-CRM de Connexo.',
     color: '#CD7F32', // Naranja cobre
@@ -61,7 +61,7 @@ export const BADGES_INFO = {
   // --- ÉLITE / AVANZADAS (Bordes dorados, fondos oscuros neón) ---
   PIONEER: {
     id: 'PIONEER',
-    title: 'Pionero Fundador',
+    title: 'Pionero\nFundador',
     subtitle: 'Certificación de Origen',
     description: 'Otorgado de forma exclusiva a los primeros distribuidores autorizados que creyeron en la revolución del networking inteligente e impulsaron la infraestructura de Connexo desde el día cero.',
     color: '#000000', // Negro mate
@@ -70,7 +70,7 @@ export const BADGES_INFO = {
   },
   RECURRING_LORD: {
     id: 'RECURRING_LORD',
-    title: 'Señor del Recurrente',
+    title: 'Señor del\nRecurrente',
     subtitle: 'Tracción y Retención SaaS',
     description: 'Este parche certifica al distribuidor como un estratega de software. Otorgado a quienes priorizan la retención a largo plazo convirtiendo clientes de hardware a suscripciones recurrentes PRO y ULTRA.',
     color: '#1f003a', // Morado oscuro
@@ -79,7 +79,7 @@ export const BADGES_INFO = {
   },
   VERIFIED_DIST: {
     id: 'VERIFIED_DIST',
-    title: 'Distribuidor Verificado',
+    title: 'Distribuidor\nVerificado',
     subtitle: 'Sello de Confianza Elite',
     description: 'La máxima insignia de seguridad. Otorgada directamente por los Super Admins de Connexo para validar la identidad, excelente soporte y buenas prácticas comerciales de este distribuidor autorizado.',
     color: '#004b23', // Verde noche esmeralda
@@ -88,7 +88,7 @@ export const BADGES_INFO = {
   },
   CORPORATE_CLOSER: {
     id: 'CORPORATE_CLOSER',
-    title: 'Cazador de Gigantes',
+    title: 'Cazador de\nGigantes',
     subtitle: 'Cierre Corporativo.',
     description: 'La insignia de los grandes contratos. Otorgada exclusivamente a distribuidores que han cerrado cuentas corporativas vendiendo lotes de volumen para equipos de trabajo o empresas enteras.',
     color: '#1c1c1c', // Negro grafito
@@ -97,7 +97,7 @@ export const BADGES_INFO = {
   },
   SAAS_TITAN: {
     id: 'SAAS_TITAN',
-    title: 'Titán del Recurrente',
+    title: 'Titán del\nRecurrente',
     subtitle: 'Maestría en Retención.',
     description: 'Reservado para la élite de ventas. Otorgado manualmente a distribuidores que mantienen una cartera activa de más de 50 suscripciones de software mensuales o anuales bajo su código de afiliado.',
     color: '#2a004f', // Violeta magenta profundo
@@ -106,7 +106,7 @@ export const BADGES_INFO = {
   },
   CERTIFIED_MASTER: {
     id: 'CERTIFIED_MASTER',
-    title: 'Maestro Certificado',
+    title: 'Maestro\nCertificado',
     subtitle: 'Especialista en Growth.',
     description: 'La máxima acreditación académica de Connexo. Otorgada a los distribuidores que han aprobado los cursos avanzados de Copywriting de Conversión, Estrategia SaaS y Growth Marketing dictados por la compañía.',
     color: '#0f172a', // Azul oscuro medianoche

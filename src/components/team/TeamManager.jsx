@@ -445,8 +445,8 @@ const TeamManager = ({ users, currentUser, onAddUser, sales }) => {
                               {badge.icon}
                             </div>
                             <div style={{ flex: 1, minWidth: 0 }}>
-                              <p style={{ margin: 0, fontSize: '0.75rem', fontWeight: 700, color: isUnlocked ? 'white' : 'rgba(255,255,255,0.35)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', transition: 'all 0.2s ease' }}>{badge.title}</p>
-                              <p style={{ margin: '1px 0 0', fontSize: '0.6rem', opacity: isUnlocked ? 0.6 : 0.3, textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{isUnlocked ? 'Activada' : 'Bloqueada'}</p>
+                              <p style={{ margin: 0, fontSize: '0.72rem', fontWeight: 700, color: isUnlocked ? 'white' : 'rgba(255,255,255,0.35)', whiteSpace: 'pre-line', lineHeight: '1.1', transition: 'all 0.2s ease' }}>{badge.title}</p>
+                              <p style={{ margin: '3px 0 0', fontSize: '0.6rem', opacity: isUnlocked ? 0.6 : 0.3 }}>{isUnlocked ? 'Activada' : 'Bloqueada'}</p>
                             </div>
                           </div>
                         );
@@ -476,8 +476,8 @@ const TeamManager = ({ users, currentUser, onAddUser, sales }) => {
                               {badge.icon}
                             </div>
                             <div style={{ flex: 1, minWidth: 0 }}>
-                              <p style={{ margin: 0, fontSize: '0.75rem', fontWeight: 700, color: isUnlocked ? 'white' : 'rgba(255,255,255,0.35)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', transition: 'all 0.2s ease' }}>{badge.title}</p>
-                              <p style={{ margin: '1px 0 0', fontSize: '0.6rem', opacity: isUnlocked ? 0.6 : 0.3, textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{isUnlocked ? 'Activada' : 'Bloqueada'}</p>
+                              <p style={{ margin: 0, fontSize: '0.72rem', fontWeight: 700, color: isUnlocked ? 'white' : 'rgba(255,255,255,0.35)', whiteSpace: 'pre-line', lineHeight: '1.1', transition: 'all 0.2s ease' }}>{badge.title}</p>
+                              <p style={{ margin: '3px 0 0', fontSize: '0.6rem', opacity: isUnlocked ? 0.6 : 0.3 }}>{isUnlocked ? 'Activada' : 'Bloqueada'}</p>
                             </div>
                           </div>
                         );
