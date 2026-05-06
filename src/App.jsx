@@ -201,8 +201,8 @@ function App() {
       localStorage.setItem(SESSION_KEY, JSON.stringify(updatedUser));
       setSelectedPlan(null);
       addNotification(`Venta de ${customerData.name} registrada — +$${earned.toFixed(2)}`);
-      // Recalcular métricas en background (no bloqueante)
-      dataService.getMetrics(user).then(m => setMetrics(m));
+      // Recalcular métricas e historial completo de inmediato para refrescar la interfaz en tiempo real
+      refreshData(updatedUser);
     } catch (err) {
       alert('Error al registrar venta: ' + err.message);
     } finally {

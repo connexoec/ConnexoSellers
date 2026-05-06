@@ -199,8 +199,27 @@ export const dataService = {
   async registerSale(userId, planKey, customerData, currentRate, isCertified, billingCycle = 'annually') {
     const isMonthly = billingCycle === 'monthly';
     const basePrice = planKey === 'PRO' ? (isMonthly ? 7.00 : 97.00) : (isMonthly ? 15.00 : 179.00);
-    // Siempre aplicar la tasa si está certificado (desde venta #1 con 7%)
-    const commission = isCertified && currentRate > 0 ? basePrice * currentRate : 0;
+
+    // Obtener el perfil fresco de Supabase para calcular la tasa real de forma ultra-segura en el backend
+    let realRate = 0;
+    try {
+      const { data: userProfile } = await supabase.from('profiles').select('*').eq('id', userId).single();
+      if (userProfile) {
+        const freshMetrics = await calcMetrics(userProfile);
+        realRate = freshMetrics.rate || 0;
+        isCertified = userProfile.is_certified;
+      }
+    } catch (err) {
+      console.warn("Failed to fetch profile in registerSale, using fallbacks:", err);
+      realRate = currentRate || (isCertified ? 0.07 : 0);
+    }
+
+    // Si está certificado pero por alguna razón la tasa sigue siendo 0, aplicar el fallback de comisión base (7% para vendedor / 12% para distribuidor)
+    if (isCertified && realRate === 0) {
+      realRate = 0.07;
+    }
+
+    const commission = isCertified && realRate > 0 ? basePrice * realRate : 0;
 
     const newSale = {
       seller_id: userId,
