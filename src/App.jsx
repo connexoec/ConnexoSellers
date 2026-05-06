@@ -36,6 +36,9 @@ function App() {
   const [planFilter,      setPlanFilter]      = useState('ALL');
   const [currentPage,     setCurrentPage]     = useState(1);
   const [expandedSaleId,  setExpandedSaleId]  = useState(null);
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [editedName,      setEditedName]      = useState('');
+  const [editedEmail,     setEditedEmail]     = useState('');
 
   // ── Guardar pestaña activa al cambiar ───────────────────────────
   useEffect(() => {
@@ -211,9 +214,9 @@ function App() {
         setUserBadges(updatedBadges);
         await dataService.saveUserBadges(user.uid || user.id, updatedBadges);
         setTimeout(() => {
-          alert("🎉 ¡FELICIDADES! ¡Has concretado tu primera venta y desbloqueado tu primera insignia oficial: 'Primer Impacto'! 🏆🎴");
+          alert("¡FELICIDADES! ¡Has concretado tu primera venta y desbloqueado tu primera insignia oficial: 'Primer Impacto'!");
         }, 800);
-        addNotification("¡Has obtenido tu primera insignia oficial: Primer Impacto! 🎴", "SUCCESS");
+        addNotification("¡Has obtenido tu primera insignia oficial: Primer Impacto!", "SUCCESS");
       }
     } catch (err) {
       alert('Error al registrar venta: ' + err.message);
@@ -698,14 +701,89 @@ function App() {
             />
           </div>
           
-          <h2 style={{ textTransform: 'uppercase', fontSize: '1.4rem', fontFamily: 'var(--font-heading)', letterSpacing: '2px' }}>{user?.full_name}</h2>
-          <div style={{ display: 'inline-block', padding: '4px 16px', background: 'rgba(255,102,0,0.1)', borderRadius: '100px', border: '1px solid var(--accent-glow)', marginTop: '8px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', margin: '1rem 0 0' }}>
+            {isEditingProfile ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxWidth: '300px', margin: '0 auto' }}>
+                <input 
+                  type="text" 
+                  value={editedName} 
+                  onChange={e => setEditedName(e.target.value)} 
+                  placeholder="Nombre completo"
+                  style={{ padding: '8px 12px', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--glass-border)', color: 'white', borderRadius: '8px', fontSize: '0.9rem', textAlign: 'center' }}
+                />
+                <input 
+                  type="email" 
+                  value={editedEmail} 
+                  onChange={e => setEditedEmail(e.target.value)} 
+                  placeholder="Correo electrónico"
+                  style={{ padding: '8px 12px', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--glass-border)', color: 'white', borderRadius: '8px', fontSize: '0.9rem', textAlign: 'center' }}
+                />
+                <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', marginTop: '4px' }}>
+                  <button 
+                    onClick={async () => {
+                      if (!editedName.trim() || !editedEmail.trim()) {
+                        alert("Por favor completa todos los campos.");
+                        return;
+                      }
+                      setIsLoading(true);
+                      try {
+                        const uid = user.id || user.uid;
+                        await dataService.updateProfile(uid, { full_name: editedName, email: editedEmail });
+                        const updatedUser = { ...user, full_name: editedName, email: editedEmail };
+                        setUser(updatedUser);
+                        localStorage.setItem(SESSION_KEY, JSON.stringify(updatedUser));
+                        setIsEditingProfile(false);
+                        addNotification("Perfil actualizado con éxito", "SUCCESS");
+                      } catch (err) {
+                        alert("Error actualizando perfil: " + err.message);
+                      } finally {
+                        setIsLoading(false);
+                      }
+                    }}
+                    className="btn btn-primary" 
+                    style={{ fontSize: '0.7rem', padding: '6px 14px', height: 'auto' }}
+                  >
+                    Guardar
+                  </button>
+                  <button 
+                    onClick={() => {
+                      setIsEditingProfile(false);
+                      setEditedName(user?.full_name || '');
+                      setEditedEmail(user?.email || '');
+                    }}
+                    className="btn glass" 
+                    style={{ fontSize: '0.7rem', padding: '6px 14px', height: 'auto' }}
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <h2 style={{ textTransform: 'uppercase', fontSize: '1.4rem', fontFamily: 'var(--font-heading)', letterSpacing: '2px', margin: 0 }}>{user?.full_name}</h2>
+                <p style={{ fontSize: '0.8rem', opacity: 0.5, marginTop: '4px', marginBottom: '8px' }}>{user?.email}</p>
+                {user?.role === 'SUPER_ADMIN' && (
+                  <button 
+                    onClick={() => {
+                      setIsEditingProfile(true);
+                      setEditedName(user?.full_name || '');
+                      setEditedEmail(user?.email || '');
+                    }}
+                    className="btn glass" 
+                    style={{ fontSize: '0.6rem', padding: '4px 10px', height: 'auto', borderRadius: '100px', marginBottom: '1rem' }}
+                  >
+                    Editar Perfil
+                  </button>
+                )}
+              </>
+            )}
+          </div>
+          <div style={{ display: 'inline-block', padding: '4px 16px', background: 'rgba(255,102,0,0.1)', borderRadius: '100px', border: '1px solid var(--accent-glow)', marginTop: '8px', marginBottom: '12px' }}>
             <p style={{ color: 'var(--accent)', fontWeight: 700, margin: 0, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px' }}>{metrics.level}</p>
           </div>
-          <p style={{ fontSize: '0.8rem', opacity: 0.5, marginTop: '12px', marginBottom: '8px' }}>{user?.email}</p>
           <button 
             onClick={async () => {
-              const newPassword = prompt("🔐 Cambiar Contraseña:\nIngresa tu nueva contraseña para acceder al ecosistema:");
+              const newPassword = prompt("Cambiar Contraseña:\nIngresa tu nueva contraseña para acceder al ecosistema:");
               if (newPassword) {
                 if (newPassword.length < 4) {
                   alert("La contraseña debe tener al menos 4 caracteres.");
@@ -731,7 +809,7 @@ function App() {
             className="btn glass"
             style={{ fontSize: '0.65rem', padding: '4px 12px', height: 'auto', borderRadius: '100px', display: 'inline-flex', alignItems: 'center', gap: '4px', marginBottom: '1rem' }}
           >
-            ✏️ Cambiar Contraseña
+            Cambiar Contraseña
           </button>
 
           {/* Badge Grid Mosaico */}
@@ -849,12 +927,12 @@ function App() {
                   className="btn glass" 
                   style={{ width: '100%', background: 'rgba(239,68,68,0.1)', color: 'var(--danger)', borderColor: 'rgba(239,68,68,0.3)', fontSize: '0.75rem', fontWeight: 700 }}
                 >
-                  🔄 Depurar Datos Y Restaurar de Cero
+                  Restaurar Datos de Fábrica
                 </button>
 
                 <button 
                   onClick={async () => {
-                    const confirmSeed = confirm("⚡ ¿Deseas sembrar 10 Vendedores PRO de Prueba, cada uno con 40 planes PRO/ULTRA mensuales (400 ventas en total)? Esto simulará un ecosistema activo.");
+                    const confirmSeed = confirm("¿Deseas sembrar 10 Vendedores PRO de Prueba, cada uno con 40 planes PRO/ULTRA mensuales (400 ventas en total)? Esto simulará un ecosistema activo.");
                     if (confirmSeed) {
                       setIsLoading(true);
                       try {
@@ -872,12 +950,12 @@ function App() {
                   className="btn btn-primary" 
                   style={{ width: '100%', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase' }}
                 >
-                  ⚡ Sembrar 10 Vendedores PRO Mensual (400 Ventas)
+                  Sembrar 10 Vendedores PRO Mensual (400 Ventas)
                 </button>
 
                 <button 
                   onClick={async () => {
-                    const confirmSeed = confirm("⚡ ¿Deseas sembrar 10 Vendedores PRO de Prueba, cada uno con 40 planes PRO/ULTRA anuales (400 ventas en total)? Esto simulará un ecosistema activo de suscripciones anuales.");
+                    const confirmSeed = confirm("¿Deseas sembrar 10 Vendedores PRO de Prueba, cada uno con 40 planes PRO/ULTRA anuales (400 ventas en total)? Esto simulará un ecosistema activo de suscripciones anuales.");
                     if (confirmSeed) {
                       setIsLoading(true);
                       try {
@@ -895,7 +973,7 @@ function App() {
                   className="btn btn-primary" 
                   style={{ width: '100%', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', background: 'linear-gradient(135deg, var(--accent-dark) 0%, var(--accent) 100%)' }}
                 >
-                  ⚡ Sembrar 10 Vendedores PRO Anual (400 Ventas)
+                  Sembrar 10 Vendedores PRO Anual (400 Ventas)
                 </button>
               </div>
             </div>
