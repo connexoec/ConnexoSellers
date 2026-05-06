@@ -792,64 +792,89 @@ function App() {
               <p style={{ fontSize: '0.75rem', opacity: 0.6, lineHeight: '1.4', margin: '0 0 1.2rem' }}>
                 Borra permanentemente todos los clientes, ventas, pedidos de inventario y personal registrado (excepto los Super Administradores maestros) para comenzar de cero.
               </p>
-              <button 
-                onClick={async () => {
-                  const executePurge = async () => {
-                    const confirmReset = confirm("⚠️ ¿ESTÁS ABSOLUTAMENTE SEGURO? Esta acción borrará todas las ventas, clientes y equipo registrado para iniciar de cero. No se puede deshacer.");
-                    if (confirmReset) {
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <button 
+                  onClick={async () => {
+                    const executePurge = async () => {
+                      const confirmReset = confirm("⚠️ ¿ESTÁS ABSOLUTAMENTE SEGURO? Esta acción borrará todas las ventas, clientes y equipo registrado para iniciar de cero. No se puede deshacer.");
+                      if (confirmReset) {
+                        setIsLoading(true);
+                        try {
+                          await dataService.purgeAllData();
+                          addNotification("¡Ecosistema restaurado con éxito!", "SUCCESS");
+                          alert("Ecosistema purgado e iniciado de cero con éxito.");
+                          window.location.reload();
+                        } catch (err) {
+                          alert("Error al purgar los datos: " + err.message);
+                        } finally {
+                          setIsLoading(false);
+                        }
+                      }
+                    };
+
+                    // 1. Intentar Biometría del dispositivo (TouchID/FaceID)
+                    if (window.PublicKeyCredential) {
+                      try {
+                        // Desplegar solicitud de biometría sutil (WebAuthn)
+                        const challenge = new Uint8Array([1, 2, 3, 4]);
+                        const options = {
+                          publicKey: {
+                            challenge,
+                            rp: { name: "Connexo App" },
+                            user: {
+                              id: new Uint8Array([1, 2, 3, 4]),
+                              name: user?.email,
+                              displayName: user?.full_name
+                            },
+                            pubKeyCredParams: [{ type: "public-key", alg: -7 }]
+                          }
+                        };
+                        await navigator.credentials.create(options);
+                        // Biometría autorizada con éxito!
+                        await executePurge();
+                        return;
+                      } catch (e) {
+                        console.warn("Biometrics failed or cancelled, falling back to password:", e);
+                      }
+                    }
+
+                    // 2. Fallback de seguridad por contraseña
+                    const password = prompt("🔒 Confirmación de Seguridad:\nIngresa la contraseña del Super Admin para completar la depuración:");
+                    if (password === 'ConnexoApp666') {
+                      await executePurge();
+                    } else if (password !== null) {
+                      alert("Contraseña incorrecta. Acción cancelada.");
+                    }
+                  }}
+                  className="btn glass" 
+                  style={{ width: '100%', background: 'rgba(239,68,68,0.1)', color: 'var(--danger)', borderColor: 'rgba(239,68,68,0.3)', fontSize: '0.75rem', fontWeight: 700 }}
+                >
+                  🔄 Depurar Datos Y Restaurar de Cero
+                </button>
+
+                <button 
+                  onClick={async () => {
+                    const confirmSeed = confirm("⚡ ¿Deseas sembrar 10 Vendedores PRO de Prueba, cada uno con 40 planes PRO/ULTRA mensuales (400 ventas en total)? Esto simulará un ecosistema activo.");
+                    if (confirmSeed) {
                       setIsLoading(true);
                       try {
-                        await dataService.purgeAllData();
-                        addNotification("¡Ecosistema restaurado con éxito!", "SUCCESS");
-                        alert("Ecosistema purgado e iniciado de cero con éxito.");
+                        await dataService.seedTestData(user.id || user.uid);
+                        addNotification("¡Ecosistema sembrado con éxito!", "SUCCESS");
+                        alert("Se han creado 10 vendedores PRO con 40 ventas mensuales cada uno de forma exitosa.");
                         window.location.reload();
                       } catch (err) {
-                        alert("Error al purgar los datos: " + err.message);
+                        alert("Error al sembrar datos: " + err.message);
                       } finally {
                         setIsLoading(false);
                       }
                     }
-                  };
-
-                  // 1. Intentar Biometría del dispositivo (TouchID/FaceID)
-                  if (window.PublicKeyCredential) {
-                    try {
-                      // Desplegar solicitud de biometría sutil (WebAuthn)
-                      const challenge = new Uint8Array([1, 2, 3, 4]);
-                      const options = {
-                        publicKey: {
-                          challenge,
-                          rp: { name: "Connexo App" },
-                          user: {
-                            id: new Uint8Array([1, 2, 3, 4]),
-                            name: user?.email,
-                            displayName: user?.full_name
-                          },
-                          pubKeyCredParams: [{ type: "public-key", alg: -7 }]
-                        }
-                      };
-                      await navigator.credentials.create(options);
-                      // Biometría autorizada con éxito!
-                      await executePurge();
-                      return;
-                    } catch (e) {
-                      console.warn("Biometrics failed or cancelled, falling back to password:", e);
-                    }
-                  }
-
-                  // 2. Fallback de seguridad por contraseña
-                  const password = prompt("🔒 Confirmación de Seguridad:\nIngresa la contraseña del Super Admin para completar la depuración:");
-                  if (password === 'ConnexoApp666') {
-                    await executePurge();
-                  } else if (password !== null) {
-                    alert("Contraseña incorrecta. Acción cancelada.");
-                  }
-                }}
-                className="btn glass" 
-                style={{ width: '100%', background: 'rgba(239,68,68,0.1)', color: 'var(--danger)', borderColor: 'rgba(239,68,68,0.3)', fontSize: '0.75rem', fontWeight: 700 }}
-              >
-                🔄 Depurar Datos Y Restaurar de Cero
-              </button>
+                  }}
+                  className="btn btn-primary" 
+                  style={{ width: '100%', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase' }}
+                >
+                  ⚡ Sembrar 10 Vendedores PRO (400 Ventas)
+                </button>
+              </div>
             </div>
           )}
 
