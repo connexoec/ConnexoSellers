@@ -244,6 +244,7 @@ export const dataService = {
       }
     }
 
+    _metricsCache.clear(); // ⚡ Invalidad cache de métricas en tiempo real
     return sale;
   },
 
@@ -335,6 +336,7 @@ export const dataService = {
     if (_currentUser && (_currentUser.id === userId || _currentUser.uid === userId)) {
       _currentUser.is_certified = true;
     }
+    _metricsCache.clear(); // ⚡ Invalidad cache de métricas en tiempo real
     return true;
   },
 
@@ -355,6 +357,7 @@ export const dataService = {
       .select()
       .single();
     if (error) throw new Error(error.message);
+    _metricsCache.clear(); // ⚡ Invalidad cache de métricas en tiempo real
     return data;
   },
 
@@ -696,12 +699,20 @@ export const dataService = {
       console.warn("Supabase purge error:", e);
     }
 
-    // Limpiar LocalStorage preservando la sesión del admin
-    const session = localStorage.getItem('connexo_session');
-    localStorage.clear();
-    if (session) {
-      localStorage.setItem('connexo_session', session);
+    _metricsCache.clear(); // ⚡ Invalidad cache de métricas en tiempo real
+
+    // Limpiar LocalStorage preservando la sesión del admin y los avatars/insignias guardados
+    const keysToPreserve = {};
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && (key === 'connexo_session' || key.startsWith('connexo_avatar_') || key.startsWith('connexo_badges_'))) {
+        keysToPreserve[key] = localStorage.getItem(key);
+      }
     }
+    localStorage.clear();
+    Object.keys(keysToPreserve).forEach(key => {
+      localStorage.setItem(key, keysToPreserve[key]);
+    });
     return true;
   }
 };
