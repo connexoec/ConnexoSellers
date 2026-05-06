@@ -19,6 +19,7 @@ const TeamManager = ({ users, currentUser, onAddUser, sales }) => {
   const [selectedAgentId, setSelectedAgentId] = useState('');
   const [agentSearchQuery, setAgentSearchQuery] = useState('');
   const [agentPage, setAgentPage] = useState(1);
+  const [showSocialDetails, setShowSocialDetails] = useState(false);
 
   const toggleExpand = async (userId) => {
     if (expandedUserId === userId) {
@@ -168,13 +169,60 @@ const TeamManager = ({ users, currentUser, onAddUser, sales }) => {
         <>
           {/* Volumen grupal — solo para Admin y Distribuidor */}
           {currentUser?.role !== 'SELLER' && (
-            <div className="card glass" style={{ marginBottom: '2.5rem', border: '1px solid var(--success)', background: 'linear-gradient(135deg, var(--bg-secondary) 0%, rgba(0,255,157,0.05) 100%)' }}>
-              <p style={{ fontSize: '0.6rem', textTransform: 'uppercase', letterSpacing: '2px', opacity: 0.8 }}>Volumen Grupal de Red</p>
+            <div 
+              className="card glass" 
+              onClick={() => setShowSocialDetails(!showSocialDetails)}
+              style={{ 
+                marginBottom: '2.5rem', 
+                border: '1px solid var(--success)', 
+                background: 'linear-gradient(135deg, var(--bg-secondary) 0%, rgba(0,255,157,0.05) 100%)',
+                cursor: 'pointer',
+                transition: 'transform 0.2s, box-shadow 0.2s'
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 30px rgba(0,255,157,0.15)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <p style={{ fontSize: '0.6rem', textTransform: 'uppercase', letterSpacing: '2px', opacity: 0.8, margin: 0 }}>Volumen Grupal de Red</p>
+                <p style={{ fontSize: '0.6rem', color: 'var(--success)', fontWeight: 700, margin: 0 }}>{showSocialDetails ? '▼ OCULTAR DETALLES' : '▲ VER DESGLOSE DE FONDOS'}</p>
+              </div>
               <h2 style={{ margin: '8px 0', color: 'var(--success)', fontSize: '2rem', textShadow: '0 0 10px rgba(0,255,157,0.3)' }}>${teamVolume.toFixed(2)}</h2>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px' }}>
                   <p style={{ fontSize: '0.8rem', opacity: 0.7, margin: 0 }}>Miembros activos: {myTeam.length}</p>
                   <div style={{ padding: '4px 12px', background: 'rgba(0,255,157,0.1)', borderRadius: '100px', fontSize: '0.65rem', color: 'var(--success)', fontWeight: 700 }}>LIVE</div>
               </div>
+
+              {/* Expanded Social Responsibility Breakdown Accordion */}
+              {showSocialDetails && (
+                <motion.div 
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  transition={{ duration: 0.3 }}
+                  style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid rgba(0,255,157,0.2)', textAlign: 'left' }}
+                  onClick={e => e.stopPropagation()} // Evitar que colapse el card al hacer clic dentro
+                >
+                  <p style={{ fontSize: '0.75rem', lineHeight: '1.4', opacity: 0.8, color: 'white', background: 'rgba(0,255,157,0.03)', padding: '12px', borderRadius: '8px', borderLeft: '3px solid var(--success)', marginBottom: '1.2rem' }}>
+                    🌿 <strong>Responsabilidad Social:</strong> Connexo destina el <strong>10%</strong> del total de la venta de cualquier plan PRO o ULTRA a la <strong>Fundación Arupo</strong> para impulsar el desarrollo tecnológico comunitario.
+                  </p>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 14px', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                      <span style={{ fontSize: '0.75rem', opacity: 0.7 }}>🌿 Fundación Arupo (10%)</span>
+                      <strong style={{ fontSize: '0.8rem', color: 'var(--success)' }}>${(teamVolume * 0.10).toFixed(2)}</strong>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 14px', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                      <span style={{ fontSize: '0.75rem', opacity: 0.7 }}>💸 Comisiones de Red (Vendedores/Dist.)</span>
+                      <strong style={{ fontSize: '0.8rem', color: 'var(--accent)' }}>${teamSales.reduce((acc, s) => acc + (s.commission_earned || 0), 0).toFixed(2)}</strong>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 14px', background: 'rgba(0,255,157,0.05)', borderRadius: '8px', border: '1px solid rgba(0,255,157,0.1)' }}>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'white' }}>💼 Neto para Connexo</span>
+                      <strong style={{ fontSize: '0.85rem', color: 'white' }}>
+                        ${Math.max(0, teamVolume - (teamVolume * 0.10) - teamSales.reduce((acc, s) => acc + (s.commission_earned || 0), 0)).toFixed(2)}
+                      </strong>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
             </div>
           )}
 
