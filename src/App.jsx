@@ -46,10 +46,7 @@ function App() {
   const [showSedesModal, setShowSedesModal] = useState(false);
   const [newSedeName, setNewSedeName] = useState('');
   const [newSedePais, setNewSedePais] = useState('Ecuador');
-  const [newSedeAdminName, setNewSedeAdminName] = useState('');
-  const [newSedeAdminDoc, setNewSedeAdminDoc] = useState('');
-  const [newSedeAdminEmail, setNewSedeAdminEmail] = useState('');
-  const [newSedeAdminPass, setNewSedeAdminPass] = useState('Connexo123');
+  const [selectedDistributorId, setSelectedDistributorId] = useState('');
 
   // Guardar contexto activo de sede en localStorage
   useEffect(() => {
@@ -712,10 +709,10 @@ function App() {
           users={team}
           currentUser={user}
           sales={sales}
-          onAddUser={async (userData) => {
-            const newUser = await dataService.addTeamMember(user.uid || user.id, userData);
+          selectedSedeContext={selectedSedeContext}
+          onAddUser={(newUser) => {
             setTeam(prev => [...prev, newUser]);
-            addNotification(`${newUser.full_name} agregado al equipo`, 'SUCCESS');
+            addNotification(`${newUser.full_name || newUser.name} agregado al equipo`, 'SUCCESS');
           }}
         />
       );
@@ -1236,51 +1233,21 @@ function App() {
                       <option value="Venezuela">Venezuela</option>
                     </select>
 
-                    <p style={{ margin: '8px 0 2px', fontSize: '0.75rem', color: 'var(--accent)', fontWeight: 'bold' }}>Persona Encargada (Admin de Sede)</p>
-                    <input 
-                      type="text"
-                      placeholder="Nombres y Apellidos"
-                      value={newSedeAdminName}
-                      onChange={(e) => setNewSedeAdminName(e.target.value)}
-                      aria-label="Nombres y Apellidos del administrador de la sede"
+                    <p style={{ margin: '8px 0 2px', fontSize: '0.75rem', color: 'var(--accent)', fontWeight: 'bold' }}>Distribuidor Encargado (Admin de Sede)</p>
+                    <select
+                      value={selectedDistributorId}
+                      onChange={(e) => setSelectedDistributorId(e.target.value)}
+                      aria-label="Seleccionar Distribuidor Encargado"
                       style={{
                         padding: '8px 12px', background: 'rgba(0,0,0,0.25)', border: '1px solid var(--glass-border)',
-                        color: 'white', borderRadius: '8px', fontSize: '0.8rem'
+                        color: 'white', borderRadius: '8px', fontSize: '0.8rem', width: '100%'
                       }}
-                    />
-                    <input 
-                      type="text"
-                      placeholder="Número de Documento"
-                      value={newSedeAdminDoc}
-                      onChange={(e) => setNewSedeAdminDoc(e.target.value)}
-                      aria-label="Número de documento"
-                      style={{
-                        padding: '8px 12px', background: 'rgba(0,0,0,0.25)', border: '1px solid var(--glass-border)',
-                        color: 'white', borderRadius: '8px', fontSize: '0.8rem'
-                      }}
-                    />
-                    <input 
-                      type="email"
-                      placeholder="Correo Electrónico"
-                      value={newSedeAdminEmail}
-                      onChange={(e) => setNewSedeAdminEmail(e.target.value)}
-                      aria-label="Correo electrónico del administrador"
-                      style={{
-                        padding: '8px 12px', background: 'rgba(0,0,0,0.25)', border: '1px solid var(--glass-border)',
-                        color: 'white', borderRadius: '8px', fontSize: '0.8rem'
-                      }}
-                    />
-                    <input 
-                      type="text"
-                      placeholder="Contraseña Predeterminada"
-                      value={newSedeAdminPass}
-                      onChange={(e) => setNewSedeAdminPass(e.target.value)}
-                      aria-label="Contraseña predeterminada"
-                      style={{
-                        padding: '8px 12px', background: 'rgba(0,0,0,0.25)', border: '1px solid var(--glass-border)',
-                        color: 'white', borderRadius: '8px', fontSize: '0.8rem'
-                      }}
-                    />
+                    >
+                      <option value="">-- Seleccionar Distribuidor --</option>
+                      {team.filter(member => member.role === 'DISTRIBUTOR').map(d => (
+                        <option key={d.id} value={d.id}>{d.full_name || d.name} ({d.email})</option>
+                      ))}
+                    </select>
 
                     <button
                       onClick={async () => {
@@ -1288,27 +1255,31 @@ function App() {
                           alert('El nombre de la sede es obligatorio.');
                           return;
                         }
-                        if (!newSedeAdminName.trim() || !newSedeAdminEmail.trim()) {
-                          alert('Los datos del administrador de la sede (Nombres y Correo) son obligatorios.');
+                        if (!selectedDistributorId) {
+                          alert('Debe seleccionar un distribuidor registrado para administrar la sede.');
                           return;
                         }
                         try {
                           const newSede = await dataService.addSede({ nombre_sede: newSedeName, pais: newSedePais });
-                          await dataService.registerSedeAdmin({
-                            full_name: newSedeAdminName,
-                            document_number: newSedeAdminDoc,
-                            email: newSedeAdminEmail,
-                            password: newSedeAdminPass,
-                            role: 'DISTRIBUTOR',
-                            sede_asignada: newSede.id
-                          });
+                          
+                          // 1. Asignar la sede al distribuidor seleccionado
+                          await dataService.updateProfile(selectedDistributorId, { sede_asignada: newSede.id });
+                          
+                          // 2. Otorgar automáticamente la insignia especial 'VERIFIED_DIST' (Distribuidor Verificado)
+                          const currentBadges = await dataService.getUserBadges(selectedDistributorId);
+                          if (!currentBadges.includes('VERIFIED_DIST')) {
+                            const updatedBadges = [...currentBadges, 'VERIFIED_DIST'];
+                            await dataService.saveUserBadges(selectedDistributorId, updatedBadges);
+                          }
+
+                          // Actualizar lista de sedes localmente
                           setSedes(prev => [...prev, newSede]);
                           setNewSedeName('');
-                          setNewSedeAdminName('');
-                          setNewSedeAdminDoc('');
-                          setNewSedeAdminEmail('');
-                          setNewSedeAdminPass('Connexo123');
-                          addNotification(`Nueva Sede "${newSede.nombre_sede}" creada con administrador: ${newSedeAdminName}.`, 'SUCCESS');
+                          setSelectedDistributorId('');
+                          addNotification(`Nueva Sede "${newSede.nombre_sede}" creada. El distribuidor seleccionado ha sido asignado y condecorado como Distribuidor Verificado 🛡️.`, 'SUCCESS');
+                          
+                          // Refrescar datos
+                          refreshData();
                         } catch (err) {
                           alert(err.message);
                         }
