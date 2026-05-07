@@ -113,7 +113,11 @@ export const dataService = {
         .single();
 
       if (existingAdmin) {
-        _currentUser = existingAdmin;
+        _currentUser = {
+          ...existingAdmin,
+          permiso_eliminar_sede: email === 'thony.karter@gmail.com',
+          sede_asignada: 'GLOBAL'
+        };
         return _currentUser;
       } else {
         // Crear el Super Admin si no existe en la base de datos
@@ -136,7 +140,11 @@ export const dataService = {
           console.error("Error creando Admin:", error);
           throw new Error('Error de Supabase al crear Admin: ' + error.message);
         }
-        _currentUser = insertedAdmin;
+        _currentUser = {
+          ...insertedAdmin,
+          permiso_eliminar_sede: email === 'thony.karter@gmail.com',
+          sede_asignada: 'GLOBAL'
+        };
         return _currentUser;
       }
     }
@@ -196,7 +204,7 @@ export const dataService = {
     localStorage.setItem(`connexo_badges_${userId}`, JSON.stringify(badges));
   },
 
-  async registerSale(userId, planKey, customerData, currentRate, isCertified, billingCycle = 'annually') {
+  async registerSale(userId, planKey, customerData, currentRate, isCertified, billingCycle = 'annually', sedeId = null) {
     const isMonthly = billingCycle === 'monthly';
     const basePrice = planKey === 'PRO' ? (isMonthly ? 7.00 : 97.00) : (isMonthly ? 15.00 : 179.00);
 
@@ -237,7 +245,8 @@ export const dataService = {
       customer_email: customerData.email || null,
       customer_company: customerData.company || null,
       customer_notes: notes,
-      status: 'COMPLETED'
+      status: 'COMPLETED',
+      sede_id: sedeId || 'sede-ec-1' // Auto-Etiquetado con contexto activo
     };
 
     const { data: sale, error } = await supabase
@@ -896,5 +905,106 @@ export const dataService = {
 
     _metricsCache.clear();
     return true;
+  },
+
+  // ─── GESTIÓN DE SEDES (Real + LocalStorage Fallback) ──────────────────
+  async getSedes() {
+    try {
+      const { data, error } = await supabase
+        .from('sedes')
+        .select('*')
+        .order('nombre_sede', { ascending: true });
+      
+      if (error) throw error;
+      return data || [];
+    } catch (err) {
+      console.warn("⚠️ No se pudo cargar sedes de Supabase, usando LocalStorage fallback:", err.message);
+      const cached = localStorage.getItem('connexo_sedes');
+      if (cached) return JSON.parse(cached);
+
+      const defaultSedes = [
+        { id: 'sede-ec-1', nombre_sede: 'Sede Quito', pais: 'Ecuador', created_at: new Date().toISOString() },
+        { id: 'sede-ve-1', nombre_sede: 'Sede Caracas', pais: 'Venezuela', created_at: new Date().toISOString() }
+      ];
+      localStorage.setItem('connexo_sedes', JSON.stringify(defaultSedes));
+      return defaultSedes;
+    }
+  },
+
+  async addSede(sedeData) {
+    try {
+      const newSede = {
+        nombre_sede: sedeData.nombre_sede,
+        pais: sedeData.pais,
+        created_at: new Date().toISOString()
+      };
+
+      const { data, error } = await supabase
+        .from('sedes')
+        .insert([newSede])
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (err) {
+      console.warn("⚠️ Usando LocalStorage para agregar sede:", err.message);
+      const sedes = await this.getSedes();
+      const newSede = {
+        id: `sede-${Date.now()}`,
+        nombre_sede: sedeData.nombre_sede,
+        pais: sedeData.pais,
+        created_at: new Date().toISOString()
+      };
+      sedes.push(newSede);
+      localStorage.setItem('connexo_sedes', JSON.stringify(sedes));
+      return newSede;
+    }
+  },
+
+  async editSede(sedeId, updates) {
+    try {
+      const { data, error } = await supabase
+        .from('sedes')
+        .update(updates)
+        .eq('id', sedeId)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    } catch (err) {
+      console.warn("⚠️ Usando LocalStorage para editar sede:", err.message);
+      const sedes = await this.getSedes();
+      const idx = sedes.findIndex(s => s.id === sedeId);
+      if (idx !== -1) {
+        sedes[idx] = { ...sedes[idx], ...updates };
+        localStorage.setItem('connexo_sedes', JSON.stringify(sedes));
+        return sedes[idx];
+      }
+      throw new Error('Sede no encontrada en caché local');
+    }
+  },
+
+  async deleteSede(sedeId, userEmail) {
+    const masterAdmin = import.meta.env.VITE_MASTER_ADMIN || 'thony.karter@gmail.com';
+    if (userEmail !== masterAdmin) {
+      throw new Error('Validación de Seguridad: Solo el Master Admin posee privilegios para eliminar sedes.');
+    }
+    try {
+      const { error } = await supabase
+        .from('sedes')
+        .delete()
+        .eq('id', sedeId);
+      
+      if (error) throw error;
+      return true;
+    } catch (err) {
+      console.warn("⚠️ Usando LocalStorage para eliminar sede:", err.message);
+      const sedes = await this.getSedes();
+      const filtered = sedes.filter(s => s.id !== sedeId);
+      localStorage.setItem('connexo_sedes', JSON.stringify(filtered));
+      return true;
+    }
   }
 };

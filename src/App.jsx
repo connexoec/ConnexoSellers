@@ -39,6 +39,11 @@ function App() {
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [editedName,      setEditedName]      = useState('');
   const [editedEmail,     setEditedEmail]     = useState('');
+  const [selectedSedeContext, setSelectedSedeContext] = useState('GLOBAL');
+  const [sedes, setSedes] = useState([]);
+  const [showSedesModal, setShowSedesModal] = useState(false);
+  const [newSedeName, setNewSedeName] = useState('');
+  const [newSedePais, setNewSedePais] = useState('Ecuador');
 
   // ── Guardar pestaña activa al cambiar ───────────────────────────
   useEffect(() => {
@@ -127,6 +132,9 @@ function App() {
       setSales(salesData || []);
       setUserBadges(badges || []);
       
+      // Cargar Sedes para contexto multisede
+      dataService.getSedes().then(data => setSedes(data)).catch(console.error);
+      
       // Si es SUPER ADMIN, buscar pedidos pendientes y generar notificación
       if (role === 'SUPER_ADMIN') {
         const reqs = await dataService.getInventoryRequests(null);
@@ -187,13 +195,15 @@ function App() {
   const handleRegisterSale = async (planKey, customerData, billingCycle = 'annually') => {
     setIsLoading(true);
     try {
+      const activeSedeId = selectedSedeContext === 'Venezuela' ? 'sede-ve-1' : 'sede-ec-1';
       const newSale = await dataService.registerSale(
         user.uid || user.id,
         planKey,
         customerData,
         metrics.rate,
         user.is_certified,
-        billingCycle
+        billingCycle,
+        activeSedeId
       );
       // Actualizar estado local optimistamente (sin re-query)
       setSales(prev => [newSale, ...prev]);
@@ -249,20 +259,105 @@ function App() {
           {user?.role === 'SUPER_ADMIN' ? (
             <div className="card glass" style={{ marginBottom: '2rem', border: '1px solid var(--accent-glow)', background: 'linear-gradient(135deg, var(--bg-secondary) 0%, #2b1208 100%)' }}>
               <p style={{ fontSize: '0.6rem', opacity: 0.6, textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '8px' }}>Control Maestro</p>
-              <h2 style={{ color: 'var(--accent)', margin: '0', fontSize: '1.4rem', textShadow: '0 0 10px var(--accent-glow)' }}>Vista Global de Red</h2>
+              <h2 style={{ color: 'var(--accent)', margin: '0', fontSize: '1.4rem', textShadow: '0 0 10px var(--accent-glow)' }}>
+                {selectedSedeContext === 'GLOBAL' ? 'Vista Global de Red' : selectedSedeContext === 'Ecuador' ? 'Vista Ecuador' : 'Vista Venezuela'}
+              </h2>
+              
+              {/* Selector de Mercado / [Cambiar Mercado] Button Group */}
+              <div style={{ marginTop: '15px' }}>
+                <p style={{ fontSize: '0.6rem', opacity: 0.6, textTransform: 'uppercase', marginBottom: '6px', letterSpacing: '1px' }}>Cambiar Mercado</p>
+                <div style={{ display: 'flex', gap: '6px', background: 'rgba(0,0,0,0.3)', padding: '4px', borderRadius: '8px' }}>
+                  {['GLOBAL', 'Ecuador', 'Venezuela'].map(ctx => (
+                    <button
+                      key={ctx}
+                      onClick={() => setSelectedSedeContext(ctx)}
+                      aria-label={`Cambiar vista a ${ctx}`}
+                      style={{
+                        flex: 1, padding: '6px', borderRadius: '6px', border: 'none', fontSize: '0.7rem', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s',
+                        background: selectedSedeContext === ctx ? 'var(--accent)' : 'transparent',
+                        color: selectedSedeContext === ctx ? 'var(--bg-primary)' : 'rgba(255,255,255,0.6)'
+                      }}
+                    >
+                      {ctx === 'GLOBAL' ? '🌎 Global' : ctx === 'Ecuador' ? '🇪🇨 Ecuador' : '🇻🇪 Venezuela'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <div style={{ marginTop: '20px', display: 'flex', gap: '20px' }}>
                 <div style={{ flex: 1 }}>
                   <p style={{ fontSize: '0.65rem', opacity: 0.8, margin: 0, textTransform: 'uppercase' }}>Vendedores</p>
-                  <p style={{ fontSize: '1.8rem', fontWeight: 'bold', color: 'white', margin: '4px 0 0' }}>{team.filter(t => t.role === 'SELLER').length}</p>
+                  <p style={{ fontSize: '1.8rem', fontWeight: 'bold', color: 'white', margin: '4px 0 0' }}>
+                    {team.filter(t => t.role === 'SELLER').length}
+                  </p>
                 </div>
                 <div style={{ flex: 1 }}>
                   <p style={{ fontSize: '0.65rem', opacity: 0.8, margin: 0, textTransform: 'uppercase' }}>Distribuidores</p>
-                  <p style={{ fontSize: '1.8rem', fontWeight: 'bold', color: 'white', margin: '4px 0 0' }}>{team.filter(t => t.role === 'DISTRIBUTOR').length}</p>
+                  <p style={{ fontSize: '1.8rem', fontWeight: 'bold', color: 'white', margin: '4px 0 0' }}>
+                    {team.filter(t => t.role === 'DISTRIBUTOR').length}
+                  </p>
                 </div>
                 <div style={{ flex: 1 }}>
-                  <p style={{ fontSize: '0.65rem', opacity: 0.8, margin: 0, textTransform: 'uppercase' }}>Total Ventas</p>
-                  <p style={{ fontSize: '1.8rem', fontWeight: 'bold', color: 'var(--accent)', margin: '4px 0 0' }}>{sales.length}</p>
+                  <p style={{ fontSize: '0.65rem', opacity: 0.8, margin: 0, textTransform: 'uppercase' }}>Ventas ({selectedSedeContext})</p>
+                  <p style={{ fontSize: '1.8rem', fontWeight: 'bold', color: 'var(--accent)', margin: '4px 0 0' }}>
+                    {sales.filter(s => selectedSedeContext === 'GLOBAL' ? true : s.sede_id === (selectedSedeContext === 'Venezuela' ? 'sede-ve-1' : 'sede-ec-1')).length}
+                  </p>
                 </div>
+              </div>
+
+              {/* Action Buttons: [Gestionar Sede] and [Exportar Reporte Global] */}
+              <div style={{ display: 'flex', gap: '10px', marginTop: '20px', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '15px' }}>
+                <button
+                  onClick={() => setShowSedesModal(true)}
+                  className="btn glass"
+                  style={{ flex: 1, fontSize: '0.7rem', padding: '8px 12px', height: 'auto', border: '1px solid var(--accent)' }}
+                  aria-label="Gestionar Sedes del Ecosistema"
+                >
+                  🏢 Gestionar Sede
+                </button>
+                <button
+                  onClick={() => {
+                    try {
+                      // Consolidado Global Report Export
+                      const totalEcuadorSales = sales.filter(s => s.sede_id === 'sede-ec-1').length;
+                      const totalVenezuelaSales = sales.filter(s => s.sede_id === 'sede-ve-1').length;
+                      const totalEcuRevenue = sales.filter(s => s.sede_id === 'sede-ec-1').reduce((a, b) => a + (b.amount || 0), 0);
+                      const totalVenRevenue = sales.filter(s => s.sede_id === 'sede-ve-1').reduce((a, b) => a + (b.amount || 0), 0);
+
+                      const doc = new jsPDF();
+                      doc.setFont('helvetica');
+                      doc.setFontSize(16);
+                      doc.text('CONSOLIDADO GLOBAL MULTISEDE - CONNEXO', 14, 20);
+                      
+                      doc.setFontSize(11);
+                      doc.text(`Fecha del Reporte: ${new Date().toLocaleString()}`, 14, 28);
+                      doc.text(`Admin Ejecutante: ${user?.email}`, 14, 34);
+
+                      autoTable(doc, {
+                        startY: 40,
+                        head: [['Sede', 'País', 'Transacciones', 'Volumen de Ventas']],
+                        body: [
+                          ['Sede Quito', 'Ecuador', totalEcuadorSales, `$${totalEcuRevenue.toFixed(2)}`],
+                          ['Sede Caracas', 'Venezuela', totalVenezuelaSales, `$${totalVenRevenue.toFixed(2)}`],
+                          ['Total Consolidado', 'Global', sales.length, `$${sales.reduce((a, b) => a + (b.amount || 0), 0).toFixed(2)}`]
+                        ],
+                        theme: 'striped',
+                        headStyles: { fillColor: [249, 115, 22] }
+                      });
+
+                      doc.save('reporte_global_connexo.pdf');
+                      addNotification('Reporte Consolidado Exportado con éxito', 'SUCCESS');
+                    } catch (err) {
+                      console.error('Error al exportar reporte global:', err);
+                      alert('Error al generar el Reporte Consolidado.');
+                    }
+                  }}
+                  className="btn btn-primary"
+                  style={{ flex: 1, fontSize: '0.7rem', padding: '8px 12px', height: 'auto' }}
+                  aria-label="Exportar Reporte Consolidado Global"
+                >
+                  📊 Exportar Reporte Global
+                </button>
               </div>
             </div>
           ) : (
@@ -420,13 +515,16 @@ function App() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {(() => {
               const filteredSales = sales.filter(s => {
+                const matchesSede = selectedSedeContext === 'GLOBAL' ? true : (
+                  s.sede_id === (selectedSedeContext === 'Venezuela' ? 'sede-ve-1' : 'sede-ec-1')
+                );
                 const matchesSearch = !searchQuery ? true : (
                   (s.customer_name && s.customer_name.toLowerCase().includes(searchQuery.toLowerCase())) ||
                   (s.customer_email && s.customer_email.toLowerCase().includes(searchQuery.toLowerCase())) ||
                   (s.customer_phone && s.customer_phone.includes(searchQuery))
                 );
                 const matchesPlan = planFilter === 'ALL' ? true : s.plan_type === planFilter;
-                return matchesSearch && matchesPlan;
+                return matchesSede && matchesSearch && matchesPlan;
               });
 
               const ITEMS_PER_PAGE = 5;
@@ -1019,11 +1117,142 @@ function App() {
             }}
             activeTab={activeTab}
             onBack={() => setActiveTab('dashboard')}
+            selectedSedeContext={selectedSedeContext}
+            onChangeContext={setSelectedSedeContext}
           />
           <main role="main" style={{ flex: 1 }}>{renderContent()}</main>
           <nav role="navigation">
             <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} role={user?.role} />
           </nav>
+
+          {/* Sedes Management Modal with Focus Trap and ARIA Attributes */}
+          {showSedesModal && (
+            <div 
+              role="dialog" 
+              aria-modal="true" 
+              aria-label="Gestión de Sedes"
+              style={{
+                position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: 'rgba(0,0,0,0.75)', padding: '1rem'
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') setShowSedesModal(false);
+              }}
+            >
+              <div className="card glass" style={{ width: '100%', maxWidth: '450px', border: '1px solid var(--accent)', padding: '1.5rem', maxHeight: '90vh', overflowY: 'auto' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                  <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--accent)' }}>Sedes Ecosistema</h3>
+                  <button 
+                    onClick={() => setShowSedesModal(false)}
+                    style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: '1.2rem' }}
+                    aria-label="Cerrar modal"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                {/* List of active Sedes */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '1.5rem', maxHeight: '200px', overflowY: 'auto' }}>
+                  {sedes.map(s => {
+                    const canDelete = user?.email === 'thony.karter@gmail.com';
+                    return (
+                      <div key={s.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                        <div>
+                          <p style={{ margin: 0, fontWeight: 700, color: 'white', fontSize: '0.85rem' }}>{s.nombre_sede}</p>
+                          <p style={{ margin: 0, fontSize: '0.7rem', opacity: 0.6 }}>{s.pais}</p>
+                        </div>
+                        <button
+                          onClick={async () => {
+                            if (!canDelete) {
+                              const msg = `Intento de eliminación fallido en Sede: ${s.nombre_sede} por usuario ${user?.email}`;
+                              addNotification(`[ALERTA DE SEGURIDAD] ${msg}`, 'DANGER');
+                              alert('Error: Privilegios Insuficientes. Solo el Super Admin Raíz posee el Poder de Borrado.');
+                              return;
+                            }
+                            if (confirm(`¿Seguro que deseas eliminar la sede ${s.nombre_sede}?`)) {
+                              try {
+                                await dataService.deleteSede(s.id, user.email);
+                                setSedes(prev => prev.filter(item => item.id !== s.id));
+                                addNotification(`Sede ${s.nombre_sede} eliminada con éxito.`, 'SUCCESS');
+                              } catch (err) {
+                                alert(err.message);
+                              }
+                            }
+                          }}
+                          aria-label={`Eliminar sede ${s.nombre_sede}`}
+                          aria-disabled={!canDelete ? "true" : undefined}
+                          style={{
+                            background: 'rgba(239, 68, 68, 0.1)',
+                            border: '1px solid rgba(239, 68, 68, 0.3)',
+                            color: 'var(--danger)',
+                            padding: '4px 8px',
+                            borderRadius: '6px',
+                            fontSize: '0.7rem',
+                            cursor: 'pointer',
+                            opacity: !canDelete ? 0.5 : 1
+                          }}
+                        >
+                          Eliminar
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Add Sede Form */}
+                <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '1.2rem' }}>
+                  <h4 style={{ margin: '0 0 10px', fontSize: '0.9rem', color: 'white' }}>Nueva Sede</h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <input 
+                      type="text"
+                      placeholder="Nombre de la sede (ej. Sede Guayaquil)"
+                      value={newSedeName}
+                      onChange={(e) => setNewSedeName(e.target.value)}
+                      aria-label="Nombre de la nueva sede"
+                      style={{
+                        padding: '8px 12px', background: 'rgba(0,0,0,0.25)', border: '1px solid var(--glass-border)',
+                        color: 'white', borderRadius: '8px', fontSize: '0.8rem'
+                      }}
+                    />
+                    <select
+                      value={newSedePais}
+                      onChange={(e) => setNewSedePais(e.target.value)}
+                      aria-label="País de la sede"
+                      style={{
+                        padding: '8px 12px', background: 'rgba(0,0,0,0.25)', border: '1px solid var(--glass-border)',
+                        color: 'white', borderRadius: '8px', fontSize: '0.8rem'
+                      }}
+                    >
+                      <option value="Ecuador">Ecuador</option>
+                      <option value="Venezuela">Venezuela</option>
+                    </select>
+                    <button
+                      onClick={async () => {
+                        if (!newSedeName.trim()) {
+                          alert('El nombre de la sede es obligatorio.');
+                          return;
+                        }
+                        try {
+                          const newSede = await dataService.addSede({ nombre_sede: newSedeName, pais: newSedePais });
+                          setSedes(prev => [...prev, newSede]);
+                          setNewSedeName('');
+                          addNotification(`Nueva Sede "${newSede.nombre_sede}" creada con éxito en ${newSede.pais}.`, 'SUCCESS');
+                        } catch (err) {
+                          alert(err.message);
+                        }
+                      }}
+                      className="btn btn-primary"
+                      style={{ fontSize: '0.75rem', padding: '8px', height: 'auto', marginTop: '4px' }}
+                      aria-label="Crear nueva sede"
+                    >
+                      Crear Sede
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </motion.div>
       )}
     </AnimatePresence>
