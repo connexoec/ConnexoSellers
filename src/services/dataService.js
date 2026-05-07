@@ -325,14 +325,21 @@ export const dataService = {
   },
 
   async getTeam(parentId) {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('parent_id', parentId)
-      .order('created_at', { ascending: true });
-      
-    if (error) throw new Error(error.message);
-    return data.map(({ password, ...rest }) => rest);
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('parent_id', parentId)
+        .order('created_at', { ascending: true });
+        
+      if (error) throw new Error(error.message);
+      return data.map(({ password, ...rest }) => rest);
+    } catch (err) {
+      console.warn("⚠️ Usando LocalStorage para getTeam:", err.message);
+      const cached = localStorage.getItem('connexo_team') || '[]';
+      const team = JSON.parse(cached);
+      return team.filter(t => t.parent_id === parentId).map(({ password, ...rest }) => rest);
+    }
   },
 
   async addTeamMember(parentId, userData) {
@@ -345,18 +352,41 @@ export const dataService = {
       tier_start_date: userData.tier ? new Date().toISOString() : null,
       is_certified: false,
       wallet_balance: 0,
-      parent_id: parentId
+      parent_id: parentId,
+      sede_asignada: userData.sede_asignada || null
     };
 
-    const { data, error } = await supabase
-      .from('profiles')
-      .insert([newProfile])
-      .select()
-      .single();
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .insert([newProfile])
+        .select()
+        .single();
 
-    if (error) throw new Error(error.message);
-    const { password, ...safeProfile } = data;
-    return safeProfile;
+      if (error) throw new Error(error.message);
+      const { password, ...safeProfile } = data;
+      return safeProfile;
+    } catch (err) {
+      console.warn("⚠️ Usando LocalStorage para agregar miembro de equipo:", err.message);
+      const cached = localStorage.getItem('connexo_team') || '[]';
+      const team = JSON.parse(cached);
+      
+      const newLocalProfile = {
+        ...newProfile,
+        id: `profile-${Date.now()}`
+      };
+      
+      // Chequear duplicado manual offline
+      if (team.some(t => t.email === newLocalProfile.email)) {
+        throw new Error('Ya existe un usuario con este correo (Offline).');
+      }
+      
+      team.push(newLocalProfile);
+      localStorage.setItem('connexo_team', JSON.stringify(team));
+      
+      const { password, ...safeProfile } = newLocalProfile;
+      return safeProfile;
+    }
   },
 
   async certifyUser(userId) {
@@ -375,24 +405,44 @@ export const dataService = {
   },
 
   async getAllProfiles() {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .order('created_at', { ascending: false });
-    if (error) throw new Error(error.message);
-    return data;
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (error) throw new Error(error.message);
+      return data;
+    } catch (err) {
+      console.warn("⚠️ Usando LocalStorage para getAllProfiles:", err.message);
+      const cached = localStorage.getItem('connexo_team') || '[]';
+      return JSON.parse(cached);
+    }
   },
 
   async updateProfile(userId, updates) {
-    const { data, error } = await supabase
-      .from('profiles')
-      .update(updates)
-      .eq('id', userId)
-      .select()
-      .single();
-    if (error) throw new Error(error.message);
-    _metricsCache.clear(); // ⚡ Invalidad cache de métricas en tiempo real
-    return data;
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .update(updates)
+        .eq('id', userId)
+        .select()
+        .single();
+      if (error) throw new Error(error.message);
+      _metricsCache.clear(); // ⚡ Invalidad cache de métricas en tiempo real
+      return data;
+    } catch (err) {
+      console.warn("⚠️ Usando LocalStorage para updateProfile:", err.message);
+      const cached = localStorage.getItem('connexo_team') || '[]';
+      let team = JSON.parse(cached);
+      const idx = team.findIndex(t => t.id === userId || t.uid === userId);
+      if (idx !== -1) {
+        team[idx] = { ...team[idx], ...updates };
+        localStorage.setItem('connexo_team', JSON.stringify(team));
+        _metricsCache.clear();
+        return team[idx];
+      }
+      throw new Error('Usuario no encontrado en caché local');
+    }
   },
 
   // ─── GESTIÓN DE INVENTARIO (Real + LocalStorage Fallback) ──────────────────
