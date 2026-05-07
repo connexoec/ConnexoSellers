@@ -302,7 +302,7 @@ export const dataService = {
         localStorage.setItem('connexo_sales', JSON.stringify(sales));
       }
 
-      // Actualizar billetera localmente y en db
+      // Actualizar billetera del SELLER localmente y en db
       if (commission > 0) {
         const { data: profile } = await supabase
           .from('profiles')
@@ -320,6 +320,62 @@ export const dataService = {
           if (_currentUser && _currentUser.id === userId) {
               _currentUser.wallet_balance = newBalance;
           }
+        }
+      }
+
+      // ---------------------------------------------------
+      // LÓGICA DE DISTRIBUIDOR (COMISIÓN POR JERARQUÍA / OVERRIDE)
+      // ---------------------------------------------------
+      let parentOverride = 0;
+      let parentId = null;
+      
+      try {
+        const { data: profile } = await supabase.from('profiles').select('parent_id').eq('id', userId).single();
+        if (profile?.parent_id) {
+          parentId = profile.parent_id;
+          const { data: parentProfile } = await supabase.from('profiles').select('*').eq('id', parentId).single();
+          // El padre debe ser distribuidor certificado para ganar sobreventa
+          if (parentProfile && parentProfile.role === 'DISTRIBUTOR' && parentProfile.is_certified) {
+             const parentMetrics = await calcMetrics(parentProfile);
+             const parentRate = parentMetrics.rate || 0;
+             if (parentRate > realRate) {
+               parentOverride = basePrice * (parentRate - realRate);
+             }
+          }
+        }
+      } catch (e) {
+        console.warn("⚠️ Fallback calculando override de distribuidor", e.message);
+        const cachedTeam = localStorage.getItem('connexo_team') || '[]';
+        const team = JSON.parse(cachedTeam);
+        const userLocal = team.find(t => t.id === userId);
+        if (userLocal && userLocal.parent_id) {
+           parentId = userLocal.parent_id;
+           const parentLocal = team.find(t => t.id === parentId);
+           if (parentLocal && parentLocal.role === 'DISTRIBUTOR' && parentLocal.is_certified) {
+             const parentRate = 0.12; // Base para distribuidor
+             if (parentRate > realRate) {
+                parentOverride = basePrice * (parentRate - realRate);
+             }
+           }
+        }
+      }
+
+      if (parentOverride > 0 && parentId) {
+        try {
+          const { data: parentData } = await supabase.from('profiles').select('wallet_balance').eq('id', parentId).single();
+          if (parentData) {
+            const newParentBalance = Number(parentData.wallet_balance || 0) + parentOverride;
+            await supabase.from('profiles').update({ wallet_balance: newParentBalance }).eq('id', parentId);
+          }
+        } catch(e) { /* ignore db error for parent wallet */ }
+        
+        // Cache local del padre
+        const cachedTeam = localStorage.getItem('connexo_team') || '[]';
+        let team = JSON.parse(cachedTeam);
+        const pIdx = team.findIndex(t => t.id === parentId);
+        if (pIdx !== -1) {
+           team[pIdx].wallet_balance = Number(team[pIdx].wallet_balance || 0) + parentOverride;
+           localStorage.setItem('connexo_team', JSON.stringify(team));
         }
       }
 
@@ -448,6 +504,14 @@ export const dataService = {
     if (cached) {
       const localTeam = JSON.parse(cached).filter(t => t.parent_id === parentId).map(({ password, ...rest }) => rest);
       
+      // Purge zombies
+      const allLocalTeam = JSON.parse(cached);
+      const updatedLocalTeam = allLocalTeam.filter(l => {
+         if (typeof l.id === 'string' && l.id.startsWith('profile-')) return true; // keep pure offline
+         return supabaseData.some(su => su.id === l.id) || l.parent_id !== parentId; // keep if found in cloud OR not belonging to this specific team query
+      });
+      if (updatedLocalTeam.length !== allLocalTeam.length) localStorage.setItem('connexo_team', JSON.stringify(updatedLocalTeam));
+
       supabaseData = supabaseData.map(su => {
         const localMatch = localTeam.find(l => l.id === su.id || l.email === su.email);
         if (localMatch && !su.sede_asignada && localMatch.sede_asignada) {
@@ -565,6 +629,13 @@ export const dataService = {
     if (cached) {
       const localTeam = JSON.parse(cached);
       
+      // Purge zombies
+      const updatedLocalTeam = localTeam.filter(l => {
+         if (typeof l.id === 'string' && l.id.startsWith('profile-')) return true; // keep pure offline
+         return supabaseData.some(su => su.id === l.id); // keep if still in cloud
+      });
+      if (updatedLocalTeam.length !== localTeam.length) localStorage.setItem('connexo_team', JSON.stringify(updatedLocalTeam));
+
       supabaseData = supabaseData.map(su => {
         const localMatch = localTeam.find(l => l.id === su.id || l.email === su.email);
         if (localMatch && !su.sede_asignada && localMatch.sede_asignada) {
