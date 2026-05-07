@@ -342,6 +342,15 @@ export const dataService = {
     const cached = localStorage.getItem('connexo_team');
     if (cached) {
       const localTeam = JSON.parse(cached).filter(t => t.parent_id === parentId).map(({ password, ...rest }) => rest);
+      
+      supabaseData = supabaseData.map(su => {
+        const localMatch = localTeam.find(l => l.id === su.id || l.email === su.email);
+        if (localMatch && !su.sede_asignada && localMatch.sede_asignada) {
+          return { ...su, sede_asignada: localMatch.sede_asignada };
+        }
+        return su;
+      });
+
       localTeam.forEach(localUser => {
         if (!supabaseData.some(su => su.id === localUser.id || su.email === localUser.email)) {
           supabaseData.push(localUser);
@@ -374,7 +383,15 @@ export const dataService = {
 
       if (error) throw new Error(error.message);
       const { password, ...safeProfile } = data;
-      return safeProfile;
+      
+      const completeProfile = { ...newProfile, ...safeProfile };
+      const cached = localStorage.getItem('connexo_team') || '[]';
+      const team = JSON.parse(cached);
+      if (!team.some(t => t.email === completeProfile.email)) {
+        team.push(completeProfile);
+        localStorage.setItem('connexo_team', JSON.stringify(team));
+      }
+      return completeProfile;
     } catch (err) {
       console.warn("⚠️ Usando LocalStorage para agregar miembro de equipo:", err.message);
       const cached = localStorage.getItem('connexo_team') || '[]';
@@ -429,6 +446,15 @@ export const dataService = {
     const cached = localStorage.getItem('connexo_team');
     if (cached) {
       const localTeam = JSON.parse(cached);
+      
+      supabaseData = supabaseData.map(su => {
+        const localMatch = localTeam.find(l => l.id === su.id || l.email === su.email);
+        if (localMatch && !su.sede_asignada && localMatch.sede_asignada) {
+          return { ...su, sede_asignada: localMatch.sede_asignada };
+        }
+        return su;
+      });
+
       localTeam.forEach(localUser => {
         if (!supabaseData.some(su => su.id === localUser.id || su.email === localUser.email)) {
           supabaseData.push(localUser);
