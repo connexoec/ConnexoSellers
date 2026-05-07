@@ -415,6 +415,17 @@ const TeamManager = ({ users, currentUser, onAddUser, sales, selectedSedeContext
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <p style={{ margin: 0, fontSize: '0.8rem', fontWeight: 700, color: 'white' }}>{u.full_name || u.name}</p>
                             <p style={{ margin: 0, fontSize: '0.65rem', opacity: 0.5 }}>{u.role === 'SELLER' ? 'Vendedor' : 'Distribuidor'} · {u.email}</p>
+                            {(() => {
+                              const parentProfile = users.find(x => x.id === u.parent_id);
+                              if (parentProfile && parentProfile.role === 'DISTRIBUTOR') {
+                                return (
+                                  <p style={{ margin: '4px 0 0 0', fontSize: '0.6rem', color: 'var(--accent)', fontWeight: 'bold' }}>
+                                    🛡️ Red de: {parentProfile.full_name || parentProfile.name}
+                                  </p>
+                                );
+                              }
+                              return null;
+                            })()}
                           </div>
                           <div style={{ padding: '4px 8px', background: isSelected ? 'var(--accent)' : 'rgba(255,255,255,0.05)', color: isSelected ? 'var(--bg-primary)' : 'white', borderRadius: '100px', fontSize: '0.65rem', fontWeight: 700 }}>
                             🏅 {badgeCount} / 12
