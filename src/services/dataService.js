@@ -285,79 +285,148 @@ export const dataService = {
       sede_id: sedeId || 'sede-ec-1' // Auto-Etiquetado con contexto activo
     };
 
-    const { data: sale, error } = await supabase
-      .from('sales')
-      .insert([newSale])
-      .select()
-      .single();
-
-    if (error) throw new Error(error.message);
-
-    // Actualizar billetera localmente y en db
-    if (commission > 0) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('wallet_balance')
-        .eq('id', userId)
+    try {
+      const { data: sale, error } = await supabase
+        .from('sales')
+        .insert([newSale])
+        .select()
         .single();
-        
-      if (profile) {
-        const newBalance = Number(profile.wallet_balance || 0) + commission;
-        await supabase
+
+      if (error) throw new Error(error.message);
+
+      const completeSale = { ...newSale, ...sale };
+      const cached = localStorage.getItem('connexo_sales') || '[]';
+      const sales = JSON.parse(cached);
+      if (!sales.some(s => s.id === completeSale.id)) {
+        sales.push(completeSale);
+        localStorage.setItem('connexo_sales', JSON.stringify(sales));
+      }
+
+      // Actualizar billetera localmente y en db
+      if (commission > 0) {
+        const { data: profile } = await supabase
           .from('profiles')
-          .update({ wallet_balance: newBalance })
-          .eq('id', userId);
-        
-        if (_currentUser && _currentUser.id === userId) {
-            _currentUser.wallet_balance = newBalance;
+          .select('wallet_balance')
+          .eq('id', userId)
+          .single();
+          
+        if (profile) {
+          const newBalance = Number(profile.wallet_balance || 0) + commission;
+          await supabase
+            .from('profiles')
+            .update({ wallet_balance: newBalance })
+            .eq('id', userId);
+          
+          if (_currentUser && _currentUser.id === userId) {
+              _currentUser.wallet_balance = newBalance;
+          }
         }
       }
-    }
 
-    _metricsCache.clear(); // ⚡ Invalidad cache de métricas en tiempo real
-    return sale;
+      _metricsCache.clear(); // ⚡ Invalidad cache de métricas en tiempo real
+      return completeSale;
+    } catch (err) {
+      console.warn("⚠️ Usando LocalStorage para registerSale:", err.message);
+      const cached = localStorage.getItem('connexo_sales') || '[]';
+      const sales = JSON.parse(cached);
+      const newLocalSale = {
+        ...newSale,
+        id: `sale-${Date.now()}`,
+        created_at: new Date().toISOString()
+      };
+      sales.push(newLocalSale);
+      localStorage.setItem('connexo_sales', JSON.stringify(sales));
+      
+      if (commission > 0) {
+        if (_currentUser && _currentUser.id === userId) {
+          _currentUser.wallet_balance = Number(_currentUser.wallet_balance || 0) + commission;
+        }
+        const cachedTeam = localStorage.getItem('connexo_team') || '[]';
+        let team = JSON.parse(cachedTeam);
+        const idx = team.findIndex(t => t.id === userId);
+        if (idx !== -1) {
+          team[idx].wallet_balance = Number(team[idx].wallet_balance || 0) + commission;
+          localStorage.setItem('connexo_team', JSON.stringify(team));
+        }
+      }
+      
+      _metricsCache.clear();
+      return newLocalSale;
+    }
   },
 
   // Sales solo propias (vendedor)
   async getSales(userId) {
-    const { data, error } = await supabase
-      .from('sales')
-      .select('*')
-      .eq('seller_id', userId)
-      .order('created_at', { ascending: false });
-    if (error) throw new Error(error.message);
-    return data || [];
+    let supabaseData = [];
+    try {
+      const { data, error } = await supabase
+        .from('sales')
+        .select('*')
+        .eq('seller_id', userId)
+        .order('created_at', { ascending: false });
+      if (error) throw new Error(error.message);
+      supabaseData = data || [];
+    } catch (err) {
+      console.warn("⚠️ Error en Supabase para getSales, usando LocalStorage:", err.message);
+    }
+    
+    const cached = localStorage.getItem('connexo_sales');
+    if (cached) {
+      const localSales = JSON.parse(cached).filter(s => s.seller_id === userId);
+      localSales.forEach(localSale => {
+        if (!supabaseData.some(su => su.id === localSale.id)) {
+          supabaseData.push(localSale);
+        }
+      });
+    }
+    return supabaseData.sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
   },
 
   // Sales de todo el equipo (distribuidor / super admin)
   async getSalesForTeam(userId, role) {
+    let supabaseData = [];
     let teamIds = [userId];
+    
+    try {
+      if (role !== ROLES.SUPER_ADMIN) {
+        const { data: team } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('parent_id', userId);
+        if (team?.length) teamIds = [userId, ...team.map(m => m.id)];
+      }
 
-    if (role === ROLES.SUPER_ADMIN) {
-      // Super admin: todas las ventas del sistema
-      const { data, error } = await supabase
-        .from('sales')
-        .select('*')
-        .order('created_at', { ascending: false });
+      let query = supabase.from('sales').select('*').order('created_at', { ascending: false });
+      if (role !== ROLES.SUPER_ADMIN) {
+        query = query.in('seller_id', teamIds);
+      }
+      
+      const { data, error } = await query;
       if (error) throw new Error(error.message);
-      return data || [];
+      supabaseData = data || [];
+    } catch (err) {
+      console.warn("⚠️ Error en Supabase para getSalesForTeam, usando LocalStorage:", err.message);
+      if (role !== ROLES.SUPER_ADMIN) {
+        const localTeam = JSON.parse(localStorage.getItem('connexo_team') || '[]');
+        const children = localTeam.filter(t => t.parent_id === userId).map(t => t.id);
+        teamIds = [userId, ...children];
+      }
     }
-
-    // Distribuidor: sus propias ventas + ventas de su equipo
-    const { data: team } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('parent_id', userId);
-
-    if (team?.length) teamIds = [userId, ...team.map(m => m.id)];
-
-    const { data, error } = await supabase
-      .from('sales')
-      .select('*')
-      .in('seller_id', teamIds)
-      .order('created_at', { ascending: false });
-    if (error) throw new Error(error.message);
-    return data || [];
+    
+    const cached = localStorage.getItem('connexo_sales');
+    if (cached) {
+      const localSales = JSON.parse(cached);
+      const filteredLocal = role === ROLES.SUPER_ADMIN 
+        ? localSales 
+        : localSales.filter(s => teamIds.includes(s.seller_id));
+        
+      filteredLocal.forEach(localSale => {
+        if (!supabaseData.some(su => su.id === localSale.id)) {
+          supabaseData.push(localSale);
+        }
+      });
+    }
+    return supabaseData.sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
   },
 
   async getTeam(parentId) {
