@@ -39,11 +39,22 @@ function App() {
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [editedName,      setEditedName]      = useState('');
   const [editedEmail,     setEditedEmail]     = useState('');
-  const [selectedSedeContext, setSelectedSedeContext] = useState('GLOBAL');
+  const [selectedSedeContext, setSelectedSedeContext] = useState(() => {
+    return localStorage.getItem('connexo_selected_sede_context') || 'GLOBAL';
+  });
   const [sedes, setSedes] = useState([]);
   const [showSedesModal, setShowSedesModal] = useState(false);
   const [newSedeName, setNewSedeName] = useState('');
   const [newSedePais, setNewSedePais] = useState('Ecuador');
+  const [newSedeAdminName, setNewSedeAdminName] = useState('');
+  const [newSedeAdminDoc, setNewSedeAdminDoc] = useState('');
+  const [newSedeAdminEmail, setNewSedeAdminEmail] = useState('');
+  const [newSedeAdminPass, setNewSedeAdminPass] = useState('Connexo123');
+
+  // Guardar contexto activo de sede en localStorage
+  useEffect(() => {
+    localStorage.setItem('connexo_selected_sede_context', selectedSedeContext);
+  }, [selectedSedeContext]);
 
   // ── Guardar pestaña activa al cambiar ───────────────────────────
   useEffect(() => {
@@ -248,6 +259,23 @@ function App() {
     );
   }
 
+  const getFilteredTeam = () => {
+    if (selectedSedeContext === 'GLOBAL') return team;
+    const isVenezuela = selectedSedeContext === 'Venezuela';
+    return team.filter(t => {
+      if (t.sede_asignada) {
+        return isVenezuela ? t.sede_asignada === 'sede-ve-1' : t.sede_asignada === 'sede-ec-1';
+      }
+      return isVenezuela ? t.email?.includes('ve') : !t.email?.includes('ve');
+    });
+  };
+
+  const getFilteredSales = () => {
+    if (selectedSedeContext === 'GLOBAL') return sales;
+    const expectedSedeId = selectedSedeContext === 'Venezuela' ? 'sede-ve-1' : 'sede-ec-1';
+    return sales.filter(s => s.sede_id === expectedSedeId);
+  };
+
   // --- Tab Content ---
   const renderContent = () => {
     switch (activeTab) {
@@ -263,22 +291,21 @@ function App() {
                 {selectedSedeContext === 'GLOBAL' ? 'Vista Global de Red' : selectedSedeContext === 'Ecuador' ? 'Vista Ecuador' : 'Vista Venezuela'}
               </h2>
               
-              {/* Selector de Mercado / [Cambiar Mercado] Button Group */}
-              <div style={{ marginTop: '15px' }}>
-                <p style={{ fontSize: '0.6rem', opacity: 0.6, textTransform: 'uppercase', marginBottom: '6px', letterSpacing: '1px' }}>Cambiar Mercado</p>
-                <div style={{ display: 'flex', gap: '6px', background: 'rgba(0,0,0,0.3)', padding: '4px', borderRadius: '8px' }}>
+              {/* Selector de Mercado / [Cambiar Mercado] Button Group - COMPACT CHILL VERSION */}
+              <div style={{ marginTop: '15px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <p style={{ fontSize: '0.6rem', opacity: 0.6, textTransform: 'uppercase', margin: 0, letterSpacing: '1px' }}>Mercado</p>
+                <div style={{ display: 'flex', gap: '4px', background: 'rgba(0,0,0,0.3)', padding: '3px', borderRadius: '6px' }}>
                   {['GLOBAL', 'Ecuador', 'Venezuela'].map(ctx => (
                     <button
                       key={ctx}
                       onClick={() => setSelectedSedeContext(ctx)}
                       aria-label={`Cambiar vista a ${ctx}`}
                       style={{
-                        flex: 1, padding: '6px', borderRadius: '6px', border: 'none', fontSize: '0.7rem', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s',
-                        background: selectedSedeContext === ctx ? 'var(--accent)' : 'transparent',
-                        color: selectedSedeContext === ctx ? 'var(--bg-primary)' : 'rgba(255,255,255,0.6)'
+                        padding: '4px 8px', borderRadius: '4px', border: 'none', fontSize: '0.95rem', cursor: 'pointer', transition: 'all 0.2s',
+                        background: selectedSedeContext === ctx ? 'var(--accent)' : 'transparent'
                       }}
                     >
-                      {ctx === 'GLOBAL' ? '🌎 Global' : ctx === 'Ecuador' ? '🇪🇨 Ecuador' : '🇻🇪 Venezuela'}
+                      {ctx === 'GLOBAL' ? '🌎' : ctx === 'Ecuador' ? '🇪🇨' : '🇻🇪'}
                     </button>
                   ))}
                 </div>
@@ -288,19 +315,19 @@ function App() {
                 <div style={{ flex: 1 }}>
                   <p style={{ fontSize: '0.65rem', opacity: 0.8, margin: 0, textTransform: 'uppercase' }}>Vendedores</p>
                   <p style={{ fontSize: '1.8rem', fontWeight: 'bold', color: 'white', margin: '4px 0 0' }}>
-                    {team.filter(t => t.role === 'SELLER').length}
+                    {getFilteredTeam().filter(t => t.role === 'SELLER').length}
                   </p>
                 </div>
                 <div style={{ flex: 1 }}>
                   <p style={{ fontSize: '0.65rem', opacity: 0.8, margin: 0, textTransform: 'uppercase' }}>Distribuidores</p>
                   <p style={{ fontSize: '1.8rem', fontWeight: 'bold', color: 'white', margin: '4px 0 0' }}>
-                    {team.filter(t => t.role === 'DISTRIBUTOR').length}
+                    {getFilteredTeam().filter(t => t.role === 'DISTRIBUTOR').length}
                   </p>
                 </div>
                 <div style={{ flex: 1 }}>
                   <p style={{ fontSize: '0.65rem', opacity: 0.8, margin: 0, textTransform: 'uppercase' }}>Ventas ({selectedSedeContext})</p>
                   <p style={{ fontSize: '1.8rem', fontWeight: 'bold', color: 'var(--accent)', margin: '4px 0 0' }}>
-                    {sales.filter(s => selectedSedeContext === 'GLOBAL' ? true : s.sede_id === (selectedSedeContext === 'Venezuela' ? 'sede-ve-1' : 'sede-ec-1')).length}
+                    {getFilteredSales().length}
                   </p>
                 </div>
               </div>
@@ -1206,7 +1233,7 @@ function App() {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     <input 
                       type="text"
-                      placeholder="Nombre de la sede (ej. Sede Guayaquil)"
+                      placeholder="Nombre de la sede (ej. Guayaquil)"
                       value={newSedeName}
                       onChange={(e) => setNewSedeName(e.target.value)}
                       aria-label="Nombre de la nueva sede"
@@ -1227,17 +1254,80 @@ function App() {
                       <option value="Ecuador">Ecuador</option>
                       <option value="Venezuela">Venezuela</option>
                     </select>
+
+                    <p style={{ margin: '8px 0 2px', fontSize: '0.75rem', color: 'var(--accent)', fontWeight: 'bold' }}>Persona Encargada (Admin de Sede)</p>
+                    <input 
+                      type="text"
+                      placeholder="Nombres y Apellidos"
+                      value={newSedeAdminName}
+                      onChange={(e) => setNewSedeAdminName(e.target.value)}
+                      aria-label="Nombres y Apellidos del administrador de la sede"
+                      style={{
+                        padding: '8px 12px', background: 'rgba(0,0,0,0.25)', border: '1px solid var(--glass-border)',
+                        color: 'white', borderRadius: '8px', fontSize: '0.8rem'
+                      }}
+                    />
+                    <input 
+                      type="text"
+                      placeholder="Número de Documento"
+                      value={newSedeAdminDoc}
+                      onChange={(e) => setNewSedeAdminDoc(e.target.value)}
+                      aria-label="Número de documento"
+                      style={{
+                        padding: '8px 12px', background: 'rgba(0,0,0,0.25)', border: '1px solid var(--glass-border)',
+                        color: 'white', borderRadius: '8px', fontSize: '0.8rem'
+                      }}
+                    />
+                    <input 
+                      type="email"
+                      placeholder="Correo Electrónico"
+                      value={newSedeAdminEmail}
+                      onChange={(e) => setNewSedeAdminEmail(e.target.value)}
+                      aria-label="Correo electrónico del administrador"
+                      style={{
+                        padding: '8px 12px', background: 'rgba(0,0,0,0.25)', border: '1px solid var(--glass-border)',
+                        color: 'white', borderRadius: '8px', fontSize: '0.8rem'
+                      }}
+                    />
+                    <input 
+                      type="text"
+                      placeholder="Contraseña Predeterminada"
+                      value={newSedeAdminPass}
+                      onChange={(e) => setNewSedeAdminPass(e.target.value)}
+                      aria-label="Contraseña predeterminada"
+                      style={{
+                        padding: '8px 12px', background: 'rgba(0,0,0,0.25)', border: '1px solid var(--glass-border)',
+                        color: 'white', borderRadius: '8px', fontSize: '0.8rem'
+                      }}
+                    />
+
                     <button
                       onClick={async () => {
                         if (!newSedeName.trim()) {
                           alert('El nombre de la sede es obligatorio.');
                           return;
                         }
+                        if (!newSedeAdminName.trim() || !newSedeAdminEmail.trim()) {
+                          alert('Los datos del administrador de la sede (Nombres y Correo) son obligatorios.');
+                          return;
+                        }
                         try {
                           const newSede = await dataService.addSede({ nombre_sede: newSedeName, pais: newSedePais });
+                          await dataService.registerSedeAdmin({
+                            full_name: newSedeAdminName,
+                            document_number: newSedeAdminDoc,
+                            email: newSedeAdminEmail,
+                            password: newSedeAdminPass,
+                            role: 'DISTRIBUTOR',
+                            sede_asignada: newSede.id
+                          });
                           setSedes(prev => [...prev, newSede]);
                           setNewSedeName('');
-                          addNotification(`Nueva Sede "${newSede.nombre_sede}" creada con éxito en ${newSede.pais}.`, 'SUCCESS');
+                          setNewSedeAdminName('');
+                          setNewSedeAdminDoc('');
+                          setNewSedeAdminEmail('');
+                          setNewSedeAdminPass('Connexo123');
+                          addNotification(`Nueva Sede "${newSede.nombre_sede}" creada con administrador: ${newSedeAdminName}.`, 'SUCCESS');
                         } catch (err) {
                           alert(err.message);
                         }

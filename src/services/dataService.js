@@ -1006,5 +1006,45 @@ export const dataService = {
       localStorage.setItem('connexo_sedes', JSON.stringify(filtered));
       return true;
     }
+  },
+
+  async registerSedeAdmin(adminData) {
+    try {
+      const newAdmin = {
+        full_name: adminData.full_name,
+        email: adminData.email,
+        password: adminData.password,
+        role: adminData.role || 'DISTRIBUTOR',
+        is_certified: true,
+        wallet_balance: 0,
+        parent_id: null
+      };
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .insert([newAdmin])
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (err) {
+      console.warn("⚠️ Usando LocalStorage para registrar admin de sede:", err.message);
+      const cachedTeam = localStorage.getItem('connexo_team') || '[]';
+      const team = JSON.parse(cachedTeam);
+      const newAdmin = {
+        id: `profile-${Date.now()}`,
+        full_name: adminData.full_name,
+        email: adminData.email,
+        password: adminData.password,
+        role: adminData.role || 'DISTRIBUTOR',
+        is_certified: true,
+        wallet_balance: 0,
+        sede_asignada: adminData.sede_asignada
+      };
+      team.push(newAdmin);
+      localStorage.setItem('connexo_team', JSON.stringify(team));
+      return newAdmin;
+    }
   }
 };
