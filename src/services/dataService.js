@@ -150,14 +150,35 @@ export const dataService = {
     }
 
     // 2. Login normal para el resto de usuarios
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('email', email)
-      .eq('password', password)
-      .single();
+    let userData = null;
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('email', email)
+        .eq('password', password)
+        .single();
+        
+      if (!error && data) {
+        userData = data;
+      } else {
+        throw new Error('No encontrado en Supabase');
+      }
+    } catch (err) {
+      // Buscar en caché local (modo offline o usuarios caídos por schema)
+      const cached = localStorage.getItem('connexo_team');
+      if (cached) {
+        const team = JSON.parse(cached);
+        const localMatch = team.find(t => t.email === email && t.password === password);
+        if (localMatch) {
+          userData = localMatch;
+        }
+      }
+    }
       
-    if (error || !data) throw new Error('Credenciales incorrectas. Verifica tu email y contraseña.');
+    if (!userData) {
+      throw new Error('Credenciales incorrectas. Verifica tu email y contraseña.');
+    }
 
     // Validar que el rol seleccionado en la UI coincida con el rol real
     if (selectedRole) {
@@ -166,12 +187,12 @@ export const dataService = {
         'DISTRIBUIDOR': 'DISTRIBUTOR'
       };
       const expectedRole = roleMap[selectedRole];
-      if (expectedRole && data.role !== expectedRole) {
-        throw new Error(`Acceso denegado. Tu cuenta está registrada como ${data.role === 'SELLER' ? 'Vendedor' : 'Distribuidor'}.`);
+      if (expectedRole && userData.role !== expectedRole) {
+        throw new Error(`Acceso denegado. Tu cuenta está registrada como ${userData.role === 'SELLER' ? 'Vendedor' : 'Distribuidor'}.`);
       }
     }
 
-    _currentUser = data;
+    _currentUser = userData;
     return _currentUser;
   },
 
