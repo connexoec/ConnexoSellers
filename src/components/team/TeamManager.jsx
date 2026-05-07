@@ -9,7 +9,7 @@ import BadgeGrid, { BADGES_INFO } from '../badges/BadgeGrid';
 const BASIC_BADGE_KEYS = ['FIRST_BLOOD', 'SAAS_STARTER', 'ACADEMY_LV1', 'GOLD_HAMMER', 'BRILLIANT_MIND', 'LEAD_HUNTER'];
 const ELITE_BADGE_KEYS = ['PIONEER', 'RECURRING_LORD', 'VERIFIED_DIST', 'CORPORATE_CLOSER', 'SAAS_TITAN', 'CERTIFIED_MASTER'];
 
-const TeamManager = ({ users, currentUser, onAddUser, sales }) => {
+const TeamManager = ({ users, currentUser, onAddUser, sales, selectedSedeContext = 'GLOBAL' }) => {
   const canAddMembers = currentUser?.role === 'SUPER_ADMIN' || currentUser?.role === 'DISTRIBUTOR';
   const [isAdding, setIsAdding] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -55,9 +55,15 @@ const TeamManager = ({ users, currentUser, onAddUser, sales }) => {
   const currentUid = currentUser?.uid || currentUser?.id;
 
   // Si es Super Admin, ve a todos. Si es Distribuidor, solo a sus hijos.
-  const myTeam = currentUser?.role === 'SUPER_ADMIN' 
+  // Adicionalmente filtramos por la Sede/país activo si no estamos en la vista global.
+  const myTeam = (currentUser?.role === 'SUPER_ADMIN' 
     ? users.filter(u => u.id !== currentUid) // Ver todos menos a sí mismo
-    : users.filter(u => u.parent_id === currentUid);
+    : users.filter(u => u.parent_id === currentUid)
+  ).filter(u => {
+    if (selectedSedeContext === 'GLOBAL') return true;
+    const expectedSedeId = selectedSedeContext === 'Venezuela' ? 'sede-ve-1' : 'sede-ec-1';
+    return u.sede_asignada === expectedSedeId;
+  });
 
   const teamIds = myTeam.map(u => u.id);
   const teamSales = sales.filter(s => teamIds.includes(s.seller_id));
@@ -67,12 +73,14 @@ const TeamManager = ({ users, currentUser, onAddUser, sales }) => {
     e.preventDefault();
     setIsSubmitting(true);
     try {
+      const activeSedeId = selectedSedeContext === 'Venezuela' ? 'sede-ve-1' : selectedSedeContext === 'Ecuador' ? 'sede-ec-1' : null;
       const userData = {
         name: e.target.name.value,
         email: e.target.email.value,
         role: e.target.role?.value || 'SELLER',
         tier: e.target.tier?.value || null,
-        parent_id: currentUid
+        parent_id: currentUid,
+        sede_asignada: activeSedeId
       };
       const newUser = await dataService.addTeamMember(currentUid, userData);
       onAddUser(newUser);
