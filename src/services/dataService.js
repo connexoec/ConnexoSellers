@@ -411,7 +411,8 @@ export const dataService = {
       const cached = localStorage.getItem('connexo_inventory');
       let items = cached ? JSON.parse(cached) : [];
 
-      if (items.length === 0) {
+      const needsMigration = items.length === 0 || items.some(i => !i.sede_id);
+      if (needsMigration) {
         const defaultInventory = [
           // Ecuador Items
           { id: 'inv-ec-1', name: 'Tarjetas NFC (EC)', description: 'Tarjetas de presentación inteligente con tecnología NFC', category: 'NFC', stock_quantity: 500, unit_type: 'UNIDAD', detail_packaging: 'Cajas de 100 u.', sede_id: 'sede-ec-1' },
@@ -447,7 +448,8 @@ export const dataService = {
         category: itemData.category || 'NFC',
         stock_quantity: Number(itemData.stock_quantity) || 0,
         unit_type: itemData.unit_type || 'UNIDAD',
-        detail_packaging: itemData.detail_packaging || ''
+        detail_packaging: itemData.detail_packaging || '',
+        sede_id: itemData.sede_id || 'sede-ec-1'
       };
 
       const { data, error } = await supabase
@@ -460,7 +462,8 @@ export const dataService = {
       return data;
     } catch (err) {
       console.warn("⚠️ Usando LocalStorage para agregar ítem:", err.message);
-      const items = await this.getInventory();
+      const cached = localStorage.getItem('connexo_inventory') || '[]';
+      const allItems = JSON.parse(cached);
       const newItem = {
         id: `inv-${Date.now()}`,
         name: itemData.name,
@@ -468,10 +471,11 @@ export const dataService = {
         category: itemData.category || 'NFC',
         stock_quantity: Number(itemData.stock_quantity) || 0,
         unit_type: itemData.unit_type || 'UNIDAD',
-        detail_packaging: itemData.detail_packaging || ''
+        detail_packaging: itemData.detail_packaging || '',
+        sede_id: itemData.sede_id || 'sede-ec-1'
       };
-      items.push(newItem);
-      localStorage.setItem('connexo_inventory', JSON.stringify(items));
+      allItems.push(newItem);
+      localStorage.setItem('connexo_inventory', JSON.stringify(allItems));
       return newItem;
     }
   },
