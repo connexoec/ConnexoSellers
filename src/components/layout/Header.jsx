@@ -1,6 +1,6 @@
 import { Bell, ArrowLeft } from 'lucide-react';
 
-const Header = ({ user, notificationCount = 0, onShowNotifications, activeTab, onBack }) => {
+const Header = ({ user, notificationCount = 0, onShowNotifications, activeTab, onBack, selectedSedeContext = 'GLOBAL', onChangeContext }) => {
   return (
     <header style={{ padding: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontFamily: 'var(--font-main)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -20,7 +20,34 @@ const Header = ({ user, notificationCount = 0, onShowNotifications, activeTab, o
         </div>
       </div>
       
-      <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }} aria-live="polite">
+        {user.role === 'SUPER_ADMIN' && (
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <select
+              value={selectedSedeContext}
+              onChange={(e) => onChangeContext && onChangeContext(e.target.value)}
+              aria-label="Cambiar Mercado / Contexto de Vista"
+              style={{
+                padding: '6px 12px',
+                borderRadius: '8px',
+                background: 'rgba(33, 9, 0, 0.8)',
+                border: '1px solid var(--accent)',
+                color: 'var(--text-primary)',
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                outline: 'none',
+                cursor: 'pointer',
+                fontFamily: 'var(--font-main)',
+                boxShadow: '0 0 10px var(--accent-glow)'
+              }}
+            >
+              <option value="GLOBAL">🌎 Vista Global</option>
+              <option value="Ecuador">🇪🇨 Vista Ecuador</option>
+              <option value="Venezuela">🇻🇪 Vista Venezuela</option>
+            </select>
+          </div>
+        )}
+
         <button 
           onClick={onShowNotifications}
           style={{ position: 'relative', background: 'none', border: 'none', color: 'var(--text-primary)', cursor: 'pointer', padding: '5px' }}
