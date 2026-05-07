@@ -54,10 +54,15 @@ async function calcMetrics(user) {
     if (manualTier) {
       // Contar ventas desde la asignación para detectar si ya subió de nivel
       if (user.role === ROLES.SELLER) {
-        const { count: salesSinceAssignment } = await countSales(
-          supabase.from('sales').select('*', { count: 'exact', head: true }).eq('seller_id', uid)
-        );
-        const total = salesSinceAssignment || 0;
+        let total = 0;
+        try {
+          const { count: salesSinceAssignment } = await countSales(
+            supabase.from('sales').select('*', { count: 'exact', head: true }).eq('seller_id', uid)
+          );
+          total = salesSinceAssignment || 0;
+        } catch (e) {
+          console.warn("calcMetrics fallback for manual SELLER:", e.message);
+        }
         // Si ya superó los umbrales del siguiente nivel, subir automáticamente
         if (total >= 31) return cache({ rate: 0.09, base: 300, level: 'VENDEDOR ULTRA', salesCount: total });
         if (total >= 20) return cache({ rate: 0.07, base: 250, level: 'VENDEDOR PRO',   salesCount: total });
@@ -68,10 +73,15 @@ async function calcMetrics(user) {
 
   // ─── VENDEDOR (Auto) ──────────────────────────────────────────────────
   if (user.role === ROLES.SELLER) {
-    const { count: mySales } = await countSales(
-      supabase.from('sales').select('*', { count: 'exact', head: true }).eq('seller_id', uid)
-    );
-    const total = mySales || 0;
+    let total = 0;
+    try {
+      const { count: mySales } = await countSales(
+        supabase.from('sales').select('*', { count: 'exact', head: true }).eq('seller_id', uid)
+      );
+      total = mySales || 0;
+    } catch (e) {
+      console.warn("calcMetrics fallback for SELLER:", e.message);
+    }
     if (total >= 31) return cache({ rate: 0.09, base: 300, level: 'VENDEDOR ULTRA', salesCount: total });
     if (total >= 20) return cache({ rate: 0.07, base: 250, level: 'VENDEDOR PRO',   salesCount: total });
     return cache({ rate: 0.07, base: 0, level: 'VENDEDOR BASIC', salesCount: total, isPreview: true });
@@ -79,13 +89,18 @@ async function calcMetrics(user) {
 
   // ─── DISTRIBUIDOR (Auto) ──────────────────────────────────────────────
   if (user.role === ROLES.DISTRIBUTOR) {
-    const { data: team } = await supabase.from('profiles').select('id').eq('parent_id', uid);
-    const teamIds = [uid, ...(team?.map(t => t.id) || [])];
+    let total = 0;
+    try {
+      const { data: team } = await supabase.from('profiles').select('id').eq('parent_id', uid);
+      const teamIds = [uid, ...(team?.map(t => t.id) || [])];
 
-    const { count: teamSales } = await countSales(
-      supabase.from('sales').select('*', { count: 'exact', head: true }).in('seller_id', teamIds)
-    );
-    const total = teamSales || 0;
+      const { count: teamSales } = await countSales(
+        supabase.from('sales').select('*', { count: 'exact', head: true }).in('seller_id', teamIds)
+      );
+      total = teamSales || 0;
+    } catch (e) {
+      console.warn("calcMetrics fallback for DISTRIBUTOR:", e.message);
+    }
     if (total >= 201) return cache({ rate: 0.18, base: 600, level: 'DISTRIBUIDOR 3', salesCount: total });
     if (total >= 101) return cache({ rate: 0.15, base: 600, level: 'DISTRIBUIDOR 2', salesCount: total });
     if (total >= 50)  return cache({ rate: 0.12, base: 500, level: 'DISTRIBUIDOR 1', salesCount: total });
@@ -437,12 +452,25 @@ export const dataService = {
   },
 
   async certifyUser(userId) {
-    const { error } = await supabase
-      .from('profiles')
-      .update({ is_certified: true })
-      .eq('id', userId);
-      
-    if (error) throw new Error(error.message);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ is_certified: true })
+        .eq('id', userId);
+        
+      if (error) throw new Error(error.message);
+    } catch (err) {
+      console.warn("⚠️ Usando LocalStorage para certifyUser:", err.message);
+      const cached = localStorage.getItem('connexo_team') || '[]';
+      let team = JSON.parse(cached);
+      const idx = team.findIndex(t => t.id === userId || t.uid === userId);
+      if (idx !== -1) {
+        team[idx].is_certified = true;
+        localStorage.setItem('connexo_team', JSON.stringify(team));
+      } else {
+        throw new Error('Usuario no encontrado en caché local al certificar');
+      }
+    }
     
     if (_currentUser && (_currentUser.id === userId || _currentUser.uid === userId)) {
       _currentUser.is_certified = true;
