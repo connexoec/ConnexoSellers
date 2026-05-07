@@ -1,6 +1,9 @@
+import { useState } from 'react';
 import { Bell, ArrowLeft } from 'lucide-react';
 
 const Header = ({ user, notificationCount = 0, onShowNotifications, activeTab, onBack, selectedSedeContext = 'GLOBAL', onChangeContext }) => {
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
   return (
     <header style={{ padding: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontFamily: 'var(--font-main)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -22,29 +25,82 @@ const Header = ({ user, notificationCount = 0, onShowNotifications, activeTab, o
       
       <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }} aria-live="polite">
         {user.role === 'SUPER_ADMIN' && (
-          <div style={{ display: 'flex', alignItems: 'center' }}>
-            <select
-              value={selectedSedeContext}
-              onChange={(e) => onChangeContext && onChangeContext(e.target.value)}
-              aria-label="Cambiar Mercado / Contexto de Vista"
+          <div style={{ position: 'relative' }}>
+            <button
+              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+              aria-label="Selector de Mercado"
               style={{
-                padding: '6px 12px',
-                borderRadius: '8px',
-                background: 'rgba(33, 9, 0, 0.8)',
+                background: 'rgba(255, 255, 255, 0.04)',
                 border: '1px solid var(--accent)',
-                color: 'var(--text-primary)',
-                fontSize: '0.75rem',
-                fontWeight: 600,
-                outline: 'none',
+                color: 'white',
+                fontSize: '1.1rem',
+                width: '38px',
+                height: '38px',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
                 cursor: 'pointer',
-                fontFamily: 'var(--font-main)',
-                boxShadow: '0 0 10px var(--accent-glow)'
+                boxShadow: '0 0 10px var(--accent-glow)',
+                outline: 'none',
+                transition: 'all 0.2s'
               }}
             >
-              <option value="GLOBAL">🌎 Vista Global</option>
-              <option value="Ecuador">🇪🇨 Vista Ecuador</option>
-              <option value="Venezuela">🇻🇪 Vista Venezuela</option>
-            </select>
+              {selectedSedeContext === 'GLOBAL' ? '🌎' : selectedSedeContext === 'Ecuador' ? '🇪🇨' : '🇻🇪'}
+            </button>
+
+            {isDropdownOpen && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: '46px',
+                  right: 0,
+                  background: 'rgba(20, 5, 0, 0.95)',
+                  border: '1px solid var(--accent)',
+                  borderRadius: '10px',
+                  padding: '6px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '4px',
+                  zIndex: 2000,
+                  boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
+                  minWidth: '120px'
+                }}
+              >
+                {[
+                  { value: 'GLOBAL', emoji: '🌎', label: 'Global' },
+                  { value: 'Ecuador', emoji: '🇪🇨', label: 'Ecuador' },
+                  { value: 'Venezuela', emoji: '🇻🇪', label: 'Venezuela' }
+                ].map(item => (
+                  <button
+                    key={item.value}
+                    onClick={() => {
+                      onChangeContext && onChangeContext(item.value);
+                      setIsDropdownOpen(false);
+                    }}
+                    style={{
+                      background: selectedSedeContext === item.value ? 'var(--accent)' : 'transparent',
+                      border: 'none',
+                      color: selectedSedeContext === item.value ? 'var(--bg-primary)' : 'white',
+                      fontSize: '0.95rem',
+                      padding: '8px 10px',
+                      borderRadius: '6px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                      fontWeight: 600,
+                      transition: 'all 0.2s',
+                      width: '100%'
+                    }}
+                  >
+                    <span>{item.emoji}</span>
+                    <span style={{ fontSize: '0.7rem' }}>{item.label}</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
