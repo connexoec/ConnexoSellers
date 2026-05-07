@@ -396,29 +396,46 @@ export const dataService = {
   },
 
   // ─── GESTIÓN DE INVENTARIO (Real + LocalStorage Fallback) ──────────────────
-  async getInventory() {
+  async getInventory(sedeContext = 'GLOBAL') {
     try {
-      const { data, error } = await supabase
-        .from('inventory')
-        .select('*')
-        .order('name', { ascending: true });
-      
+      let query = supabase.from('inventory').select('*');
+      if (sedeContext !== 'GLOBAL') {
+        const expectedSedeId = sedeContext === 'Venezuela' ? 'sede-ve-1' : 'sede-ec-1';
+        query = query.eq('sede_id', expectedSedeId);
+      }
+      const { data, error } = await query.order('name', { ascending: true });
       if (error) throw error;
       return data || [];
     } catch (err) {
       console.warn("⚠️ No se pudo cargar inventario de Supabase, usando LocalStorage fallback:", err.message);
       const cached = localStorage.getItem('connexo_inventory');
-      if (cached) return JSON.parse(cached);
+      let items = cached ? JSON.parse(cached) : [];
 
-      const defaultInventory = [
-        { id: 'inv-1', name: 'Tarjetas NFC', description: 'Tarjetas de presentación inteligente con tecnología NFC', category: 'NFC', stock_quantity: 500, unit_type: 'UNIDAD', detail_packaging: 'Cajas de 100 u.' },
-        { id: 'inv-2', name: 'Pulseras NFC', description: 'Pulseras ajustables con chip NFC integrado', category: 'NFC', stock_quantity: 300, unit_type: 'UNIDAD', detail_packaging: 'Bolsas de 50 u.' },
-        { id: 'inv-3', name: 'Chips NFC', description: 'Stickers / Chips NFC adhesivos pequeños', category: 'NFC', stock_quantity: 1000, unit_type: 'UNIDAD', detail_packaging: 'Empaques de 200 u.' },
-        { id: 'inv-4', name: 'Cajas de Presentación', description: 'Cajas elegantes de empaque para productos NFC', category: 'PACKAGING', stock_quantity: 200, unit_type: 'UNIDAD', detail_packaging: 'Caja Kraft Premium' },
-        { id: 'inv-5', name: 'Empaques Connexo', description: 'Empaques sellados con branding de Connexo', category: 'PACKAGING', stock_quantity: 400, unit_type: 'UNIDAD', detail_packaging: 'Sobres acolchados' }
-      ];
-      localStorage.setItem('connexo_inventory', JSON.stringify(defaultInventory));
-      return defaultInventory;
+      if (items.length === 0) {
+        const defaultInventory = [
+          // Ecuador Items
+          { id: 'inv-ec-1', name: 'Tarjetas NFC (EC)', description: 'Tarjetas de presentación inteligente con tecnología NFC', category: 'NFC', stock_quantity: 500, unit_type: 'UNIDAD', detail_packaging: 'Cajas de 100 u.', sede_id: 'sede-ec-1' },
+          { id: 'inv-ec-2', name: 'Pulseras NFC (EC)', description: 'Pulseras ajustables con chip NFC integrado', category: 'NFC', stock_quantity: 300, unit_type: 'UNIDAD', detail_packaging: 'Bolsas de 50 u.', sede_id: 'sede-ec-1' },
+          { id: 'inv-ec-3', name: 'Chips NFC (EC)', description: 'Stickers / Chips NFC adhesivos pequeños', category: 'NFC', stock_quantity: 1000, unit_type: 'UNIDAD', detail_packaging: 'Empaques de 200 u.', sede_id: 'sede-ec-1' },
+          { id: 'inv-ec-4', name: 'Cajas de Presentación (EC)', description: 'Cajas elegantes de empaque para productos NFC', category: 'PACKAGING', stock_quantity: 200, unit_type: 'UNIDAD', detail_packaging: 'Caja Kraft Premium', sede_id: 'sede-ec-1' },
+          { id: 'inv-ec-5', name: 'Empaques Connexo (EC)', description: 'Empaques sellados con branding de Connexo', category: 'PACKAGING', stock_quantity: 400, unit_type: 'UNIDAD', detail_packaging: 'Sobres acolchados', sede_id: 'sede-ec-1' },
+
+          // Venezuela Items
+          { id: 'inv-ve-1', name: 'Tarjetas NFC (VE)', description: 'Tarjetas de presentación inteligente con tecnología NFC', category: 'NFC', stock_quantity: 150, unit_type: 'UNIDAD', detail_packaging: 'Cajas de 100 u.', sede_id: 'sede-ve-1' },
+          { id: 'inv-ve-2', name: 'Pulseras NFC (VE)', description: 'Pulseras ajustables con chip NFC integrado', category: 'NFC', stock_quantity: 80, unit_type: 'UNIDAD', detail_packaging: 'Bolsas de 50 u.', sede_id: 'sede-ve-1' },
+          { id: 'inv-ve-3', name: 'Chips NFC (VE)', description: 'Stickers / Chips NFC adhesivos pequeños', category: 'NFC', stock_quantity: 250, unit_type: 'UNIDAD', detail_packaging: 'Empaques de 200 u.', sede_id: 'sede-ve-1' },
+          { id: 'inv-ve-4', name: 'Cajas de Presentación (VE)', description: 'Cajas elegantes de empaque para productos NFC', category: 'PACKAGING', stock_quantity: 50, unit_type: 'UNIDAD', detail_packaging: 'Caja Kraft Premium', sede_id: 'sede-ve-1' },
+          { id: 'inv-ve-5', name: 'Empaques Connexo (VE)', description: 'Empaques sellados con branding de Connexo', category: 'PACKAGING', stock_quantity: 100, unit_type: 'UNIDAD', detail_packaging: 'Sobres acolchados', sede_id: 'sede-ve-1' }
+        ];
+        localStorage.setItem('connexo_inventory', JSON.stringify(defaultInventory));
+        items = defaultInventory;
+      }
+
+      if (sedeContext !== 'GLOBAL') {
+        const expectedSedeId = sedeContext === 'Venezuela' ? 'sede-ve-1' : 'sede-ec-1';
+        return items.filter(i => i.sede_id === expectedSedeId);
+      }
+      return items;
     }
   },
 

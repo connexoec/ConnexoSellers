@@ -5,7 +5,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { dataService } from '../../services/dataService';
 
-const InventoryManager = ({ user, team, addNotification }) => {
+const InventoryManager = ({ user, team, addNotification, selectedSedeContext = 'GLOBAL' }) => {
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
   
   const [inventory, setInventory] = useState([]);
@@ -31,12 +31,12 @@ const InventoryManager = ({ user, team, addNotification }) => {
 
   useEffect(() => {
     loadData();
-  }, [user]);
+  }, [user, selectedSedeContext]);
 
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const inv = await dataService.getInventory();
+      const inv = await dataService.getInventory(selectedSedeContext);
       setInventory(inv);
       
       const reqs = await dataService.getInventoryRequests(isSuperAdmin ? null : user.id);
@@ -52,7 +52,8 @@ const InventoryManager = ({ user, team, addNotification }) => {
   const handleAddNewItem = async (e) => {
     e.preventDefault();
     try {
-      await dataService.addInventoryItem(newItemData);
+      const activeSedeId = selectedSedeContext === 'Venezuela' ? 'sede-ve-1' : 'sede-ec-1';
+      await dataService.addInventoryItem({ ...newItemData, sede_id: activeSedeId });
       addNotification('Producto añadido al inventario');
       setIsAddingNew(false);
       setNewItemData({ name: '', description: '', category: 'NFC', stock_quantity: 0, unit_type: 'UNIDAD', detail_packaging: '' });
