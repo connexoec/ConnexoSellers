@@ -290,26 +290,6 @@ function App() {
               <h2 style={{ color: 'var(--accent)', margin: '0', fontSize: '1.4rem', textShadow: '0 0 10px var(--accent-glow)' }}>
                 {selectedSedeContext === 'GLOBAL' ? 'Vista Global de Red' : selectedSedeContext === 'Ecuador' ? 'Vista Ecuador' : 'Vista Venezuela'}
               </h2>
-              
-              {/* Selector de Mercado / [Cambiar Mercado] Button Group - COMPACT CHILL VERSION */}
-              <div style={{ marginTop: '15px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <p style={{ fontSize: '0.6rem', opacity: 0.6, textTransform: 'uppercase', margin: 0, letterSpacing: '1px' }}>Mercado</p>
-                <div style={{ display: 'flex', gap: '4px', background: 'rgba(0,0,0,0.3)', padding: '3px', borderRadius: '6px' }}>
-                  {['GLOBAL', 'Ecuador', 'Venezuela'].map(ctx => (
-                    <button
-                      key={ctx}
-                      onClick={() => setSelectedSedeContext(ctx)}
-                      aria-label={`Cambiar vista a ${ctx}`}
-                      style={{
-                        padding: '4px 8px', borderRadius: '4px', border: 'none', fontSize: '0.95rem', cursor: 'pointer', transition: 'all 0.2s',
-                        background: selectedSedeContext === ctx ? 'var(--accent)' : 'transparent'
-                      }}
-                    >
-                      {ctx === 'GLOBAL' ? '🌎' : ctx === 'Ecuador' ? '🇪🇨' : '🇻🇪'}
-                    </button>
-                  ))}
-                </div>
-              </div>
 
               <div style={{ marginTop: '20px', display: 'flex', gap: '20px' }}>
                 <div style={{ flex: 1 }}>
