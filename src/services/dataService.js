@@ -735,11 +735,18 @@ export const dataService = {
 
     _metricsCache.clear(); // ⚡ Invalidad cache de métricas en tiempo real
 
-    // Limpiar LocalStorage preservando la sesión del admin y los avatars/insignias guardados
+    // Limpiar LocalStorage preservando la sesión del admin, avatars/insignias, el INVENTARIO/STOCK actual, las SEDES y el contexto de sede
     const keysToPreserve = {};
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
-      if (key && (key === 'connexo_session' || key.startsWith('connexo_avatar_') || key.startsWith('connexo_badges_'))) {
+      if (key && (
+        key === 'connexo_session' || 
+        key === 'connexo_inventory' ||
+        key === 'connexo_sedes' ||
+        key === 'connexo_selected_sede_context' ||
+        key.startsWith('connexo_avatar_') || 
+        key.startsWith('connexo_badges_')
+      )) {
         keysToPreserve[key] = localStorage.getItem(key);
       }
     }
