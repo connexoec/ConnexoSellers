@@ -325,6 +325,7 @@ export const dataService = {
   },
 
   async getTeam(parentId) {
+    let supabaseData = [];
     try {
       const { data, error } = await supabase
         .from('profiles')
@@ -333,13 +334,21 @@ export const dataService = {
         .order('created_at', { ascending: true });
         
       if (error) throw new Error(error.message);
-      return data.map(({ password, ...rest }) => rest);
+      supabaseData = data ? data.map(({ password, ...rest }) => rest) : [];
     } catch (err) {
-      console.warn("⚠️ Usando LocalStorage para getTeam:", err.message);
-      const cached = localStorage.getItem('connexo_team') || '[]';
-      const team = JSON.parse(cached);
-      return team.filter(t => t.parent_id === parentId).map(({ password, ...rest }) => rest);
+      console.warn("⚠️ Error en Supabase para getTeam, usando solo LocalStorage:", err.message);
     }
+
+    const cached = localStorage.getItem('connexo_team');
+    if (cached) {
+      const localTeam = JSON.parse(cached).filter(t => t.parent_id === parentId).map(({ password, ...rest }) => rest);
+      localTeam.forEach(localUser => {
+        if (!supabaseData.some(su => su.id === localUser.id || su.email === localUser.email)) {
+          supabaseData.push(localUser);
+        }
+      });
+    }
+    return supabaseData;
   },
 
   async addTeamMember(parentId, userData) {
@@ -405,18 +414,28 @@ export const dataService = {
   },
 
   async getAllProfiles() {
+    let supabaseData = [];
     try {
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .order('created_at', { ascending: false });
       if (error) throw new Error(error.message);
-      return data;
+      supabaseData = data || [];
     } catch (err) {
-      console.warn("⚠️ Usando LocalStorage para getAllProfiles:", err.message);
-      const cached = localStorage.getItem('connexo_team') || '[]';
-      return JSON.parse(cached);
+      console.warn("⚠️ Error en Supabase para getAllProfiles, usando solo LocalStorage:", err.message);
     }
+
+    const cached = localStorage.getItem('connexo_team');
+    if (cached) {
+      const localTeam = JSON.parse(cached);
+      localTeam.forEach(localUser => {
+        if (!supabaseData.some(su => su.id === localUser.id || su.email === localUser.email)) {
+          supabaseData.push(localUser);
+        }
+      });
+    }
+    return supabaseData;
   },
 
   async updateProfile(userId, updates) {
