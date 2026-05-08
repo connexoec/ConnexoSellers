@@ -364,11 +364,32 @@ const TeamManager = ({ users, currentUser, onAddUser, sales, selectedSedeContext
                         )}
                       </div>
                     </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <p style={{ margin: 0, fontWeight: 700, color: 'var(--text-primary)', fontSize: '1rem' }}>
-                        ${sales.filter(s => s.seller_id === u.id).reduce((acc, s) => acc + (s.amount || 0), 0).toFixed(0)}
-                      </p>
-                      <p style={{ margin: 0, fontSize: '0.6rem', opacity: 0.4, textTransform: 'uppercase' }}>volumen</p>
+                    <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+                      <div style={{ textAlign: 'right' }}>
+                        <p style={{ margin: 0, fontWeight: 700, color: 'var(--text-primary)', fontSize: '1rem' }}>
+                          ${sales.filter(s => s.seller_id === u.id).reduce((acc, s) => acc + (s.amount || 0), 0).toFixed(0)}
+                        </p>
+                        <p style={{ margin: 0, fontSize: '0.6rem', opacity: 0.4, textTransform: 'uppercase' }}>volumen</p>
+                      </div>
+                      {currentUser?.role === 'SUPER_ADMIN' && (
+                        <button
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            if (confirm(`¿Estás seguro de eliminar permanentemente a ${u.full_name || u.name}? Esta acción no se puede deshacer.`)) {
+                              try {
+                                await dataService.deleteTeamMember(u.id);
+                                alert("Usuario eliminado correctamente.");
+                                window.location.reload();
+                              } catch (err) {
+                                alert("Error al eliminar usuario: " + err.message);
+                              }
+                            }
+                          }}
+                          style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', color: 'var(--danger)', padding: '2px 8px', borderRadius: '4px', fontSize: '0.6rem', cursor: 'pointer', marginTop: '2px' }}
+                        >
+                          Eliminar
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>

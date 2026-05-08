@@ -55,7 +55,7 @@ export const mockStore = {
     if (user.role === ROLES.SELLER) {
       if (mySaleCount >= 31) return { rate: 0.09, base: 300, level: 'VENDEDOR ULTRA' };
       if (mySaleCount >= 20) return { rate: 0.07, base: 250, level: 'VENDEDOR PRO' };
-      return { rate: 0.05, base: 0, level: 'VENDEDOR BASIC' };
+      return { rate: 0.07, base: 0, level: 'VENDEDOR PRO' };
     }
 
     // DISTRIBUTOR LOGIC (Hierarchical)

@@ -13,7 +13,6 @@ export const ROLES = {
 
 export const TIERS = {
   SELLER: [
-    { id: 'BASIC', label: 'VENDEDOR BASIC', rate: 0, base: 0 },
     { id: 'PRO',   label: 'VENDEDOR PRO',   rate: 0.07, base: 250 },
     { id: 'ULTRA', label: 'VENDEDOR ULTRA', rate: 0.09, base: 300 },
   ],
@@ -84,7 +83,7 @@ async function calcMetrics(user) {
     }
     if (total >= 31) return cache({ rate: 0.09, base: 300, level: 'VENDEDOR ULTRA', salesCount: total });
     if (total >= 20) return cache({ rate: 0.07, base: 250, level: 'VENDEDOR PRO',   salesCount: total });
-    return cache({ rate: 0.07, base: 0, level: 'VENDEDOR BASIC', salesCount: total, isPreview: true });
+    return cache({ rate: 0.07, base: 0, level: 'VENDEDOR PRO', salesCount: total, isPreview: true });
   }
 
   // ─── DISTRIBUIDOR (Auto) ──────────────────────────────────────────────
@@ -581,6 +580,35 @@ export const dataService = {
       
       const { password, ...safeProfile } = newLocalProfile;
       return safeProfile;
+    }
+  },
+
+  async deleteTeamMember(userId) {
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('id', userId);
+      
+      if (error) throw new Error(error.message);
+      
+      const cached = localStorage.getItem('connexo_team');
+      if (cached) {
+        const team = JSON.parse(cached);
+        const filtered = team.filter(t => t.id !== userId);
+        localStorage.setItem('connexo_team', JSON.stringify(filtered));
+      }
+      return true;
+    } catch (err) {
+      console.warn("⚠️ Usando LocalStorage para eliminar miembro de equipo:", err.message);
+      const cached = localStorage.getItem('connexo_team');
+      if (cached) {
+        const team = JSON.parse(cached);
+        const filtered = team.filter(t => t.id !== userId);
+        localStorage.setItem('connexo_team', JSON.stringify(filtered));
+        return true;
+      }
+      throw err;
     }
   },
 

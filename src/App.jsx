@@ -879,7 +879,20 @@ function App() {
             ) : (
               <>
                 <h2 style={{ textTransform: 'uppercase', fontSize: '1.4rem', fontFamily: 'var(--font-heading)', letterSpacing: '2px', margin: 0 }}>{user?.full_name}</h2>
-                <p style={{ fontSize: '0.8rem', opacity: 0.5, marginTop: '4px', marginBottom: '8px' }}>{user?.email}</p>
+                {user?.role !== 'DISTRIBUTOR' && (
+                  <p style={{ fontSize: '0.8rem', opacity: 0.5, marginTop: '4px', marginBottom: '8px' }}>{user?.email}</p>
+                )}
+                {user?.role === 'DISTRIBUTOR' && user?.sede_asignada && (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', margin: '4px auto 12px', padding: '6px 16px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '100px' }}>
+                    <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--success)', boxShadow: '0 0 10px var(--success)' }} />
+                    <p style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.8)', fontWeight: 600, margin: 0, textTransform: 'uppercase', letterSpacing: '2px' }}>
+                      SEDE OFICIAL: <span style={{ color: 'white', fontWeight: 700 }}>{sedes.find(s => s.id === user.sede_asignada)?.pais || (user.sede_asignada === 'sede-ve-1' ? 'VENEZUELA' : 'ECUADOR')}</span>
+                    </p>
+                  </div>
+                )}
+                {user?.role === 'DISTRIBUTOR' && !user?.sede_asignada && (
+                  <p style={{ fontSize: '0.7rem', opacity: 0.4, marginTop: '4px', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '1px' }}>DISTRIBUIDOR</p>
+                )}
                 {user?.role === 'SELLER' && parentDistributorName && (
                   <div style={{ display: 'inline-block', margin: '4px auto 12px', padding: '4px 12px', background: 'rgba(255,102,0,0.1)', border: '1px solid var(--accent)', borderRadius: '100px' }}>
                     <p style={{ fontSize: '0.7rem', color: 'var(--accent)', fontWeight: 'bold', margin: 0, textTransform: 'uppercase', letterSpacing: '1px' }}>
@@ -971,7 +984,7 @@ function App() {
                   <p style={{ fontSize: '0.6rem', opacity: 0.7, marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '1px' }}>Objetivo de Rango:</p>
                   {user?.role === 'SELLER' ? (
                     <>
-                      {sales.length < 20 && <p style={{ fontSize: '0.75rem', color: 'var(--accent)', margin: 0, fontWeight: 600 }}>Próximo: PRO ({(20 - sales.length)} ventas restantes)</p>}
+                      {sales.length < 20 && <p style={{ fontSize: '0.75rem', color: 'var(--accent)', margin: 0, fontWeight: 600 }}>Objetivo: Activar Sueldo Base ({(20 - sales.length)} ventas restantes)</p>}
                       {sales.length >= 20 && sales.length < 31 && <p style={{ fontSize: '0.75rem', color: 'var(--accent)', margin: 0, fontWeight: 600 }}>Próximo: ULTRA ({(31 - sales.length)} ventas restantes)</p>}
                       {sales.length >= 31 && <p style={{ fontSize: '0.75rem', color: 'var(--success)', margin: 0, fontWeight: 700 }}>Nivel de Élite Alcanzado</p>}
                     </>
