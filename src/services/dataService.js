@@ -584,6 +584,20 @@ export const dataService = {
     }
   },
 
+  async getProfile(userId) {
+    try {
+      const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).single();
+      if (error) throw error;
+      return data;
+    } catch(e) {
+      const cached = localStorage.getItem('connexo_team');
+      if (cached) {
+         return JSON.parse(cached).find(t => t.id === userId) || null;
+      }
+      return null;
+    }
+  },
+
   async certifyUser(userId) {
     try {
       const { error } = await supabase
