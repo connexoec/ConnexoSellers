@@ -47,7 +47,7 @@ function App() {
   const [newSedeName, setNewSedeName] = useState('');
   const [newSedePais, setNewSedePais] = useState('Ecuador');
   const [selectedDistributorId, setSelectedDistributorId] = useState('');
-
+  const [parentDistributorName, setParentDistributorName] = useState('');
   // Guardar contexto activo de sede en localStorage
   useEffect(() => {
     localStorage.setItem('connexo_selected_sede_context', selectedSedeContext);
@@ -142,6 +142,15 @@ function App() {
       
       // Cargar Sedes para contexto multisede
       dataService.getSedes().then(data => setSedes(data)).catch(console.error);
+      
+      // Fetch parent distributor name for sellers
+      if (role === 'SELLER' && currentUser.parent_id) {
+        dataService.getProfile(currentUser.parent_id).then(p => {
+          if (p && p.role === 'DISTRIBUTOR') {
+            setParentDistributorName(p.full_name || p.name);
+          }
+        }).catch(console.error);
+      }
       
       // Si es SUPER ADMIN, buscar pedidos pendientes y generar notificación
       if (role === 'SUPER_ADMIN') {
@@ -865,6 +874,13 @@ function App() {
               <>
                 <h2 style={{ textTransform: 'uppercase', fontSize: '1.4rem', fontFamily: 'var(--font-heading)', letterSpacing: '2px', margin: 0 }}>{user?.full_name}</h2>
                 <p style={{ fontSize: '0.8rem', opacity: 0.5, marginTop: '4px', marginBottom: '8px' }}>{user?.email}</p>
+                {user?.role === 'SELLER' && parentDistributorName && (
+                  <div style={{ display: 'inline-block', margin: '4px auto 12px', padding: '4px 12px', background: 'rgba(255,102,0,0.1)', border: '1px solid var(--accent)', borderRadius: '100px' }}>
+                    <p style={{ fontSize: '0.7rem', color: 'var(--accent)', fontWeight: 'bold', margin: 0, textTransform: 'uppercase', letterSpacing: '1px' }}>
+                      🛡️ Red de Distribución: {parentDistributorName}
+                    </p>
+                  </div>
+                )}
                 {user?.role === 'SUPER_ADMIN' && (
                   <button 
                     onClick={() => {
