@@ -239,7 +239,7 @@ function App() {
       setSales(prev => [newSale, ...prev]);
       // Actualizar wallet en el user local
       const earned = newSale.commission_earned || 0;
-      const updatedUser = { ...user, wallet_balance: (user.wallet_balance || 0) + earned };
+      let updatedUser = { ...user, wallet_balance: (user.wallet_balance || 0) + earned };
       setUser(updatedUser);
       localStorage.setItem(SESSION_KEY, JSON.stringify(updatedUser));
       setSelectedPlan(null);
@@ -249,14 +249,41 @@ function App() {
 
       // ─── Desbloquear Primera Insignia (FIRST_BLOOD) ─────────────────────────
       const hasFirstBlood = userBadges.includes('FIRST_BLOOD');
+      let currentBadgesList = [...userBadges];
       if (!hasFirstBlood) {
-        const updatedBadges = [...userBadges, 'FIRST_BLOOD'];
-        setUserBadges(updatedBadges);
-        await dataService.saveUserBadges(user.uid || user.id, updatedBadges);
+        currentBadgesList.push('FIRST_BLOOD');
+        setUserBadges(currentBadgesList);
+        await dataService.saveUserBadges(user.uid || user.id, currentBadgesList);
         setTimeout(() => {
           alert("¡FELICIDADES! ¡Has concretado tu primera venta y desbloqueado tu primera insignia oficial: 'Primer Impacto'!");
         }, 800);
         addNotification("¡Has obtenido tu primera insignia oficial: Primer Impacto!", "SUCCESS");
+      }
+
+      // ─── Desbloquear Insignia de Campeón Mensual (MONTHLY_CHAMP) Y Bono de $40 ───
+      const allMonthlySales = [newSale, ...sales].filter(s => s.plan_type?.toUpperCase().includes('MENSUAL'));
+      const monthlySalesCount = allMonthlySales.length;
+
+      if (user?.role === 'SELLER' && monthlySalesCount >= 30 && !currentBadgesList.includes('MONTHLY_CHAMP')) {
+        const finalBadges = [...currentBadgesList, 'MONTHLY_CHAMP'];
+        setUserBadges(finalBadges);
+        await dataService.saveUserBadges(user.uid || user.id, finalBadges);
+
+        const bonusAmount = 40;
+        const finalUser = { ...updatedUser, wallet_balance: (updatedUser.wallet_balance || 0) + bonusAmount };
+        setUser(finalUser);
+        localStorage.setItem(SESSION_KEY, JSON.stringify(finalUser));
+
+        try {
+          await dataService.updateProfile(user.uid || user.id, { wallet_balance: finalUser.wallet_balance });
+        } catch (e) {
+          console.warn("Error guardando saldo de billetera con bono en db:", e.message);
+        }
+
+        setTimeout(() => {
+          alert("🏆 ¡ESPECTACULAR! ¡Has alcanzado la meta de 30 planes mensuales y desbloqueado la insignia 'Campeón Mensual'!\nSe ha depositado un bono de $40.00 en tu billetera.");
+        }, 1200);
+        addNotification("¡Desbloqueaste la insignia Campeón Mensual! +$40.00 Bono", "SUCCESS");
       }
     } catch (err) {
       alert('Error al registrar venta: ' + err.message);
@@ -391,20 +418,39 @@ function App() {
               <p style={{ fontSize: '0.6rem', opacity: 0.6, textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '8px' }}>Estatus de Agente</p>
               <h2 style={{ color: 'var(--accent)', margin: '0', fontSize: '1.4rem', textShadow: '0 0 10px var(--accent-glow)' }}>{metrics.level}</h2>
               
-              <div style={{ margin: '20px 0' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                  <p style={{ fontSize: '0.65rem', opacity: 0.8 }}>Progreso de Nivel</p>
-                  <p style={{ fontSize: '0.65rem', color: 'var(--accent)' }}>{Math.min(sales.length, 100)}%</p>
+              {user?.role === 'SELLER' ? (
+                <div style={{ margin: '20px 0' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                    <p style={{ fontSize: '0.65rem', opacity: 0.8, fontWeight: 'bold', color: 'var(--accent)' }}>🎯 Meta Mensual: Bono de $40</p>
+                    <p style={{ fontSize: '0.65rem', color: 'var(--accent)', fontWeight: 'bold' }}>
+                      {sales.filter(s => s.plan_type?.toUpperCase().includes('MENSUAL')).length}/30 ({Math.min(Math.round((sales.filter(s => s.plan_type?.toUpperCase().includes('MENSUAL')).length / 30) * 100), 100)}%)
+                    </p>
+                  </div>
+                  <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '10px', overflow: 'hidden', border: '1px solid rgba(255,102,0,0.1)' }}>
+                    <motion.div 
+                      initial={{ width: 0 }}
+                      animate={{ width: `${Math.min((sales.filter(s => s.plan_type?.toUpperCase().includes('MENSUAL')).length / 30) * 100, 100)}%` }}
+                      transition={{ duration: 1, ease: "easeOut" }}
+                      style={{ height: '100%', background: 'linear-gradient(90deg, #ff6600, #ffa500)', boxShadow: '0 0 10px var(--accent-glow)' }} 
+                    />
+                  </div>
                 </div>
-                <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '10px', overflow: 'hidden' }}>
-                  <motion.div 
-                    initial={{ width: 0 }}
-                    animate={{ width: `${Math.min(sales.length, 100)}%` }}
-                    transition={{ duration: 1, ease: "easeOut" }}
-                    style={{ height: '100%', background: 'linear-gradient(90deg, var(--accent-dark), var(--accent))', boxShadow: '0 0 10px var(--accent-glow)' }} 
-                  />
+              ) : (
+                <div style={{ margin: '20px 0' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                    <p style={{ fontSize: '0.65rem', opacity: 0.8 }}>Progreso de Nivel</p>
+                    <p style={{ fontSize: '0.65rem', color: 'var(--accent)' }}>{Math.min(sales.length, 100)}%</p>
+                  </div>
+                  <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '10px', overflow: 'hidden' }}>
+                    <motion.div 
+                      initial={{ width: 0 }}
+                      animate={{ width: `${Math.min(sales.length, 100)}%` }}
+                      transition={{ duration: 1, ease: "easeOut" }}
+                      style={{ height: '100%', background: 'linear-gradient(90deg, var(--accent-dark), var(--accent))', boxShadow: '0 0 10px var(--accent-glow)' }} 
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: user?.is_certified ? 'var(--success)' : 'var(--danger)', boxShadow: `0 0 10px ${user?.is_certified ? 'var(--success)' : 'var(--danger)'}` }} />

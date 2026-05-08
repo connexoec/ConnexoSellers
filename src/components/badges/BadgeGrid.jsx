@@ -112,6 +112,15 @@ export const BADGES_INFO = {
     color: '#0f172a', // Azul oscuro medianoche
     borderColor: '#FFD700', // Dorado brillante texturizado
     icon: '🎓'
+  },
+  MONTHLY_CHAMP: {
+    id: 'MONTHLY_CHAMP',
+    title: 'Campeón\nMensual',
+    subtitle: 'Meta 30 Suscripciones.',
+    description: 'Otorgado a los vendedores de élite que han alcanzado la meta mensual de 30 o más suscripciones de software activas (planes PRO o ULTRA). Reconoce la constancia y activa un bono exclusivo de $40 directo a la billetera.',
+    color: '#FF8C00', // Naranja oscuro / Dorado
+    borderColor: '#FFD700', // Dorado brillante
+    icon: '🏆'
   }
 };
 
