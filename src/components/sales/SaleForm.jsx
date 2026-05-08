@@ -85,7 +85,7 @@ const SaleForm = ({ plan, onConfirm, onCancel }) => {
                 color: billingCycle === 'annually' ? 'var(--bg-primary)' : 'rgba(255,255,255,0.5)'
               }}
             >
-              📅 Suscripción Anual
+              Suscripción Anual
             </button>
             <button
               type="button"
@@ -96,7 +96,7 @@ const SaleForm = ({ plan, onConfirm, onCancel }) => {
                 color: billingCycle === 'monthly' ? 'var(--bg-primary)' : 'rgba(255,255,255,0.5)'
               }}
             >
-              🌙 Suscripción Mensual
+              Suscripción Mensual
             </button>
           </div>
         </div>
