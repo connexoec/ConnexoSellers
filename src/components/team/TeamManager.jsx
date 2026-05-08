@@ -431,7 +431,7 @@ const TeamManager = ({ users, currentUser, onAddUser, sales, selectedSedeContext
                             })()}
                           </div>
                           <div style={{ padding: '4px 8px', background: isSelected ? 'var(--accent)' : 'rgba(255,255,255,0.05)', color: isSelected ? 'var(--bg-primary)' : 'white', borderRadius: '100px', fontSize: '0.65rem', fontWeight: 700 }}>
-                            Logros: {badgeCount} / 12
+                            🏅 {badgeCount} / 12
                           </div>
                         </div>
                       );
