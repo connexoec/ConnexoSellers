@@ -418,8 +418,25 @@ function App() {
               <p style={{ fontSize: '0.6rem', opacity: 0.6, textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '8px' }}>Estatus de Agente</p>
               <h2 style={{ color: 'var(--accent)', margin: '0', fontSize: '1.4rem', textShadow: '0 0 10px var(--accent-glow)' }}>{metrics.level}</h2>
               
-              {user?.role === 'SELLER' ? (
-                <div style={{ margin: '20px 0' }}>
+              {/* Progreso de Nivel (Original) */}
+              <div style={{ margin: '20px 0' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                  <p style={{ fontSize: '0.65rem', opacity: 0.8 }}>Progreso de Nivel</p>
+                  <p style={{ fontSize: '0.65rem', color: 'var(--accent)' }}>{Math.min(sales.length, 100)}%</p>
+                </div>
+                <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '10px', overflow: 'hidden' }}>
+                  <motion.div 
+                    initial={{ width: 0 }}
+                    animate={{ width: `${Math.min(sales.length, 100)}%` }}
+                    transition={{ duration: 1, ease: "easeOut" }}
+                    style={{ height: '100%', background: 'linear-gradient(90deg, var(--accent-dark), var(--accent))', boxShadow: '0 0 10px var(--accent-glow)' }} 
+                  />
+                </div>
+              </div>
+
+              {/* Meta Mensual Extra (Solo Vendedores) */}
+              {user?.role === 'SELLER' && (
+                <div style={{ margin: '20px 0', paddingTop: '15px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
                     <p style={{ fontSize: '0.65rem', opacity: 0.8, fontWeight: 'bold', color: 'var(--accent)' }}>🎯 Meta Mensual: Bono de $40</p>
                     <p style={{ fontSize: '0.65rem', color: 'var(--accent)', fontWeight: 'bold' }}>
@@ -432,21 +449,6 @@ function App() {
                       animate={{ width: `${Math.min((sales.filter(s => s.plan_type?.toUpperCase().includes('MENSUAL')).length / 30) * 100, 100)}%` }}
                       transition={{ duration: 1, ease: "easeOut" }}
                       style={{ height: '100%', background: 'linear-gradient(90deg, #ff6600, #ffa500)', boxShadow: '0 0 10px var(--accent-glow)' }} 
-                    />
-                  </div>
-                </div>
-              ) : (
-                <div style={{ margin: '20px 0' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                    <p style={{ fontSize: '0.65rem', opacity: 0.8 }}>Progreso de Nivel</p>
-                    <p style={{ fontSize: '0.65rem', color: 'var(--accent)' }}>{Math.min(sales.length, 100)}%</p>
-                  </div>
-                  <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '10px', overflow: 'hidden' }}>
-                    <motion.div 
-                      initial={{ width: 0 }}
-                      animate={{ width: `${Math.min(sales.length, 100)}%` }}
-                      transition={{ duration: 1, ease: "easeOut" }}
-                      style={{ height: '100%', background: 'linear-gradient(90deg, var(--accent-dark), var(--accent))', boxShadow: '0 0 10px var(--accent-glow)' }} 
                     />
                   </div>
                 </div>
