@@ -68,6 +68,7 @@ const TeamManager = ({ users, currentUser, onAddUser, sales, selectedSedeContext
   const teamIds = myTeam.map(u => u.id);
   const teamSales = sales.filter(s => teamIds.includes(s.seller_id));
   const teamVolume = teamSales.reduce((acc, s) => acc + (s.amount || 0), 0);
+  const totalNetworkCommissions = myTeam.reduce((acc, u) => acc + (u.wallet_balance || 0), 0) + (user?.role === 'DISTRIBUTOR' ? (user?.wallet_balance || 0) : 0);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -220,12 +221,12 @@ const TeamManager = ({ users, currentUser, onAddUser, sales, selectedSedeContext
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 14px', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
                       <span style={{ fontSize: '0.75rem', opacity: 0.7 }}>💸 Comisiones de Red (Vendedores/Dist.)</span>
-                      <strong style={{ fontSize: '0.8rem', color: 'var(--accent)' }}>${teamSales.reduce((acc, s) => acc + (s.commission_earned || 0), 0).toFixed(2)}</strong>
+                      <strong style={{ fontSize: '0.8rem', color: 'var(--accent)' }}>${totalNetworkCommissions.toFixed(2)}</strong>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 14px', background: 'rgba(0,255,157,0.05)', borderRadius: '8px', border: '1px solid rgba(0,255,157,0.1)' }}>
                       <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'white' }}>💼 Neto para Connexo</span>
                       <strong style={{ fontSize: '0.85rem', color: 'white' }}>
-                        ${Math.max(0, teamVolume - (teamVolume * 0.10) - teamSales.reduce((acc, s) => acc + (s.commission_earned || 0), 0)).toFixed(2)}
+                        ${Math.max(0, teamVolume - (teamVolume * 0.10) - totalNetworkCommissions).toFixed(2)}
                       </strong>
                     </div>
                   </div>
@@ -416,7 +417,7 @@ const TeamManager = ({ users, currentUser, onAddUser, sales, selectedSedeContext
                             <p style={{ margin: 0, fontSize: '0.8rem', fontWeight: 700, color: 'white' }}>{u.full_name || u.name}</p>
                             <p style={{ margin: 0, fontSize: '0.65rem', opacity: 0.5 }}>{u.role === 'SELLER' ? 'Vendedor' : 'Distribuidor'} · {u.email}</p>
                             {(() => {
-                              const parentProfile = users.find(x => x.id === u.parent_id);
+                              const parentProfile = team.find(x => x.id === u.parent_id);
                               if (parentProfile && parentProfile.role === 'DISTRIBUTOR') {
                                 return (
                                   <p style={{ margin: '4px 0 0 0', fontSize: '0.6rem', color: 'var(--accent)', fontWeight: 'bold' }}>

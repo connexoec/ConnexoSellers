@@ -932,11 +932,11 @@ function App() {
                 </div>
                 <div style={{ textAlign: 'center', padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
                   <p style={{ fontSize: '0.55rem', opacity: 0.5, textTransform: 'uppercase', marginBottom: '8px' }}>Sueldo Base</p>
-                  <h3 style={{ margin: 0, color: metrics.base > 0 ? 'var(--success)' : 'inherit', fontSize: '1.6rem' }}>${metrics.base.toFixed(0)}</h3>
+                  <h3 style={{ margin: 0, color: metrics.base > 0 ? 'var(--success)' : 'inherit', fontSize: '1.6rem' }}>${metrics.base.toFixed(2)}</h3>
                 </div>
                 <div style={{ textAlign: 'center', padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
                   <p style={{ fontSize: '0.55rem', opacity: 0.5, textTransform: 'uppercase', marginBottom: '8px' }}>Wallet</p>
-                  <h3 style={{ margin: 0, fontSize: '1.6rem', color: 'white' }}>${(user?.wallet_balance || 0).toFixed(0)}</h3>
+                  <h3 style={{ margin: 0, fontSize: '1.6rem', color: 'white' }}>${(user?.wallet_balance || 0).toFixed(2)}</h3>
                 </div>
                 <div style={{ textAlign: 'center', padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
                   <p style={{ fontSize: '0.55rem', opacity: 0.5, textTransform: 'uppercase', marginBottom: '8px' }}>Ventas</p>
