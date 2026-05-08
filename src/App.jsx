@@ -37,6 +37,7 @@ function App() {
   const [currentPage,     setCurrentPage]     = useState(1);
   const [expandedSaleId,  setExpandedSaleId]  = useState(null);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [showProfileSettings, setShowProfileSettings] = useState(false);
   const [editedName,      setEditedName]      = useState('');
   const [editedEmail,     setEditedEmail]     = useState('');
   const [selectedSedeContext, setSelectedSedeContext] = useState(() => {
@@ -785,7 +786,23 @@ function App() {
       );
 
       case 'profile': return (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="slide-up" style={{ padding: '2rem 1.5rem 100px', fontFamily: 'var(--font-main)', textAlign: 'center' }}>
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="slide-up" style={{ padding: '2rem 1.5rem 100px', fontFamily: 'var(--font-main)', textAlign: 'center', position: 'relative' }}>
+          {/* Botón de Configuración (Tuerca Dorada) */}
+          <div style={{ position: 'absolute', top: '2rem', right: '1.5rem', zIndex: 10 }}>
+            <button 
+              onClick={() => setShowProfileSettings(!showProfileSettings)}
+              className="btn-circle glass"
+              title="Ajustes de Perfil"
+              style={{ 
+                width: '38px', height: '38px', borderRadius: '50%', border: '1px solid var(--accent-glow)', 
+                background: showProfileSettings ? 'rgba(255,102,0,0.2)' : 'rgba(0,0,0,0.3)', 
+                color: 'var(--accent)', fontSize: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center', 
+                cursor: 'pointer', transition: 'all 0.3s ease', boxShadow: '0 0 10px rgba(255,102,0,0.1)'
+              }}
+            >
+              ⚙️
+            </button>
+          </div>
           <div 
             onClick={() => document.getElementById('avatar-upload-input').click()}
             style={{ position: 'relative', width: 100, height: 100, margin: '0 auto 1.5rem', cursor: 'pointer' }}
@@ -934,70 +951,90 @@ function App() {
                     </p>
                   </div>
                 )}
-                {user?.role === 'SUPER_ADMIN' && (
-                  <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
-                    <button 
-                      onClick={() => {
-                        setIsEditingProfile(true);
-                        setEditedName(user?.full_name || '');
-                        setEditedEmail(user?.email || '');
-                      }}
-                      className="btn glass" 
-                      style={{ fontSize: '0.7rem', padding: '6px 14px', height: 'auto' }}
-                    >
-                      Editar Perfil
-                    </button>
-                    <button 
-                      onClick={() => {
-                        if (confirm('¿Limpiar la caché local del navegador? Esto eliminará usuarios fantasma atrapados en la memoria de tu computadora, pero no afectará la base de datos real en la nube.')) {
-                          localStorage.removeItem('connexo_team');
-                          localStorage.removeItem('connexo_sales');
-                          window.location.reload();
-                        }
-                      }}
-                      className="btn glass" 
-                      style={{ fontSize: '0.7rem', padding: '6px 14px', height: 'auto', background: 'rgba(239,68,68,0.1)', color: 'var(--danger)', border: '1px solid var(--danger)' }}
-                    >
-                      Limpiar Caché Local
-                    </button>
-                  </div>
-                )}
               </>
             )}
           </div>
           <div style={{ display: 'inline-block', padding: '4px 16px', background: 'rgba(255,102,0,0.1)', borderRadius: '100px', border: '1px solid var(--accent-glow)', marginTop: '8px', marginBottom: '12px' }}>
             <p style={{ color: 'var(--accent)', fontWeight: 700, margin: 0, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px' }}>{metrics.level}</p>
           </div>
-          <button 
-            onClick={async () => {
-              const newPassword = prompt("Cambiar Contraseña:\nIngresa tu nueva contraseña para acceder al ecosistema:");
-              if (newPassword) {
-                if (newPassword.length < 4) {
-                  alert("La contraseña debe tener al menos 4 caracteres.");
-                  return;
-                }
-                try {
-                  await dataService.updateProfile(user.id || user.uid, { password: newPassword });
-                  const updatedUser = { ...user, password: newPassword };
-                  setUser(updatedUser);
-                  localStorage.setItem(SESSION_KEY, JSON.stringify(updatedUser));
-                  addNotification("Contraseña actualizada con éxito", "SUCCESS");
-                  alert("Contraseña actualizada con éxito.");
-                } catch (err) {
-                  // Fallback local
-                  const updatedUser = { ...user, password: newPassword };
-                  setUser(updatedUser);
-                  localStorage.setItem(SESSION_KEY, JSON.stringify(updatedUser));
-                  addNotification("Contraseña guardada localmente", "SUCCESS");
-                  alert("Contraseña actualizada con éxito.");
-                }
-              }
-            }}
-            className="btn glass"
-            style={{ fontSize: '0.65rem', padding: '4px 12px', height: 'auto', borderRadius: '100px', display: 'inline-flex', alignItems: 'center', gap: '4px', marginBottom: '1rem' }}
-          >
-            Cambiar Contraseña
-          </button>
+
+          {/* Panel de Configuración Oculto (Tuerca Dorada) */}
+          {showProfileSettings && (
+            <motion.div 
+              initial={{ height: 0, opacity: 0 }} 
+              animate={{ height: 'auto', opacity: 1 }}
+              transition={{ duration: 0.3 }}
+              className="card glass" 
+              style={{ 
+                margin: '1rem auto 1.5rem', padding: '1.2rem', maxWidth: '340px', textAlign: 'left', 
+                border: '1px solid var(--accent-glow)', background: 'linear-gradient(135deg, rgba(255,102,0,0.03) 0%, rgba(0,0,0,0.2) 100%)',
+                borderRadius: '12px', boxShadow: '0 8px 32px rgba(0,0,0,0.4)', overflow: 'hidden'
+              }}
+            >
+              <p style={{ fontSize: '0.65rem', textTransform: 'uppercase', opacity: 0.6, margin: '0 0 1rem', letterSpacing: '2px', fontWeight: 700, color: 'var(--accent)', textAlign: 'center' }}>Ajustes de Perfil</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <button 
+                  onClick={() => {
+                    setIsEditingProfile(true);
+                    setEditedName(user?.full_name || '');
+                    setEditedEmail(user?.email || '');
+                    setShowProfileSettings(false);
+                  }}
+                  className="btn glass" 
+                  style={{ fontSize: '0.7rem', padding: '10px', height: 'auto', width: '100%', justifyContent: 'flex-start', gap: '8px' }}
+                >
+                  📝 Editar Perfil
+                </button>
+                
+                <button 
+                  onClick={async () => {
+                    setShowProfileSettings(false);
+                    const newPassword = prompt("Cambiar Contraseña:\nIngresa tu nueva contraseña para acceder al ecosistema:");
+                    if (newPassword) {
+                      if (newPassword.length < 4) {
+                        alert("La contraseña debe tener al menos 4 caracteres.");
+                        return;
+                      }
+                      try {
+                        await dataService.updateProfile(user.id || user.uid, { password: newPassword });
+                        const updatedUser = { ...user, password: newPassword };
+                        setUser(updatedUser);
+                        localStorage.setItem(SESSION_KEY, JSON.stringify(updatedUser));
+                        addNotification("Contraseña actualizada con éxito", "SUCCESS");
+                        alert("Contraseña actualizada con éxito.");
+                      } catch (err) {
+                        // Fallback local
+                        const updatedUser = { ...user, password: newPassword };
+                        setUser(updatedUser);
+                        localStorage.setItem(SESSION_KEY, JSON.stringify(updatedUser));
+                        addNotification("Contraseña guardada localmente", "SUCCESS");
+                        alert("Contraseña actualizada con éxito.");
+                      }
+                    }
+                  }}
+                  className="btn glass"
+                  style={{ fontSize: '0.7rem', padding: '10px', height: 'auto', width: '100%', justifyContent: 'flex-start', gap: '8px' }}
+                >
+                  🔑 Cambiar Contraseña
+                </button>
+
+                <button 
+                  onClick={() => {
+                    setShowProfileSettings(false);
+                    if (confirm('¿Limpiar la caché local del navegador? Esto eliminará usuarios fantasma atrapados en la memoria de tu computadora, pero no afectará la base de datos real en la nube.')) {
+                      localStorage.removeItem('connexo_team');
+                      localStorage.removeItem('connexo_sales');
+                      window.location.reload();
+                    }
+                  }}
+                  className="btn glass" 
+                  style={{ fontSize: '0.7rem', padding: '10px', height: 'auto', width: '100%', justifyContent: 'flex-start', gap: '8px', background: 'rgba(239,68,68,0.05)', color: 'var(--danger)', border: '1px solid rgba(239,68,68,0.2)' }}
+                >
+                  🗑️ Limpiar Caché Local
+                </button>
+              </div>
+            </motion.div>
+          )}
 
           {/* Badge Grid Mosaico */}
           <div style={{ marginTop: '2rem', textAlign: 'left' }}>
