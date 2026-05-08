@@ -62,7 +62,11 @@ const TeamManager = ({ users, currentUser, onAddUser, sales, selectedSedeContext
   ).filter(u => {
     if (selectedSedeContext === 'GLOBAL') return true;
     const expectedSedeId = selectedSedeContext === 'Venezuela' ? 'sede-ve-1' : 'sede-ec-1';
-    return u.sede_asignada === expectedSedeId;
+    if (u.sede_asignada) {
+      return u.sede_asignada === expectedSedeId;
+    }
+    const isVenezuela = selectedSedeContext === 'Venezuela';
+    return isVenezuela ? u.email?.includes('ve') : !u.email?.includes('ve');
   });
 
   const teamIds = myTeam.map(u => u.id);
@@ -74,33 +78,15 @@ const TeamManager = ({ users, currentUser, onAddUser, sales, selectedSedeContext
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      let activeSedeId = null;
-      if (currentUser?.role === 'SUPER_ADMIN') {
-        activeSedeId = selectedSedeContext === 'Venezuela' ? 'sede-ve-1' : selectedSedeContext === 'Ecuador' ? 'sede-ec-1' : null;
-      } else {
-        activeSedeId = currentUser?.sede_asignada || null;
-      }
       const userData = {
         name: e.target.name.value,
         email: e.target.email.value,
         role: e.target.role?.value || 'SELLER',
         tier: e.target.tier?.value || null,
         parent_id: currentUid,
-        sede_asignada: activeSedeId
+        sede_asignada: null // La sede oficial no se asigna al crear el perfil; es otorgada como un logro por el Super Admin
       };
       const newUser = await dataService.addTeamMember(currentUid, userData);
-      
-      // Otorgar insignia de Distribuidor Verificado automáticamente si el Super Admin lo crea con sede
-      if (currentUser?.role === 'SUPER_ADMIN' && userData.role === 'DISTRIBUTOR' && activeSedeId) {
-        try {
-          const uid = newUser.id || newUser.uid;
-          if (uid) {
-            await dataService.saveUserBadges(uid, ['VERIFIED_DIST']);
-          }
-        } catch(e) {
-          console.error("Error auto-assigning badge:", e);
-        }
-      }
 
       onAddUser(newUser);
       setIsAdding(false);

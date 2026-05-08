@@ -173,9 +173,15 @@ export const dataService = {
       if (!error && data) {
         userData = data;
       } else {
+        if (error && error.code === 'PGRST116') {
+          throw new Error('USER_NOT_FOUND');
+        }
         throw new Error('No encontrado en Supabase');
       }
     } catch (err) {
+      if (err.message === 'USER_NOT_FOUND') {
+        throw new Error('Credenciales incorrectas o cuenta no registrada.');
+      }
       // Buscar en caché local (modo offline o usuarios caídos por schema)
       const cached = localStorage.getItem('connexo_team');
       if (cached) {

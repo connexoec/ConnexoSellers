@@ -86,6 +86,12 @@ function App() {
                 setUser(updatedUser);
                 localStorage.setItem(SESSION_KEY, JSON.stringify(updatedUser));
                 refreshData(updatedUser);
+              } else if (error && error.code === 'PGRST116') {
+                console.warn("User session is invalid (deleted from Supabase). Forcing logout.");
+                localStorage.removeItem(SESSION_KEY);
+                localStorage.removeItem('connexo_active_tab');
+                setUser(null);
+                setIsAuthenticated(false);
               } else {
                 refreshData(savedUser);
               }
@@ -912,17 +918,32 @@ function App() {
                   </div>
                 )}
                 {user?.role === 'SUPER_ADMIN' && (
-                  <button 
-                    onClick={() => {
-                      setIsEditingProfile(true);
-                      setEditedName(user?.full_name || '');
-                      setEditedEmail(user?.email || '');
-                    }}
-                    className="btn glass" 
-                    style={{ fontSize: '0.6rem', padding: '4px 10px', height: 'auto', borderRadius: '100px', marginBottom: '1rem' }}
-                  >
-                    Editar Perfil
-                  </button>
+                  <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                    <button 
+                      onClick={() => {
+                        setIsEditingProfile(true);
+                        setEditedName(user?.full_name || '');
+                        setEditedEmail(user?.email || '');
+                      }}
+                      className="btn glass" 
+                      style={{ fontSize: '0.7rem', padding: '6px 14px', height: 'auto' }}
+                    >
+                      Editar Perfil
+                    </button>
+                    <button 
+                      onClick={() => {
+                        if (confirm('¿Limpiar la caché local del navegador? Esto eliminará usuarios fantasma atrapados en la memoria de tu computadora, pero no afectará la base de datos real en la nube.')) {
+                          localStorage.removeItem('connexo_team');
+                          localStorage.removeItem('connexo_sales');
+                          window.location.reload();
+                        }
+                      }}
+                      className="btn glass" 
+                      style={{ fontSize: '0.7rem', padding: '6px 14px', height: 'auto', background: 'rgba(239,68,68,0.1)', color: 'var(--danger)', border: '1px solid var(--danger)' }}
+                    >
+                      Limpiar Caché Local
+                    </button>
+                  </div>
                 )}
               </>
             )}
