@@ -558,6 +558,12 @@ export const dataService = {
       }
       return completeProfile;
     } catch (err) {
+      // Si el error NO es de red (ej: duplicado), abortamos y lo mostramos al usuario
+      if (err.message && !err.message.toLowerCase().includes('fetch')) {
+        console.error("⚠️ Error de Supabase al agregar usuario:", err.message);
+        throw new Error("No se pudo registrar: " + err.message);
+      }
+      
       console.warn("⚠️ Usando LocalStorage para agregar miembro de equipo:", err.message);
       const cached = localStorage.getItem('connexo_team') || '[]';
       const team = JSON.parse(cached);
@@ -567,7 +573,6 @@ export const dataService = {
         id: `profile-${Date.now()}`
       };
       
-      // Chequear duplicado manual offline
       if (team.some(t => t.email === newLocalProfile.email)) {
         throw new Error('Ya existe un usuario con este correo (Offline).');
       }
@@ -582,14 +587,16 @@ export const dataService = {
 
   async deleteTeamMember(userId) {
     try {
-      // 1. Borrar ventas directas para evitar Foreign Key constraints
+      // 1. Borrar dependencias directas para evitar Foreign Key constraints
       await supabase.from('sales').delete().eq('seller_id', userId);
+      await supabase.from('inventory_requests').delete().eq('distributor_id', userId);
 
       // 2. Obtener y borrar en cascada a sus vendedores dependientes y sus ventas
       const { data: dependents } = await supabase.from('profiles').select('id').eq('parent_id', userId);
       if (dependents && dependents.length > 0) {
         for (const dep of dependents) {
            await supabase.from('sales').delete().eq('seller_id', dep.id);
+           await supabase.from('inventory_requests').delete().eq('distributor_id', dep.id);
            await supabase.from('profiles').delete().eq('id', dep.id);
         }
       }
