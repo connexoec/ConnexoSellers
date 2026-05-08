@@ -17,7 +17,6 @@ export const TIERS = {
     { id: 'ULTRA', label: 'VENDEDOR ULTRA', rate: 0.09, base: 300 },
   ],
   DISTRIBUTOR: [
-    { id: 'BASIC', label: 'DISTRIBUIDOR BASIC', rate: 0, base: 0 },
     { id: 'D1',    label: 'DISTRIBUIDOR 1',     rate: 0.12, base: 500 },
     { id: 'D2',    label: 'DISTRIBUIDOR 2',     rate: 0.15, base: 600 },
     { id: 'D3',    label: 'DISTRIBUIDOR 3',     rate: 0.18, base: 600 },
@@ -103,7 +102,7 @@ async function calcMetrics(user) {
     if (total >= 201) return cache({ rate: 0.18, base: 600, level: 'DISTRIBUIDOR 3', salesCount: total });
     if (total >= 101) return cache({ rate: 0.15, base: 600, level: 'DISTRIBUIDOR 2', salesCount: total });
     if (total >= 50)  return cache({ rate: 0.12, base: 500, level: 'DISTRIBUIDOR 1', salesCount: total });
-    return cache({ rate: 0.12, base: 0, level: 'DISTRIBUIDOR BASIC', salesCount: total, isPreview: true });
+    return cache({ rate: 0.12, base: 0, level: 'DISTRIBUIDOR 1', salesCount: total, isPreview: true });
   }
 
   return cache({ rate: 0, base: 0, level: 'SUPER ADMIN' });

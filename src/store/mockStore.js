@@ -67,7 +67,7 @@ export const mockStore = {
       if (teamSalesCount >= 201) return { rate: 0.18, base: 600, level: 'PARTNER 3' };
       if (teamSalesCount >= 101) return { rate: 0.15, base: 600, level: 'PARTNER 2' };
       if (teamSalesCount >= 50) return { rate: 0.12, base: 500, level: 'PARTNER 1' };
-      return { rate: 0.10, base: 0, level: 'PARTNER BASIC' };
+      return { rate: 0.12, base: 0, level: 'DISTRIBUIDOR 1' };
     }
 
     return { rate: 0, base: 0, level: 'ADMIN' };
