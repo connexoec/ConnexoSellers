@@ -74,7 +74,12 @@ const TeamManager = ({ users, currentUser, onAddUser, sales, selectedSedeContext
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      const activeSedeId = selectedSedeContext === 'Venezuela' ? 'sede-ve-1' : selectedSedeContext === 'Ecuador' ? 'sede-ec-1' : null;
+      let activeSedeId = null;
+      if (currentUser?.role === 'SUPER_ADMIN') {
+        activeSedeId = selectedSedeContext === 'Venezuela' ? 'sede-ve-1' : selectedSedeContext === 'Ecuador' ? 'sede-ec-1' : null;
+      } else {
+        activeSedeId = currentUser?.sede_asignada || null;
+      }
       const userData = {
         name: e.target.name.value,
         email: e.target.email.value,
