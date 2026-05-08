@@ -89,6 +89,19 @@ const TeamManager = ({ users, currentUser, onAddUser, sales, selectedSedeContext
         sede_asignada: activeSedeId
       };
       const newUser = await dataService.addTeamMember(currentUid, userData);
+      
+      // Otorgar insignia de Distribuidor Verificado automáticamente si el Super Admin lo crea con sede
+      if (currentUser?.role === 'SUPER_ADMIN' && userData.role === 'DISTRIBUTOR' && activeSedeId) {
+        try {
+          const uid = newUser.id || newUser.uid;
+          if (uid) {
+            await dataService.saveUserBadges(uid, ['VERIFIED_DIST']);
+          }
+        } catch(e) {
+          console.error("Error auto-assigning badge:", e);
+        }
+      }
+
       onAddUser(newUser);
       setIsAdding(false);
       e.target.reset();

@@ -887,13 +887,6 @@ function App() {
                     </p>
                   </div>
                 )}
-                {user?.role === 'DISTRIBUTOR' && user?.sede_asignada && (
-                  <div style={{ display: 'inline-block', margin: '4px auto 12px', padding: '4px 12px', background: 'rgba(0,255,157,0.1)', border: '1px solid var(--success)', borderRadius: '100px' }}>
-                    <p style={{ fontSize: '0.7rem', color: 'var(--success)', fontWeight: 'bold', margin: 0, textTransform: 'uppercase', letterSpacing: '1px' }}>
-                      Sede Principal: {sedes.find(s => s.id === user.sede_asignada)?.pais || (user.sede_asignada === 'sede-ve-1' ? 'Venezuela' : 'Ecuador')}
-                    </p>
-                  </div>
-                )}
                 {user?.role === 'SUPER_ADMIN' && (
                   <button 
                     onClick={() => {
