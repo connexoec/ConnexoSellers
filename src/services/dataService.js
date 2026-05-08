@@ -81,8 +81,7 @@ async function calcMetrics(user) {
       console.warn("calcMetrics fallback for SELLER:", e.message);
     }
     if (total >= 31) return cache({ rate: 0.09, base: 300, level: 'VENDEDOR ULTRA', salesCount: total });
-    if (total >= 20) return cache({ rate: 0.07, base: 250, level: 'VENDEDOR PRO',   salesCount: total });
-    return cache({ rate: 0.07, base: 0, level: 'VENDEDOR PRO', salesCount: total, isPreview: true });
+    return cache({ rate: 0.07, base: 250, level: 'VENDEDOR PRO', salesCount: total });
   }
 
   // ─── DISTRIBUIDOR (Auto) ──────────────────────────────────────────────
@@ -101,8 +100,7 @@ async function calcMetrics(user) {
     }
     if (total >= 201) return cache({ rate: 0.18, base: 600, level: 'DISTRIBUIDOR 3', salesCount: total });
     if (total >= 101) return cache({ rate: 0.15, base: 600, level: 'DISTRIBUIDOR 2', salesCount: total });
-    if (total >= 50)  return cache({ rate: 0.12, base: 500, level: 'DISTRIBUIDOR 1', salesCount: total });
-    return cache({ rate: 0.12, base: 0, level: 'DISTRIBUIDOR 1', salesCount: total, isPreview: true });
+    return cache({ rate: 0.12, base: 500, level: 'DISTRIBUIDOR 1', salesCount: total });
   }
 
   return cache({ rate: 0, base: 0, level: 'SUPER ADMIN' });
@@ -584,6 +582,19 @@ export const dataService = {
 
   async deleteTeamMember(userId) {
     try {
+      // 1. Borrar ventas directas para evitar Foreign Key constraints
+      await supabase.from('sales').delete().eq('seller_id', userId);
+
+      // 2. Obtener y borrar en cascada a sus vendedores dependientes y sus ventas
+      const { data: dependents } = await supabase.from('profiles').select('id').eq('parent_id', userId);
+      if (dependents && dependents.length > 0) {
+        for (const dep of dependents) {
+           await supabase.from('sales').delete().eq('seller_id', dep.id);
+           await supabase.from('profiles').delete().eq('id', dep.id);
+        }
+      }
+
+      // 3. Borrar el perfil del usuario objetivo
       const { error } = await supabase
         .from('profiles')
         .delete()
@@ -593,18 +604,18 @@ export const dataService = {
       
       const cached = localStorage.getItem('connexo_team');
       if (cached) {
-        const team = JSON.parse(cached);
-        const filtered = team.filter(t => t.id !== userId);
-        localStorage.setItem('connexo_team', JSON.stringify(filtered));
+        let team = JSON.parse(cached);
+        team = team.filter(t => t.id !== userId && t.parent_id !== userId);
+        localStorage.setItem('connexo_team', JSON.stringify(team));
       }
       return true;
     } catch (err) {
-      console.warn("⚠️ Usando LocalStorage para eliminar miembro de equipo:", err.message);
+      console.warn("⚠️ Error en Supabase al eliminar. Limpiando caché local:", err.message);
       const cached = localStorage.getItem('connexo_team');
       if (cached) {
-        const team = JSON.parse(cached);
-        const filtered = team.filter(t => t.id !== userId);
-        localStorage.setItem('connexo_team', JSON.stringify(filtered));
+        let team = JSON.parse(cached);
+        team = team.filter(t => t.id !== userId && t.parent_id !== userId);
+        localStorage.setItem('connexo_team', JSON.stringify(team));
         return true;
       }
       throw err;
