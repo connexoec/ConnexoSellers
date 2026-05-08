@@ -211,24 +211,26 @@ const TeamManager = ({ users, currentUser, onAddUser, sales, selectedSedeContext
                   onClick={e => e.stopPropagation()} // Evitar que colapse el card al hacer clic dentro
                 >
                   <p style={{ fontSize: '0.75rem', lineHeight: '1.4', opacity: 0.8, color: 'white', background: 'rgba(0,255,157,0.03)', padding: '12px', borderRadius: '8px', borderLeft: '3px solid var(--success)', marginBottom: '1.2rem' }}>
-                    🌿 <strong>Responsabilidad Social:</strong> Connexo destina el <strong>10%</strong> del total de la venta de cualquier plan PRO o ULTRA a la <strong>Fundación Arupo</strong> para impulsar el desarrollo tecnológico comunitario.
+                    <strong>Responsabilidad Social:</strong> Connexo destina el <strong>10%</strong> del total de la venta de cualquier plan PRO o ULTRA a la <strong>Fundación Arupo</strong> para impulsar el desarrollo tecnológico comunitario.
                   </p>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 14px', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                      <span style={{ fontSize: '0.75rem', opacity: 0.7 }}>🌿 Fundación Arupo (10%)</span>
+                      <span style={{ fontSize: '0.75rem', opacity: 0.7 }}>Fundación Arupo (10%)</span>
                       <strong style={{ fontSize: '0.8rem', color: 'var(--success)' }}>${(teamVolume * 0.10).toFixed(2)}</strong>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 14px', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                      <span style={{ fontSize: '0.75rem', opacity: 0.7 }}>💸 Comisiones de Red (Vendedores/Dist.)</span>
+                      <span style={{ fontSize: '0.75rem', opacity: 0.7 }}>Comisiones de Red (Vendedores/Dist.)</span>
                       <strong style={{ fontSize: '0.8rem', color: 'var(--accent)' }}>${totalNetworkCommissions.toFixed(2)}</strong>
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 14px', background: 'rgba(0,255,157,0.05)', borderRadius: '8px', border: '1px solid rgba(0,255,157,0.1)' }}>
-                      <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'white' }}>💼 Neto para Connexo</span>
-                      <strong style={{ fontSize: '0.85rem', color: 'white' }}>
-                        ${Math.max(0, teamVolume - (teamVolume * 0.10) - totalNetworkCommissions).toFixed(2)}
-                      </strong>
-                    </div>
+                    {currentUser?.role === 'SUPER_ADMIN' && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 14px', background: 'rgba(0,255,157,0.05)', borderRadius: '8px', border: '1px solid rgba(0,255,157,0.1)' }}>
+                        <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'white' }}>Neto para Connexo</span>
+                        <strong style={{ fontSize: '0.85rem', color: 'white' }}>
+                          ${Math.max(0, teamVolume - (teamVolume * 0.10) - totalNetworkCommissions).toFixed(2)}
+                        </strong>
+                      </div>
+                    )}
                   </div>
                 </motion.div>
               )}
@@ -421,7 +423,7 @@ const TeamManager = ({ users, currentUser, onAddUser, sales, selectedSedeContext
                               if (parentProfile && parentProfile.role === 'DISTRIBUTOR') {
                                 return (
                                   <p style={{ margin: '4px 0 0 0', fontSize: '0.6rem', color: 'var(--accent)', fontWeight: 'bold' }}>
-                                    🛡️ Red de: {parentProfile.full_name || parentProfile.name}
+                                    Red de: {parentProfile.full_name || parentProfile.name}
                                   </p>
                                 );
                               }
@@ -429,7 +431,7 @@ const TeamManager = ({ users, currentUser, onAddUser, sales, selectedSedeContext
                             })()}
                           </div>
                           <div style={{ padding: '4px 8px', background: isSelected ? 'var(--accent)' : 'rgba(255,255,255,0.05)', color: isSelected ? 'var(--bg-primary)' : 'white', borderRadius: '100px', fontSize: '0.65rem', fontWeight: 700 }}>
-                            🏅 {badgeCount} / 12
+                            Logros: {badgeCount} / 12
                           </div>
                         </div>
                       );

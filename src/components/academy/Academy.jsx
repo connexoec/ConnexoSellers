@@ -122,7 +122,7 @@ const Academy = ({ user, onCertify }) => {
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <Award size={36} color="var(--success)" style={{ filter: 'drop-shadow(0 0 8px rgba(0,255,157,0.4))' }} />
               <div>
-                <h3 style={{ margin: 0, fontSize: '1rem', color: 'var(--success)', fontFamily: 'var(--font-heading)' }}>CERTIFICACIÓN ACTIVA 🏆</h3>
+                <h3 style={{ margin: 0, fontSize: '1rem', color: 'var(--success)', fontFamily: 'var(--font-heading)' }}>CERTIFICACIÓN ACTIVA</h3>
                 <p style={{ margin: '4px 0 0', fontSize: '0.8rem', opacity: 0.8 }}>¡Felicidades! Tienes acceso completo a comisiones, bonos y sueldos base.</p>
               </div>
             </div>
@@ -154,9 +154,9 @@ const Academy = ({ user, onCertify }) => {
                   onChange={(e) => setType(e.target.value)}
                   style={{ width: '100%', padding: '12px', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--glass-border)', color: 'white', borderRadius: '8px', fontSize: '0.9rem' }}
                 >
-                  <option value="video">🎥 Video (YouTube / Vimeo)</option>
-                  <option value="document">📄 Documento o PDF</option>
-                  <option value="quiz">📝 Cuestionario / Examen</option>
+                  <option value="video">Video (YouTube / Vimeo)</option>
+                  <option value="document">Documento o PDF</option>
+                  <option value="quiz">Cuestionario / Examen</option>
                 </select>
               </div>
               <div>
@@ -276,7 +276,7 @@ const Academy = ({ user, onCertify }) => {
                 <div key={course.id} className="card glass" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                     <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(255,255,255,0.03)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      {course.type === 'video' ? '🎥' : course.type === 'quiz' ? '📝' : '📄'}
+                      {course.type === 'video' ? <Play size={16} /> : course.type === 'quiz' ? <HelpCircle size={16} /> : <FileText size={16} />}
                     </div>
                     <div>
                       <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 600 }}>{course.title}</h4>
@@ -302,7 +302,7 @@ const Academy = ({ user, onCertify }) => {
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem' }}>
-                    {course.type === 'video' ? '🎥' : course.type === 'quiz' ? '📝' : '📄'}
+                    {course.type === 'video' ? <Play size={18} /> : course.type === 'quiz' ? <HelpCircle size={18} /> : <FileText size={18} />}
                   </div>
                   <div>
                     <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 600 }}>{course.title}</h4>
@@ -411,14 +411,14 @@ const Academy = ({ user, onCertify }) => {
                 <div style={{ textAlign: 'center', padding: '1rem 0' }}>
                   {quizSuccess ? (
                     <motion.div initial={{ scale: 0.8 }} animate={{ scale: 1 }} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
-                      <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: 'rgba(0,255,157,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2rem' }}>🏆</div>
+                      <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: 'rgba(0,255,157,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2rem' }}><Award size={32} color="var(--success)" /></div>
                       <h4 style={{ color: 'var(--success)', margin: 0, fontSize: '1.2rem', fontFamily: 'var(--font-heading)' }}>¡EXAMEN APROBADO!</h4>
                       <p style={{ fontSize: '0.85rem', opacity: 0.8, maxWidth: '300px', margin: '4px 0 20px' }}>Has respondido correctamente todas las preguntas. Tu certificación oficial ya está activa en tu red.</p>
                       <button onClick={() => setActiveQuiz(null)} className="btn btn-primary" style={{ padding: '10px 24px', color: 'var(--bg-primary)' }}>Listo</button>
                     </motion.div>
                   ) : (
                     <motion.div initial={{ scale: 0.8 }} animate={{ scale: 1 }} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
-                      <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: 'rgba(239,68,68,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2rem' }}>❌</div>
+                      <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: 'rgba(239,68,68,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2rem', fontWeight: 'bold', color: 'var(--danger)' }}>X</div>
                       <h4 style={{ color: 'var(--danger)', margin: 0, fontSize: '1.2rem', fontFamily: 'var(--font-heading)' }}>EXAMEN NO APROBADO</h4>
                       <p style={{ fontSize: '0.85rem', opacity: 0.8, maxWidth: '300px', margin: '4px 0 20px' }}>Algunas respuestas son incorrectas. Repasa los materiales de formación y vuelve a intentarlo.</p>
                       <button onClick={() => setQuizSubmitted(false)} className="btn" style={{ padding: '10px 24px', background: 'var(--accent)', color: 'var(--bg-primary)' }}>Reintentar</button>

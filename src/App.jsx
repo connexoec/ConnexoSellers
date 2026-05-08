@@ -502,7 +502,7 @@ function App() {
               <input 
                 value={searchQuery}
                 onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
-                placeholder="🔍 Buscar por nombre, email o teléfono..."
+                placeholder="Buscar por nombre, email o teléfono..."
                 style={{ width: '100%', padding: '10px 14px', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--glass-border)', color: 'white', borderRadius: '10px', fontSize: '0.8rem' }}
               />
               <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '4px' }}>
@@ -586,9 +586,9 @@ function App() {
                               onClick={e => e.stopPropagation()}
                             >
                               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
-                                <p style={{ margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>📞 {s.customer_phone || 'N/A'}</p>
-                                <p style={{ margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>✉️ {s.customer_email || 'N/A'}</p>
-                                {s.customer_company && <p style={{ margin: 0, gridColumn: '1 / -1' }}>🏢 {s.customer_company}</p>}
+                                <p style={{ margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Tel: {s.customer_phone || 'N/A'}</p>
+                                <p style={{ margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Email: {s.customer_email || 'N/A'}</p>
+                                {s.customer_company && <p style={{ margin: 0, gridColumn: '1 / -1' }}>Empresa: {s.customer_company}</p>}
                               </div>
                               {s.customer_notes && (
                                 <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid rgba(255,255,255,0.05)', fontStyle: 'italic', opacity: 0.8 }}>
@@ -777,7 +777,7 @@ function App() {
               position: 'absolute', bottom: 0, right: 0, background: 'var(--accent)', borderRadius: '50%', width: 28, height: 28,
               display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid var(--bg-primary)', boxShadow: '0 2px 8px rgba(0,0,0,0.4)', fontSize: '0.8rem'
             }}>
-              📷
+              <span style={{ fontWeight: 'bold' }}>+</span>
             </div>
             <input 
               id="avatar-upload-input"
@@ -877,7 +877,7 @@ function App() {
                 {user?.role === 'SELLER' && parentDistributorName && (
                   <div style={{ display: 'inline-block', margin: '4px auto 12px', padding: '4px 12px', background: 'rgba(255,102,0,0.1)', border: '1px solid var(--accent)', borderRadius: '100px' }}>
                     <p style={{ fontSize: '0.7rem', color: 'var(--accent)', fontWeight: 'bold', margin: 0, textTransform: 'uppercase', letterSpacing: '1px' }}>
-                      🛡️ Red de Distribución: {parentDistributorName}
+                      Red de Distribución: {parentDistributorName}
                     </p>
                   </div>
                 )}
@@ -967,14 +967,14 @@ function App() {
                     <>
                       {sales.length < 20 && <p style={{ fontSize: '0.75rem', color: 'var(--accent)', margin: 0, fontWeight: 600 }}>Próximo: PRO ({(20 - sales.length)} ventas restantes)</p>}
                       {sales.length >= 20 && sales.length < 31 && <p style={{ fontSize: '0.75rem', color: 'var(--accent)', margin: 0, fontWeight: 600 }}>Próximo: ULTRA ({(31 - sales.length)} ventas restantes)</p>}
-                      {sales.length >= 31 && <p style={{ fontSize: '0.75rem', color: 'var(--success)', margin: 0, fontWeight: 700 }}>Nivel de Élite Alcanzado 🏆</p>}
+                      {sales.length >= 31 && <p style={{ fontSize: '0.75rem', color: 'var(--success)', margin: 0, fontWeight: 700 }}>Nivel de Élite Alcanzado</p>}
                     </>
                   ) : (
                     <>
                       {metrics.level === 'DISTRIBUIDOR BASIC' && <p style={{ fontSize: '0.75rem', color: 'var(--accent)', margin: 0, fontWeight: 600 }}>D1: Faltan {(50 - sales.length)} ventas de equipo</p>}
                       {metrics.level === 'DISTRIBUIDOR 1' && <p style={{ fontSize: '0.75rem', color: 'var(--accent)', margin: 0, fontWeight: 600 }}>D2: Objetivo 101 ventas de equipo</p>}
                       {metrics.level === 'DISTRIBUIDOR 2' && <p style={{ fontSize: '0.75rem', color: 'var(--accent)', margin: 0, fontWeight: 600 }}>D3: Objetivo 201 ventas de equipo</p>}
-                      {metrics.level === 'DISTRIBUIDOR 3' && <p style={{ fontSize: '0.75rem', color: 'var(--success)', margin: 0, fontWeight: 700 }}>Máxima Jerarquía 🏆</p>}
+                      {metrics.level === 'DISTRIBUIDOR 3' && <p style={{ fontSize: '0.75rem', color: 'var(--success)', margin: 0, fontWeight: 700 }}>Máxima Jerarquía</p>}
                     </>
                   )}
               </div>
@@ -993,7 +993,7 @@ function App() {
                 <button 
                   onClick={async () => {
                     const executePurge = async () => {
-                      const confirmReset = confirm("⚠️ ¿ESTÁS ABSOLUTAMENTE SEGURO? Esta acción borrará todas las ventas, clientes y equipo registrado para iniciar de cero. No se puede deshacer.");
+                      const confirmReset = confirm("¿ESTÁS ABSOLUTAMENTE SEGURO? Esta acción borrará todas las ventas, clientes y equipo registrado para iniciar de cero. No se puede deshacer.");
                       if (confirmReset) {
                         setIsLoading(true);
                         try {
