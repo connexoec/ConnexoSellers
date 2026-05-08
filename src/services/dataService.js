@@ -610,15 +610,8 @@ export const dataService = {
       }
       return true;
     } catch (err) {
-      console.warn("⚠️ Error en Supabase al eliminar. Limpiando caché local:", err.message);
-      const cached = localStorage.getItem('connexo_team');
-      if (cached) {
-        let team = JSON.parse(cached);
-        team = team.filter(t => t.id !== userId && t.parent_id !== userId);
-        localStorage.setItem('connexo_team', JSON.stringify(team));
-        return true;
-      }
-      throw err;
+      console.warn("⚠️ Error en Supabase al eliminar:", err.message);
+      throw new Error("No se pudo eliminar el usuario en la base de datos: " + err.message);
     }
   },
 
