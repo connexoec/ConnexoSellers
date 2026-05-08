@@ -78,13 +78,24 @@ const TeamManager = ({ users, currentUser, onAddUser, sales, selectedSedeContext
     e.preventDefault();
     setIsSubmitting(true);
     try {
+      let calculatedSede = null;
+      if (selectedSedeContext === 'Venezuela') {
+        calculatedSede = 'sede-ve-1';
+      } else if (selectedSedeContext === 'Ecuador') {
+        calculatedSede = 'sede-ec-1';
+      } else if (e.target.sede_asignada?.value) {
+        calculatedSede = e.target.sede_asignada.value;
+      } else if (currentUser?.sede_asignada && currentUser.sede_asignada !== 'GLOBAL' && currentUser.sede_asignada !== 'null') {
+        calculatedSede = currentUser.sede_asignada;
+      }
+
       const userData = {
         name: e.target.name.value,
         email: e.target.email.value,
         role: e.target.role?.value || 'SELLER',
         tier: e.target.tier?.value || null,
         parent_id: currentUid,
-        sede_asignada: null // La sede oficial no se asigna al crear el perfil; es otorgada como un logro por el Super Admin
+        sede_asignada: calculatedSede
       };
       const newUser = await dataService.addTeamMember(currentUid, userData);
 
@@ -261,10 +272,10 @@ const TeamManager = ({ users, currentUser, onAddUser, sales, selectedSedeContext
                 style={{ width: '100%', padding: '12px', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--glass-border)', color: 'white', borderRadius: '8px', fontSize: '0.9rem' }} 
               />
               {canAddMembers && (
-                <div style={{ display: 'flex', gap: '10px' }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
                   <select
                     name="role"
-                    style={{ flex: 1, padding: '12px', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--glass-border)', color: 'white', borderRadius: '8px', fontSize: '0.9rem' }}
+                    style={{ flex: '1 1 140px', padding: '12px', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--glass-border)', color: 'white', borderRadius: '8px', fontSize: '0.9rem' }}
                   >
                     <option value="SELLER">Rol: Vendedor</option>
                     {currentUser?.role === 'SUPER_ADMIN' && (
@@ -278,7 +289,7 @@ const TeamManager = ({ users, currentUser, onAddUser, sales, selectedSedeContext
                   {currentUser?.role === 'SUPER_ADMIN' && (
                     <select
                       name="tier"
-                      style={{ flex: 1, padding: '12px', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--glass-border)', color: 'white', borderRadius: '8px', fontSize: '0.9rem' }}
+                      style={{ flex: '1 1 140px', padding: '12px', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--glass-border)', color: 'white', borderRadius: '8px', fontSize: '0.9rem' }}
                     >
                       <option value="">Rango: AUTO</option>
                       <optgroup label="Vendedores">
@@ -287,6 +298,16 @@ const TeamManager = ({ users, currentUser, onAddUser, sales, selectedSedeContext
                       <optgroup label="Distribuidores">
                         {TIERS.DISTRIBUTOR.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
                       </optgroup>
+                    </select>
+                  )}
+
+                  {currentUser?.role === 'SUPER_ADMIN' && selectedSedeContext === 'GLOBAL' && (
+                    <select
+                      name="sede_asignada"
+                      style={{ flex: '1 1 140px', padding: '12px', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--glass-border)', color: 'white', borderRadius: '8px', fontSize: '0.9rem' }}
+                    >
+                      <option value="sede-ec-1">Sede: Ecuador 🇪🇨</option>
+                      <option value="sede-ve-1">Sede: Venezuela 🇻🇪</option>
                     </select>
                   )}
                 </div>

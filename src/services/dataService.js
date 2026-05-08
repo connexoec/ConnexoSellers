@@ -532,6 +532,30 @@ export const dataService = {
   },
 
   async addTeamMember(parentId, userData) {
+    let calculatedSede = userData.sede_asignada || null;
+    
+    // Si no viene sede asignada, intentamos obtenerla del padre
+    if (!calculatedSede && parentId) {
+      try {
+        const { data: parentProfile } = await supabase
+          .from('profiles')
+          .select('sede_asignada')
+          .eq('id', parentId)
+          .single();
+        if (parentProfile?.sede_asignada && parentProfile.sede_asignada !== 'GLOBAL' && parentProfile.sede_asignada !== 'null') {
+          calculatedSede = parentProfile.sede_asignada;
+        }
+      } catch (err) {
+        console.warn("Error fetching parent profile for sede fallback:", err);
+      }
+    }
+
+    // Si aún no hay sede asignada, usamos el fallback de email (ve -> Venezuela, si no Ecuador)
+    if (!calculatedSede) {
+      const emailVal = userData.email || '';
+      calculatedSede = emailVal.toLowerCase().includes('ve') ? 'sede-ve-1' : 'sede-ec-1';
+    }
+
     const newProfile = {
       full_name: userData.name,
       email: userData.email,
@@ -542,7 +566,7 @@ export const dataService = {
       is_certified: false,
       wallet_balance: 0,
       parent_id: parentId,
-      sede_asignada: userData.sede_asignada || null
+      sede_asignada: calculatedSede
     };
 
     try {
