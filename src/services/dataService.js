@@ -338,8 +338,8 @@ export const dataService = {
           if (parentProfile && parentProfile.role === 'DISTRIBUTOR' && parentProfile.is_certified) {
              const parentMetrics = await calcMetrics(parentProfile);
              const parentRate = parentMetrics.rate || 0;
-             if (parentRate > realRate) {
-               parentOverride = basePrice * (parentRate - realRate);
+             if (parentRate > 0) {
+               parentOverride = basePrice * parentRate;
              }
           }
         }
@@ -353,8 +353,8 @@ export const dataService = {
            const parentLocal = team.find(t => t.id === parentId);
            if (parentLocal && parentLocal.role === 'DISTRIBUTOR' && parentLocal.is_certified) {
              const parentRate = 0.12; // Base para distribuidor
-             if (parentRate > realRate) {
-                parentOverride = basePrice * (parentRate - realRate);
+             if (parentRate > 0) {
+                parentOverride = basePrice * parentRate;
              }
            }
         }
