@@ -68,7 +68,7 @@ const TeamManager = ({ users, currentUser, onAddUser, sales, selectedSedeContext
   const teamIds = myTeam.map(u => u.id);
   const teamSales = sales.filter(s => teamIds.includes(s.seller_id));
   const teamVolume = teamSales.reduce((acc, s) => acc + (s.amount || 0), 0);
-  const totalNetworkCommissions = myTeam.reduce((acc, u) => acc + (u.wallet_balance || 0), 0) + (user?.role === 'DISTRIBUTOR' ? (user?.wallet_balance || 0) : 0);
+  const totalNetworkCommissions = myTeam.reduce((acc, u) => acc + (u.wallet_balance || 0), 0) + (currentUser?.role === 'DISTRIBUTOR' ? (currentUser?.wallet_balance || 0) : 0);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -417,7 +417,7 @@ const TeamManager = ({ users, currentUser, onAddUser, sales, selectedSedeContext
                             <p style={{ margin: 0, fontSize: '0.8rem', fontWeight: 700, color: 'white' }}>{u.full_name || u.name}</p>
                             <p style={{ margin: 0, fontSize: '0.65rem', opacity: 0.5 }}>{u.role === 'SELLER' ? 'Vendedor' : 'Distribuidor'} · {u.email}</p>
                             {(() => {
-                              const parentProfile = team.find(x => x.id === u.parent_id);
+                              const parentProfile = users.find(x => x.id === u.parent_id);
                               if (parentProfile && parentProfile.role === 'DISTRIBUTOR') {
                                 return (
                                   <p style={{ margin: '4px 0 0 0', fontSize: '0.6rem', color: 'var(--accent)', fontWeight: 'bold' }}>
