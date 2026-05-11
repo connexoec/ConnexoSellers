@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
 import { User, Phone, Mail, Building2, FileText } from 'lucide-react';
 
@@ -31,13 +32,13 @@ const SaleForm = ({ plan, onConfirm, onCancel }) => {
     onConfirm(customer, billingCycle);
   };
 
-  return (
+  return createPortal(
     <motion.div
       initial={{ opacity: 0, scale: 0.92 }}
       animate={{ opacity: 1, scale: 1 }}
       style={{
         position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-        zIndex: 2000,
+        zIndex: 9999,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         background: 'rgba(0,0,0,0.65)',
         padding: '1rem',
@@ -201,7 +202,8 @@ const SaleForm = ({ plan, onConfirm, onCancel }) => {
           </div>
         </form>
       </div>
-    </motion.div>
+    </motion.div>,
+    document.body
   );
 };
 
