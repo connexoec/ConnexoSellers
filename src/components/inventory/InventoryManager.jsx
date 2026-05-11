@@ -234,7 +234,7 @@ const InventoryManager = ({ user, team, addNotification, selectedSedeContext = '
                 padding: '1.25rem', 
                 border: '1px solid rgba(255,255,255,0.05)', 
                 position: 'relative',
-                aspectRatio: '1 / 1.1',
+                aspectRatio: '1 / 1.35',
                 justifyContent: 'space-between',
                 overflow: 'hidden'
               }}
