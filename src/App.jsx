@@ -259,7 +259,6 @@ function App() {
         }, 800);
         addNotification("¡Has obtenido tu primera insignia oficial: Primer Impacto!", "SUCCESS");
       }
-      }
     } catch (err) {
       alert('Error al registrar venta: ' + err.message);
     } finally {
