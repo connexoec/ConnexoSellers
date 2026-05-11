@@ -34,7 +34,32 @@ async function calcMetrics(user) {
   const cached = _metricsCache.get(cacheKey);
   if (cached && Date.now() - cached.ts < 30_000) return cached.data;
 
-  const cache = (data) => { _metricsCache.set(cacheKey, { data, ts: Date.now() }); return data; };
+  const cache = (data) => { 
+    // NUEVA REGLA: Mapeo dinámico de umbral de ventas anuales del mes según nivel
+    let goal = 7; // Default base
+    const lvl = (data.level || '').toUpperCase();
+    
+    if (lvl.includes('ULTRA')) {
+      goal = 10;
+    } else if (lvl.includes('DISTRIBUIDOR 1')) {
+      goal = 25;
+    } else if (lvl.includes('DISTRIBUIDOR 2')) {
+      goal = 50;
+    } else if (lvl.includes('DISTRIBUIDOR 3')) {
+      goal = 100;
+    } else if (lvl.includes('PRO')) {
+      goal = 7;
+    }
+
+    if (data.level !== 'BLOQUEADO') {
+      data.annualSalesGoal = goal;
+      // Evaluar dinámicamente el desbloqueo según la meta asignada
+      data.baseUnlocked = (data.annualSalesCount || 0) >= goal;
+    }
+
+    _metricsCache.set(cacheKey, { data, ts: Date.now() }); 
+    return data; 
+  };
 
   if (!user.is_certified) return cache({ rate: 0, base: 0, level: 'BLOQUEADO', annualSalesCount: 0, baseUnlocked: false });
 
@@ -46,15 +71,18 @@ async function calcMetrics(user) {
 
   let annualSalesCount = 0;
   
-  // Helper para contar ventas anuales específicamente
+  // Helper para contar ventas anuales específicamente (SOLO DEL MES ACTUAL)
   const countAnnualSales = async (ids) => {
     try {
-      const { count } = await countSales(
-        supabase.from('sales')
+      const now = new Date();
+      // Capturar inicio del mes calendario actual
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+      
+      const { count } = await supabase.from('sales')
           .select('*', { count: 'exact', head: true })
           .in('seller_id', ids)
           .ilike('plan_type', '%ANUAL%')
-      );
+          .gte('created_at', startOfMonth); // <-- NUEVA REGLA: Al mes
       return count || 0;
     } catch (e) {
       return 0;

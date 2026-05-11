@@ -261,20 +261,29 @@ function App() {
         addNotification("¡Has obtenido tu primera insignia oficial: Primer Impacto!", "SUCCESS");
       }
 
-      // ─── Desbloquear Insignia de Sueldo Base Activado (7 ventas anuales) ───
-      const allAnnualSales = [newSale, ...sales].filter(s => s.plan_type?.toUpperCase().includes('ANUAL'));
-      const annualCount = allAnnualSales.length;
+      // ─── Desbloquear Insignia de Sueldo Base Activado (Según meta asignada) ───
+      const now = new Date();
+      const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      
+      const currentMonthAnnualSales = [newSale, ...sales].filter(s => {
+         const isAnnual = s.plan_type?.toUpperCase().includes('ANUAL');
+         // Si no tiene created_at (recién creada sin refresh) asumimos es de hoy (por ende de este mes)
+         const saleDate = s.created_at ? new Date(s.created_at) : new Date();
+         return isAnnual && saleDate >= currentMonthStart;
+      });
+      const annualCount = currentMonthAnnualSales.length;
+      const goal = metrics.annualSalesGoal || 7;
 
-      if (annualCount >= 7 && !currentBadgesList.includes('BASE_SALARY_UNLOCKED')) {
+      if (annualCount >= goal && !currentBadgesList.includes('BASE_SALARY_UNLOCKED')) {
         const finalBadges = [...currentBadgesList, 'BASE_SALARY_UNLOCKED'];
         setUserBadges(finalBadges);
         await dataService.saveUserBadges(user.uid || user.id, finalBadges);
         
         if (user?.role === 'SELLER') {
           setTimeout(() => {
-            alert("🎉 ¡ESPECTACULAR FELICITACIONES! 🎉\nHas alcanzado tus 7 ventas anuales y oficialmente has ACTIVADO tu Sueldo Base mensual.\n¡Disfruta de tus nuevos beneficios!");
+            alert(`🎉 ¡ESPECTACULAR FELICITACIONES! 🎉\nHas alcanzado tu meta de ${goal} ventas anuales del mes y oficialmente has ACTIVADO tu Sueldo Base garantizado.\n¡Sigue rompiendo tus marcas!`);
           }, 1200);
-          addNotification("¡Desbloqueaste la insignia Sueldo Activado! Sueldo Base ya está en línea.", "SUCCESS");
+          addNotification(`¡Desbloqueaste la insignia Sueldo Activado! Meta de ${goal} anuales alcanzada.`, "SUCCESS");
         }
       }
     } catch (err) {
@@ -758,7 +767,7 @@ function App() {
                 </div>
                 {!metrics.baseUnlocked && (
                   <p style={{ position: 'absolute', bottom: '6px', left: '12px', fontSize: '0.5rem', color: 'var(--accent)', margin: 0, fontWeight: 600 }}>
-                    Req: {metrics.annualSalesCount || 0}/7 Anuales
+                    Req: {metrics.annualSalesCount || 0}/{metrics.annualSalesGoal || 7} Anuales
                   </p>
                 )}
               </div>
