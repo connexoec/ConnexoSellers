@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Play, CheckCircle, Lock, BookOpen, Plus, Trash2, Edit, Award, FileText, HelpCircle, Eye, EyeOff } from 'lucide-react';
 import { dataService } from '../../services/dataService';
@@ -354,7 +355,7 @@ const Academy = ({ user, onCertify }) => {
 
       {/* Dynamic Quiz Modal */}
       <AnimatePresence>
-        {activeQuiz && (
+        {activeQuiz && createPortal(
           <motion.div 
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(5px)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem' }}
@@ -427,7 +428,8 @@ const Academy = ({ user, onCertify }) => {
                 </div>
               )}
             </motion.div>
-          </motion.div>
+          </motion.div>,
+          document.body
         )}
       </AnimatePresence>
     </div>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import BottomNav    from './components/layout/BottomNav';
 import Header       from './components/layout/Header';
@@ -1311,14 +1312,14 @@ function App() {
           </nav>
 
           {/* Sedes Management Modal with Focus Trap and ARIA Attributes */}
-          {showSedesModal && (
+          {showSedesModal && createPortal(
             <div 
               role="dialog" 
               aria-modal="true" 
               aria-label="Gestión de Sedes"
               style={{
                 position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center',
                 background: 'rgba(0,0,0,0.75)', padding: '1rem'
               }}
               onKeyDown={(e) => {
@@ -1473,7 +1474,8 @@ function App() {
                   </div>
                 </div>
               </div>
-            </div>
+            </div>,
+            document.body
           )}
         </motion.div>
       )}

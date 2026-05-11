@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export const BADGES_INFO = {
@@ -135,7 +136,7 @@ export const BADGES_INFO = {
 
 const BadgeModal = ({ badge, onClose }) => {
   if (!badge) return null;
-  return (
+  return createPortal(
     <motion.div
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
       style={{
@@ -183,7 +184,8 @@ const BadgeModal = ({ badge, onClose }) => {
           </p>
         </div>
       </motion.div>
-    </motion.div>
+    </motion.div>,
+    document.body
   );
 };
 

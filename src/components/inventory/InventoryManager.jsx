@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
 import { Package, Plus, Minus, Send, Download, Trash2, Edit, Save, X, CreditCard, Box, Shirt, Tag, DollarSign } from 'lucide-react';
 import jsPDF from 'jspdf';
@@ -414,9 +415,8 @@ const InventoryManager = ({ user, team, addNotification, selectedSedeContext = '
         )}
       </div>
 
-      {/* EDIT MODAL FOR SUPER ADMIN */}
-      {editingItem && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(5px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+      {editingItem && createPortal(
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(5px)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
           <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="card glass" style={{ maxWidth: '400px', width: '100%', border: '1px solid var(--accent)', position: 'relative' }}>
             <h3 style={{ margin: '0 0 1.5rem', fontSize: '1rem', color: 'var(--accent)', textTransform: 'uppercase' }}>Editar Producto</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -450,7 +450,8 @@ const InventoryManager = ({ user, team, addNotification, selectedSedeContext = '
               </button>
             </div>
           </motion.div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
