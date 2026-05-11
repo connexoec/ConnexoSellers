@@ -119,7 +119,7 @@ async function calcMetrics(user) {
             currentAnnual = await countAnnualSales(teamIds);
          } catch(e) {}
       }
-      return cache({ rate: manualTier.rate, base: manualTier.base, level: manualTier.label, salesCount: 0, annualSalesCount: currentAnnual, baseUnlocked: currentAnnual >= 7 });
+      return cache({ rate: manualTier.rate, base: manualTier.base, level: manualTier.label, salesCount: 0, annualSalesCount: currentAnnual });
     }
   }
 
@@ -136,9 +136,9 @@ async function calcMetrics(user) {
     } catch (e) {
       console.warn("calcMetrics fallback for SELLER:", e.message);
     }
-    const isUnlocked = currentAnnual >= 7;
-    if (total >= 31) return cache({ rate: 0.09, base: 300, level: 'VENDEDOR ULTRA', salesCount: total, annualSalesCount: currentAnnual, baseUnlocked: isUnlocked });
-    return cache({ rate: 0.07, base: 250, level: 'VENDEDOR PRO', salesCount: total, annualSalesCount: currentAnnual, baseUnlocked: isUnlocked });
+    // cache() recalcula baseUnlocked dinámicamente según el nivel
+    if (total >= 31) return cache({ rate: 0.09, base: 300, level: 'VENDEDOR ULTRA', salesCount: total, annualSalesCount: currentAnnual });
+    return cache({ rate: 0.07, base: 250, level: 'VENDEDOR PRO', salesCount: total, annualSalesCount: currentAnnual });
   }
 
   // ─── DISTRIBUIDOR (Auto) ──────────────────────────────────────────────
@@ -157,10 +157,10 @@ async function calcMetrics(user) {
     } catch (e) {
       console.warn("calcMetrics fallback for DISTRIBUTOR:", e.message);
     }
-    const isUnlocked = currentAnnual >= 7;
-    if (total >= 201) return cache({ rate: 0.18, base: 600, level: 'DISTRIBUIDOR 3', salesCount: total, annualSalesCount: currentAnnual, baseUnlocked: isUnlocked });
-    if (total >= 101) return cache({ rate: 0.15, base: 600, level: 'DISTRIBUIDOR 2', salesCount: total, annualSalesCount: currentAnnual, baseUnlocked: isUnlocked });
-    return cache({ rate: 0.12, base: 500, level: 'DISTRIBUIDOR 1', salesCount: total, annualSalesCount: currentAnnual, baseUnlocked: isUnlocked });
+    // cache() recalcula baseUnlocked dinámicamente según el nivel
+    if (total >= 201) return cache({ rate: 0.18, base: 600, level: 'DISTRIBUIDOR 3', salesCount: total, annualSalesCount: currentAnnual });
+    if (total >= 101) return cache({ rate: 0.15, base: 600, level: 'DISTRIBUIDOR 2', salesCount: total, annualSalesCount: currentAnnual });
+    return cache({ rate: 0.12, base: 500, level: 'DISTRIBUIDOR 1', salesCount: total, annualSalesCount: currentAnnual });
   }
 
   return cache({ rate: 0, base: 0, level: 'SUPER ADMIN', annualSalesCount: 0, baseUnlocked: true });

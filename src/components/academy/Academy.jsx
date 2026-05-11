@@ -353,17 +353,18 @@ const Academy = ({ user, onCertify }) => {
         </div>
       )}
 
-      {/* Dynamic Quiz Modal */}
-      <AnimatePresence>
-        {activeQuiz && createPortal(
+      {/* Dynamic Quiz Modal — Portal wraps AnimatePresence, not the other way around */}
+      {activeQuiz && createPortal(
+        <AnimatePresence>
           <motion.div 
+            key="quiz-overlay"
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(5px)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem' }}
             onClick={() => setActiveQuiz(null)}
           >
             <motion.div 
               initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
-              style={{ background: 'linear-gradient(135deg, #111, #1a0f08)', border: '1px solid var(--accent-glow)', borderRadius: '16px', padding: '2rem', maxWidth: '480px', width: '100%', position: 'relative' }}
+              style={{ background: 'linear-gradient(135deg, #111, #1a0f08)', border: '1px solid var(--accent-glow)', borderRadius: '16px', padding: '2rem', maxWidth: '480px', width: '100%', position: 'relative', maxHeight: '85vh', overflowY: 'auto' }}
               onClick={e => e.stopPropagation()}
             >
               <button onClick={() => setActiveQuiz(null)} style={{ position: 'absolute', top: 12, right: 12, background: 'transparent', border: 'none', color: '#fff', fontSize: '1.1rem', cursor: 'pointer' }}>✕</button>
@@ -428,10 +429,10 @@ const Academy = ({ user, onCertify }) => {
                 </div>
               )}
             </motion.div>
-          </motion.div>,
-          document.body
-        )}
-      </AnimatePresence>
+          </motion.div>
+        </AnimatePresence>,
+        document.body
+      )}
     </div>
   );
 };
