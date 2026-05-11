@@ -259,31 +259,6 @@ function App() {
         }, 800);
         addNotification("¡Has obtenido tu primera insignia oficial: Primer Impacto!", "SUCCESS");
       }
-
-      // ─── Desbloquear Insignia de Campeón Mensual (MONTHLY_CHAMP) Y Bono de $40 ───
-      const allMonthlySales = [newSale, ...sales].filter(s => s.plan_type?.toUpperCase().includes('MENSUAL'));
-      const monthlySalesCount = allMonthlySales.length;
-
-      if (user?.role === 'SELLER' && monthlySalesCount >= 30 && !currentBadgesList.includes('MONTHLY_CHAMP')) {
-        const finalBadges = [...currentBadgesList, 'MONTHLY_CHAMP'];
-        setUserBadges(finalBadges);
-        await dataService.saveUserBadges(user.uid || user.id, finalBadges);
-
-        const bonusAmount = 40;
-        const finalUser = { ...updatedUser, wallet_balance: (updatedUser.wallet_balance || 0) + bonusAmount };
-        setUser(finalUser);
-        localStorage.setItem(SESSION_KEY, JSON.stringify(finalUser));
-
-        try {
-          await dataService.updateProfile(user.uid || user.id, { wallet_balance: finalUser.wallet_balance });
-        } catch (e) {
-          console.warn("Error guardando saldo de billetera con bono en db:", e.message);
-        }
-
-        setTimeout(() => {
-          alert("🏆 ¡ESPECTACULAR! ¡Has alcanzado la meta de 30 planes mensuales y desbloqueado la insignia 'Campeón Mensual'!\nSe ha depositado un bono de $40.00 en tu billetera.");
-        }, 1200);
-        addNotification("¡Desbloqueaste la insignia Campeón Mensual! +$40.00 Bono", "SUCCESS");
       }
     } catch (err) {
       alert('Error al registrar venta: ' + err.message);
@@ -434,25 +409,7 @@ function App() {
                 </div>
               </div>
 
-              {/* Meta Mensual Extra (Solo Vendedores) */}
-              {user?.role === 'SELLER' && (
-                <div style={{ margin: '20px 0', paddingTop: '15px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                    <p style={{ fontSize: '0.65rem', opacity: 0.8, fontWeight: 'bold', color: 'var(--accent)' }}>🎯 Meta Mensual: Bono de $40</p>
-                    <p style={{ fontSize: '0.65rem', color: 'var(--accent)', fontWeight: 'bold' }}>
-                      {sales.filter(s => s.plan_type?.toUpperCase().includes('MENSUAL')).length}/30 ({Math.min(Math.round((sales.filter(s => s.plan_type?.toUpperCase().includes('MENSUAL')).length / 30) * 100), 100)}%)
-                    </p>
-                  </div>
-                  <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '10px', overflow: 'hidden', border: '1px solid rgba(255,102,0,0.1)' }}>
-                    <motion.div 
-                      initial={{ width: 0 }}
-                      animate={{ width: `${Math.min((sales.filter(s => s.plan_type?.toUpperCase().includes('MENSUAL')).length / 30) * 100, 100)}%` }}
-                      transition={{ duration: 1, ease: "easeOut" }}
-                      style={{ height: '100%', background: 'linear-gradient(90deg, #ff6600, #ffa500)', boxShadow: '0 0 10px var(--accent-glow)' }} 
-                    />
-                  </div>
-                </div>
-              )}
+              {/* Meta Mensual Extra Removida */}
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: user?.is_certified ? 'var(--success)' : 'var(--danger)', boxShadow: `0 0 10px ${user?.is_certified ? 'var(--success)' : 'var(--danger)'}` }} />
@@ -487,11 +444,26 @@ function App() {
                 <p style={{ fontSize: '0.55rem', opacity: 0.5, letterSpacing: '1px' }}>BILLETERA</p>
                 <h3 style={{ margin: '4px 0', fontSize: '1.25rem', color: 'white' }}>${(user?.wallet_balance || 0).toFixed(2)}</h3>
               </div>
-              <div className="card glass" style={{ borderLeft: '3px solid var(--success)' }}>
+              <div 
+                className="card glass" 
+                style={{ 
+                  borderLeft: `3px solid ${metrics.baseUnlocked ? 'var(--success)' : 'rgba(255,255,255,0.2)'}`,
+                  opacity: metrics.baseUnlocked ? 1 : 0.45,
+                  position: 'relative',
+                  transition: 'all 0.3s ease'
+                }}
+              >
                 <p style={{ fontSize: '0.55rem', opacity: 0.5, letterSpacing: '1px' }}>
-                  SUELDO BASE {metrics.isPreview && <span style={{ opacity: 0.4 }}>🔒</span>}
+                  SUELDO BASE {metrics.baseUnlocked ? '' : '🔒'}
                 </p>
-                <h3 style={{ margin: '4px 0', fontSize: '1.25rem', color: metrics.base > 0 ? 'var(--success)' : 'rgba(255,255,255,0.3)' }}>${metrics.base.toFixed(0)}</h3>
+                <h3 style={{ margin: '4px 0', fontSize: '1.25rem', color: metrics.baseUnlocked && metrics.base > 0 ? 'var(--success)' : 'white' }}>
+                  ${metrics.base.toFixed(0)}
+                </h3>
+                {!metrics.baseUnlocked && (
+                  <p style={{ position: 'absolute', bottom: '6px', left: '12px', fontSize: '0.5rem', color: 'var(--accent)', margin: 0, fontWeight: 600 }}>
+                    Req: {metrics.annualSalesCount || 0}/7 Anuales
+                  </p>
+                )}
               </div>
               <div className="card glass" style={{ borderLeft: `3px solid ${metrics.rate > 0 ? 'var(--accent)' : 'rgba(255,255,255,0.3)'}`, position: 'relative' }}>
                 <p style={{ fontSize: '0.55rem', opacity: 0.5, letterSpacing: '1px' }}>COMISIÓN</p>

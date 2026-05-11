@@ -36,7 +36,7 @@ async function calcMetrics(user) {
 
   const cache = (data) => { _metricsCache.set(cacheKey, { data, ts: Date.now() }); return data; };
 
-  if (!user.is_certified) return cache({ rate: 0, base: 0, level: 'BLOQUEADO' });
+  if (!user.is_certified) return cache({ rate: 0, base: 0, level: 'BLOQUEADO', annualSalesCount: 0, baseUnlocked: false });
 
   // Fecha de inicio del conteo (cuando el admin asigna categoría)
   const startDate = user.tier_start_date || null;
@@ -44,49 +44,79 @@ async function calcMetrics(user) {
   // Helper para contar ventas (filtra por fecha si hay tier_start_date)
   const countSales = (query) => startDate ? query.gte('created_at', startDate) : query;
 
+  let annualSalesCount = 0;
+  
+  // Helper para contar ventas anuales específicamente
+  const countAnnualSales = async (ids) => {
+    try {
+      const { count } = await countSales(
+        supabase.from('sales')
+          .select('*', { count: 'exact', head: true })
+          .in('seller_id', ids)
+          .ilike('plan_type', '%ANUAL%')
+      );
+      return count || 0;
+    } catch (e) {
+      return 0;
+    }
+  };
+
   // Priorizar nivel manual si existe — pero seguir contando desde tier_start_date
   // para saber cuándo debe subir al siguiente nivel
   if (user.tier) {
     const roleTiers = user.role === ROLES.SELLER ? TIERS.SELLER : TIERS.DISTRIBUTOR;
     const manualTier = roleTiers.find(t => t.id === user.tier);
     if (manualTier) {
+      let total = 0;
+      let currentAnnual = 0;
+      
       // Contar ventas desde la asignación para detectar si ya subió de nivel
       if (user.role === ROLES.SELLER) {
-        let total = 0;
         try {
           const { count: salesSinceAssignment } = await countSales(
             supabase.from('sales').select('*', { count: 'exact', head: true }).eq('seller_id', uid)
           );
           total = salesSinceAssignment || 0;
+          currentAnnual = await countAnnualSales([uid]);
         } catch (e) {
           console.warn("calcMetrics fallback for manual SELLER:", e.message);
         }
         // Si ya superó los umbrales del siguiente nivel, subir automáticamente
-        if (total >= 31) return cache({ rate: 0.09, base: 300, level: 'VENDEDOR ULTRA', salesCount: total });
-        if (total >= 20) return cache({ rate: 0.07, base: 250, level: 'VENDEDOR PRO',   salesCount: total });
+        if (total >= 31) return cache({ rate: 0.09, base: 300, level: 'VENDEDOR ULTRA', salesCount: total, annualSalesCount: currentAnnual, baseUnlocked: currentAnnual >= 7 });
+        if (total >= 20) return cache({ rate: 0.07, base: 250, level: 'VENDEDOR PRO',   salesCount: total, annualSalesCount: currentAnnual, baseUnlocked: currentAnnual >= 7 });
+      } else if (user.role === ROLES.DISTRIBUTOR) {
+         try {
+            const { data: team } = await supabase.from('profiles').select('id').eq('parent_id', uid);
+            const teamIds = [uid, ...(team?.map(t => t.id) || [])];
+            currentAnnual = await countAnnualSales(teamIds);
+         } catch(e) {}
       }
-      return cache({ rate: manualTier.rate, base: manualTier.base, level: manualTier.label, salesCount: 0 });
+      return cache({ rate: manualTier.rate, base: manualTier.base, level: manualTier.label, salesCount: 0, annualSalesCount: currentAnnual, baseUnlocked: currentAnnual >= 7 });
     }
   }
 
   // ─── VENDEDOR (Auto) ──────────────────────────────────────────────────
   if (user.role === ROLES.SELLER) {
     let total = 0;
+    let currentAnnual = 0;
     try {
       const { count: mySales } = await countSales(
         supabase.from('sales').select('*', { count: 'exact', head: true }).eq('seller_id', uid)
       );
       total = mySales || 0;
+      currentAnnual = await countAnnualSales([uid]);
     } catch (e) {
       console.warn("calcMetrics fallback for SELLER:", e.message);
     }
-    if (total >= 31) return cache({ rate: 0.09, base: 300, level: 'VENDEDOR ULTRA', salesCount: total });
-    return cache({ rate: 0.07, base: 250, level: 'VENDEDOR PRO', salesCount: total });
+    const isUnlocked = currentAnnual >= 7;
+    if (total >= 31) return cache({ rate: 0.09, base: 300, level: 'VENDEDOR ULTRA', salesCount: total, annualSalesCount: currentAnnual, baseUnlocked: isUnlocked });
+    return cache({ rate: 0.07, base: 250, level: 'VENDEDOR PRO', salesCount: total, annualSalesCount: currentAnnual, baseUnlocked: isUnlocked });
   }
 
   // ─── DISTRIBUIDOR (Auto) ──────────────────────────────────────────────
   if (user.role === ROLES.DISTRIBUTOR) {
     let total = 0;
+    let currentAnnual = 0;
     try {
       const { data: team } = await supabase.from('profiles').select('id').eq('parent_id', uid);
       const teamIds = [uid, ...(team?.map(t => t.id) || [])];
@@ -95,15 +125,17 @@ async function calcMetrics(user) {
         supabase.from('sales').select('*', { count: 'exact', head: true }).in('seller_id', teamIds)
       );
       total = teamSales || 0;
+      currentAnnual = await countAnnualSales(teamIds);
     } catch (e) {
       console.warn("calcMetrics fallback for DISTRIBUTOR:", e.message);
     }
-    if (total >= 201) return cache({ rate: 0.18, base: 600, level: 'DISTRIBUIDOR 3', salesCount: total });
-    if (total >= 101) return cache({ rate: 0.15, base: 600, level: 'DISTRIBUIDOR 2', salesCount: total });
-    return cache({ rate: 0.12, base: 500, level: 'DISTRIBUIDOR 1', salesCount: total });
+    const isUnlocked = currentAnnual >= 7;
+    if (total >= 201) return cache({ rate: 0.18, base: 600, level: 'DISTRIBUIDOR 3', salesCount: total, annualSalesCount: currentAnnual, baseUnlocked: isUnlocked });
+    if (total >= 101) return cache({ rate: 0.15, base: 600, level: 'DISTRIBUIDOR 2', salesCount: total, annualSalesCount: currentAnnual, baseUnlocked: isUnlocked });
+    return cache({ rate: 0.12, base: 500, level: 'DISTRIBUIDOR 1', salesCount: total, annualSalesCount: currentAnnual, baseUnlocked: isUnlocked });
   }
 
-  return cache({ rate: 0, base: 0, level: 'SUPER ADMIN' });
+  return cache({ rate: 0, base: 0, level: 'SUPER ADMIN', annualSalesCount: 0, baseUnlocked: true });
 }
 
 export const dataService = {
