@@ -121,6 +121,15 @@ export const BADGES_INFO = {
     color: '#FF8C00', // Naranja oscuro / Dorado
     borderColor: '#FFD700', // Dorado brillante
     icon: '🏆'
+  },
+  BASE_SALARY_UNLOCKED: {
+    id: 'BASE_SALARY_UNLOCKED',
+    title: 'Sueldo\nActivado',
+    subtitle: 'Ventas Anuales.',
+    description: 'Otorgado por alcanzar las 7 ventas anuales, liberando oficialmente el cobro de Sueldo Base Garantizado. Demuestra un alto nivel de compromiso a largo plazo.',
+    color: '#00FF7F', // Verde primavera brillante
+    borderColor: '#FFFFFF', 
+    icon: '💰'
   }
 };
 
