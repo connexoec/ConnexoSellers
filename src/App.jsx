@@ -545,11 +545,17 @@ function App() {
             </div>
           )}
 
-          {/* Sales Feed / Customer DB */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-            <h3 style={{ fontSize: '0.85rem', textTransform: 'uppercase', opacity: 0.7, letterSpacing: '1px', margin: 0 }}>
-              {user?.role === 'SUPER_ADMIN' || user?.role === 'DISTRIBUTOR' ? 'Base de Clientes & Activaciones' : 'Mis Ventas'}
-            </h3>
+           {/* Fin Dashboard Section */}
+        </motion.div>
+      );
+
+      case 'history': return (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="slide-up" style={{ padding: '0 1.5rem 100px', fontFamily: 'var(--font-main)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+            <div>
+              <h2 style={{ fontSize: '1.4rem', textTransform: 'uppercase', fontFamily: 'var(--font-heading)', margin: '0 0 4px' }}>Movimientos</h2>
+              <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', margin: 0 }}>Base de clientes y activaciones.</p>
+            </div>
             {user?.role === 'SUPER_ADMIN' || user?.role === 'DISTRIBUTOR' ? (
               <button 
                 onClick={() => {
@@ -557,20 +563,16 @@ function App() {
                     const doc = new jsPDF();
                     doc.setFont('helvetica');
                     doc.text(`Base de Clientes - ${user?.role === 'SUPER_ADMIN' ? 'Red Completa' : 'Mi Equipo'}`, 14, 20);
-                    
                     const groupedSales = sales.reduce((acc, sale) => {
                       const plan = sale.plan_type || 'Otros';
                       if (!acc[plan]) acc[plan] = [];
                       acc[plan].push(sale);
                       return acc;
                     }, {});
-
                     let currentY = 30;
-                    Object.keys(groupedSales).forEach((plan, idx) => {
-                      // Usar autoTable para calcular las posiciones automáticamente
+                    Object.keys(groupedSales).forEach((plan) => {
                       doc.setFontSize(12);
                       doc.text(`Categoría: Plan ${plan}`, 14, currentY);
-                      
                       autoTable(doc, {
                         startY: currentY + 5,
                         head: [['Cliente', 'Teléfono', 'Email', 'Vendedor', 'Fecha']],
@@ -589,7 +591,6 @@ function App() {
                       });
                       currentY = doc.lastAutoTable.finalY + 15;
                     });
-                    
                     doc.save('base_clientes_connexo.pdf');
                   } catch (err) {
                     console.error("Error generating PDF:", err);
@@ -597,44 +598,43 @@ function App() {
                   }
                 }}
                 className="btn glass" 
-                style={{ fontSize: '0.65rem', padding: '4px 10px', height: 'auto', gap: '6px' }}
+                style={{ fontSize: '0.65rem', padding: '6px 10px', height: 'auto', gap: '6px' }}
               >
-                📥 Descargar PDF
+                📥 PDF
               </button>
             ) : (
-              <span style={{ fontSize: '0.65rem', color: 'var(--accent)', fontWeight: 700 }}>
-                Total: ${sales.reduce((a, s) => a + (s.amount || 0), 0).toFixed(2)}
-              </span>
+              <div style={{ textAlign: 'right' }}>
+                 <p style={{ fontSize: '0.55rem', opacity: 0.5, textTransform: 'uppercase', margin: 0 }}>TOTAL FACTURADO</p>
+                 <p style={{ fontSize: '0.9rem', color: 'var(--accent)', fontWeight: 700, margin: 0 }}>${sales.reduce((a, s) => a + (s.amount || 0), 0).toFixed(2)}</p>
+              </div>
             )}
           </div>
 
-          {/* Filters & Search for Super Admin and Distributors */}
-          {(user?.role === 'SUPER_ADMIN' || user?.role === 'DISTRIBUTOR') && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '1.2rem' }}>
-              <input 
-                value={searchQuery}
-                onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
-                placeholder="Buscar por nombre, email o teléfono..."
-                style={{ width: '100%', padding: '10px 14px', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--glass-border)', color: 'white', borderRadius: '10px', fontSize: '0.8rem' }}
-              />
-              <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '4px' }}>
-                {['ALL', 'LITE', 'PRO', 'ULTRA'].map((cat) => (
-                  <button
-                    key={cat}
-                    onClick={() => { setPlanFilter(cat); setCurrentPage(1); }}
-                    style={{
-                      padding: '6px 12px', borderRadius: '100px', fontSize: '0.7rem', fontWeight: 600,
-                      border: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer', transition: 'all 0.2s',
-                      background: planFilter === cat ? 'var(--accent)' : 'rgba(255,255,255,0.03)',
-                      color: planFilter === cat ? 'var(--bg-primary)' : 'rgba(255,255,255,0.6)'
-                    }}
-                  >
-                    {cat === 'ALL' ? 'Todos' : cat}
-                  </button>
-                ))}
-              </div>
+          {/* Filters & Search - Available for ALL Roles */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '1.2rem' }}>
+            <input 
+              value={searchQuery}
+              onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+              placeholder="🔍 Buscar por cliente, email o teléfono..."
+              style={{ width: '100%', padding: '12px 14px', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--glass-border)', color: 'white', borderRadius: '12px', fontSize: '0.8rem' }}
+            />
+            <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '6px', whiteSpace: 'nowrap' }}>
+              {['ALL', 'LITE', 'PRO', 'ULTRA'].map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() => { setPlanFilter(cat); setCurrentPage(1); }}
+                  style={{
+                    padding: '6px 12px', borderRadius: '100px', fontSize: '0.7rem', fontWeight: 600,
+                    border: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer', transition: 'all 0.2s',
+                    background: planFilter === cat ? 'var(--accent)' : 'rgba(255,255,255,0.03)',
+                    color: planFilter === cat ? 'var(--bg-primary)' : 'rgba(255,255,255,0.6)'
+                  }}
+                >
+                  {cat === 'ALL' ? 'Todos' : cat}
+                </button>
+              ))}
             </div>
-          )}
+          </div>
 
           {/* Sales Listing */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -648,19 +648,21 @@ function App() {
                   (s.customer_email && s.customer_email.toLowerCase().includes(searchQuery.toLowerCase())) ||
                   (s.customer_phone && s.customer_phone.includes(searchQuery))
                 );
-                const matchesPlan = planFilter === 'ALL' ? true : s.plan_type === planFilter;
+                // Soporte para coincidencia flexible de plan
+                const matchesPlan = planFilter === 'ALL' ? true : (s.plan_type?.toUpperCase().includes(planFilter.toUpperCase()));
                 return matchesSede && matchesSearch && matchesPlan;
               });
 
-              const ITEMS_PER_PAGE = 5;
+              const ITEMS_PER_PAGE = 10; // Higher limit for dedicated page
               const totalPages = Math.ceil(filteredSales.length / ITEMS_PER_PAGE);
               const paginatedSales = filteredSales.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
               if (filteredSales.length === 0) {
                 return (
-                  <p style={{ textAlign: 'center', opacity: 0.4, fontSize: '0.8rem', padding: '2rem' }}>
-                    No se encontraron registros coincidentes.
-                  </p>
+                  <div style={{ textAlign: 'center', padding: '3rem 1rem', opacity: 0.5 }}>
+                    <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>📂</div>
+                    <p style={{ fontSize: '0.8rem', margin: 0 }}>No hay registros que coincidan con tu búsqueda.</p>
+                  </div>
                 );
               }
 
@@ -676,7 +678,7 @@ function App() {
                           key={s.id} 
                           className="card glass" 
                           onClick={() => setExpandedSaleId(isExpanded ? null : s.id)}
-                          style={{ display: 'flex', flexDirection: 'column', gap: '8px', borderLeft: '3px solid var(--accent)', cursor: 'pointer', transition: 'all 0.2s' }}
+                          style={{ display: 'flex', flexDirection: 'column', gap: '8px', borderLeft: `3px solid ${s.plan_type?.includes('ULTRA') ? 'var(--accent)' : 'var(--success)'}`, cursor: 'pointer', transition: 'all 0.2s' }}
                         >
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                             <div>
@@ -685,27 +687,24 @@ function App() {
                             </div>
                             <div style={{ textAlign: 'right' }}>
                               <p style={{ margin: 0, fontSize: '0.65rem', opacity: 0.5 }}>{new Date(s.created_at).toLocaleDateString()}</p>
-                              <p style={{ margin: '2px 0 0', fontSize: '0.65rem', color: 'var(--text-secondary)' }}>Vendedor: {sellerMember?.full_name || 'N/A'}</p>
+                              <p style={{ margin: '2px 0 0', fontSize: '0.65rem', color: 'var(--text-secondary)' }}>Por: {sellerMember?.full_name || 'Propio'}</p>
                             </div>
                           </div>
-
-                          {/* Expandable details with accordion style */}
                           {isExpanded && (
                             <motion.div 
-                              initial={{ opacity: 0, height: 0 }}
-                              animate={{ opacity: 1, height: 'auto' }}
+                              initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
                               style={{ background: 'rgba(255,255,255,0.03)', padding: '10px', borderRadius: '6px', fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '4px' }}
                               onClick={e => e.stopPropagation()}
                             >
                               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
-                                <p style={{ margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Tel: {s.customer_phone || 'N/A'}</p>
-                                <p style={{ margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Email: {s.customer_email || 'N/A'}</p>
-                                {s.customer_company && <p style={{ margin: 0, gridColumn: '1 / -1' }}>Empresa: {s.customer_company}</p>}
+                                <p style={{ margin: 0 }}>📞 {s.customer_phone || 'N/A'}</p>
+                                <p style={{ margin: 0 }}>📧 {s.customer_email || 'N/A'}</p>
                               </div>
-                              {s.customer_notes && (
-                                <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid rgba(255,255,255,0.05)', fontStyle: 'italic', opacity: 0.8 }}>
-                                  "{s.customer_notes}"
-                                </div>
+                              {(user?.role === 'SUPER_ADMIN' || (user?.uid || user?.id) === s.seller_id) && (
+                                 <div style={{ display: 'flex', gap: '8px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '10px', marginTop: '10px' }}>
+                                   <button onClick={() => handleEditSale(s)} className="btn glass" style={{ flex: 1, fontSize: '0.65rem', padding: '6px', height: 'auto' }}>✏️ Editar</button>
+                                   <button onClick={() => handleDeleteSale(s.id)} className="btn" style={{ flex: 1, fontSize: '0.65rem', padding: '6px', height: 'auto', color: '#ff6b6b', background: 'rgba(220,53,69,0.1)' }}>🗑️ Eliminar</button>
+                                 </div>
                               )}
                             </motion.div>
                           )}
@@ -713,7 +712,6 @@ function App() {
                       );
                     }
 
-                    // Vista normal para Vendedores y Distribuidores (Mis Ventas con Expandible)
                     const canManage = (user.uid || user.id) === s.seller_id;
                     return (
                       <div 
@@ -729,11 +727,6 @@ function App() {
                             </p>
                             <p style={{ margin: 0, fontSize: '0.65rem', opacity: 0.5 }}>
                               {s.plan_type} · {new Date(s.created_at).toLocaleDateString()}
-                              {sellerMember && (
-                                <span style={{ marginLeft: '6px', color: 'var(--accent)', fontWeight: 600 }}>
-                                  · {sellerMember.full_name || sellerMember.name}
-                                </span>
-                              )}
                             </p>
                           </div>
                           <div style={{ textAlign: 'right', flexShrink: 0 }}>
@@ -741,8 +734,6 @@ function App() {
                             <p style={{ margin: 0, fontSize: '0.6rem', opacity: 0.5 }}>${(s.amount || 0).toFixed(2)}</p>
                           </div>
                         </div>
-
-                        {/* Accordion expandible para gestión y metadata */}
                         {isExpanded && (
                            <motion.div 
                              initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
@@ -750,26 +741,13 @@ function App() {
                              onClick={e => e.stopPropagation()}
                            >
                              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', marginBottom: canManage ? '10px' : 0 }}>
-                               <p style={{ margin: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>📞 {s.customer_phone || 'No Registrado'}</p>
-                               <p style={{ margin: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>📧 {s.customer_email || 'No Registrado'}</p>
+                               <p style={{ margin: 0 }}>📞 {s.customer_phone || 'N/A'}</p>
+                               <p style={{ margin: 0 }}>📧 {s.customer_email || 'N/A'}</p>
                              </div>
-                             
                              {canManage && (
                                <div style={{ display: 'flex', gap: '8px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '10px' }}>
-                                 <button 
-                                   onClick={() => handleEditSale(s)}
-                                   className="btn glass" 
-                                   style={{ flex: 1, fontSize: '0.65rem', height: 'auto', padding: '6px', color: '#fff' }}
-                                 >
-                                   ✏️ Editar
-                                 </button>
-                                 <button 
-                                   onClick={() => handleDeleteSale(s.id)}
-                                   className="btn" 
-                                   style={{ flex: 1, fontSize: '0.65rem', height: 'auto', padding: '6px', backgroundColor: 'rgba(220, 53, 69, 0.15)', color: '#ff6b6b', border: '1px solid rgba(220,53,69,0.25)' }}
-                                 >
-                                   🗑️ Eliminar
-                                 </button>
+                                 <button onClick={() => handleEditSale(s)} className="btn glass" style={{ flex: 1, fontSize: '0.65rem', height: 'auto', padding: '6px' }}>✏️ Editar</button>
+                                 <button onClick={() => handleDeleteSale(s.id)} className="btn" style={{ flex: 1, fontSize: '0.65rem', height: 'auto', padding: '6px', backgroundColor: 'rgba(220,53,69,0.15)', color: '#ff6b6b' }}>🗑️ Eliminar</button>
                                </div>
                              )}
                            </motion.div>
@@ -778,28 +756,11 @@ function App() {
                     );
                   })}
 
-                  {/* Pagination Controls */}
                   {totalPages > 1 && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.2rem', padding: '0 4px' }}>
-                      <button
-                        disabled={currentPage === 1}
-                        onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                        className="btn glass"
-                        style={{ fontSize: '0.65rem', padding: '6px 12px', height: 'auto', opacity: currentPage === 1 ? 0.3 : 1 }}
-                      >
-                        ◀ Anterior
-                      </button>
-                      <span style={{ fontSize: '0.75rem', opacity: 0.6, fontWeight: 600 }}>
-                        {currentPage} / {totalPages}
-                      </span>
-                      <button
-                        disabled={currentPage === totalPages}
-                        onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                        className="btn glass"
-                        style={{ fontSize: '0.65rem', padding: '6px 12px', height: 'auto', opacity: currentPage === totalPages ? 0.3 : 1 }}
-                      >
-                        Siguiente ▶
-                      </button>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.2rem' }}>
+                      <button disabled={currentPage === 1} onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))} className="btn glass" style={{ fontSize: '0.65rem', padding: '6px 12px', height: 'auto', opacity: currentPage === 1 ? 0.3 : 1 }}>◀ Anterior</button>
+                      <span style={{ fontSize: '0.75rem', opacity: 0.6 }}>{currentPage} / {totalPages}</span>
+                      <button disabled={currentPage === totalPages} onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))} className="btn glass" style={{ fontSize: '0.65rem', padding: '6px 12px', height: 'auto', opacity: currentPage === totalPages ? 0.3 : 1 }}>Sig. ▶</button>
                     </div>
                   )}
                 </>
