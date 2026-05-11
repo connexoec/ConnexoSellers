@@ -283,6 +283,47 @@ function App() {
     }
   };
 
+  const handleDeleteSale = async (saleId) => {
+    if (!window.confirm("¿Estás seguro de eliminar esta venta? Se descontará el monto de tu billetera y recalcularemos tus métricas de rango.")) return;
+    setIsLoading(true);
+    try {
+      await dataService.deleteSale(saleId, user.uid || user.id);
+      setSales(prev => prev.filter(s => s.id !== saleId));
+      addNotification("Venta eliminada y balances actualizados.", "INFO");
+      // Forzar recálculo instantáneo del backend local
+      setTimeout(() => refreshData(user), 500);
+    } catch (err) {
+      alert("Error al eliminar: " + err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleEditSale = async (sale) => {
+    const newName = prompt("Nuevo Nombre de Cliente:", sale.customer_name || '')?.trim();
+    if (newName === undefined) return; // Cancelled
+    
+    const newPhone = prompt("Nuevo Teléfono / Contacto:", sale.customer_phone || '')?.trim();
+    const newEmail = prompt("Nuevo Email del Cliente:", sale.customer_email || '')?.trim();
+    
+    const updates = {
+       customer_name: newName || sale.customer_name,
+       customer_phone: newPhone || sale.customer_phone,
+       customer_email: newEmail || sale.customer_email
+    };
+
+    setIsLoading(true);
+    try {
+      const res = await dataService.updateSale(sale.id, updates);
+      setSales(prev => prev.map(s => s.id === sale.id ? { ...s, ...res } : s));
+      addNotification("Datos de cliente actualizados.", "SUCCESS");
+    } catch (err) {
+      alert("Error al actualizar datos: " + err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const addNotification = (message, type = 'SUCCESS') => {
     setNotifications(prev => [{ id: Date.now(), message, type, read: false }, ...prev]);
   };
@@ -672,26 +713,67 @@ function App() {
                       );
                     }
 
-                    // Vista normal para Vendedores y Distribuidores (Mis Ventas)
+                    // Vista normal para Vendedores y Distribuidores (Mis Ventas con Expandible)
+                    const canManage = (user.uid || user.id) === s.seller_id;
                     return (
-                      <div key={s.id} className="card glass" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <p style={{ margin: 0, fontWeight: 700, fontSize: '0.85rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {s.customer_name || 'Cliente'}
-                          </p>
-                          <p style={{ margin: 0, fontSize: '0.65rem', opacity: 0.5 }}>
-                            {s.plan_type} · {new Date(s.created_at).toLocaleDateString()}
-                            {sellerMember && (
-                              <span style={{ marginLeft: '6px', color: 'var(--accent)', fontWeight: 600 }}>
-                                · {sellerMember.full_name || sellerMember.name}
-                              </span>
-                            )}
-                          </p>
+                      <div 
+                        key={s.id} 
+                        className="card glass" 
+                        onClick={() => setExpandedSaleId(isExpanded ? null : s.id)}
+                        style={{ display: 'flex', flexDirection: 'column', gap: '8px', cursor: 'pointer', transition: 'all 0.2s' }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <p style={{ margin: 0, fontWeight: 700, fontSize: '0.85rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'white' }}>
+                              {s.customer_name || 'Cliente'}
+                            </p>
+                            <p style={{ margin: 0, fontSize: '0.65rem', opacity: 0.5 }}>
+                              {s.plan_type} · {new Date(s.created_at).toLocaleDateString()}
+                              {sellerMember && (
+                                <span style={{ marginLeft: '6px', color: 'var(--accent)', fontWeight: 600 }}>
+                                  · {sellerMember.full_name || sellerMember.name}
+                                </span>
+                              )}
+                            </p>
+                          </div>
+                          <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                            <p style={{ margin: 0, color: 'var(--success)', fontWeight: 700, fontSize: '0.9rem' }}>+${(s.commission_earned || 0).toFixed(2)}</p>
+                            <p style={{ margin: 0, fontSize: '0.6rem', opacity: 0.5 }}>${(s.amount || 0).toFixed(2)}</p>
+                          </div>
                         </div>
-                        <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                          <p style={{ margin: 0, color: 'var(--success)', fontWeight: 700, fontSize: '0.9rem' }}>+${(s.commission_earned || 0).toFixed(2)}</p>
-                          <p style={{ margin: 0, fontSize: '0.6rem', opacity: 0.5 }}>${(s.amount || 0).toFixed(2)}</p>
-                        </div>
+
+                        {/* Accordion expandible para gestión y metadata */}
+                        {isExpanded && (
+                           <motion.div 
+                             initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
+                             style={{ background: 'rgba(255,255,255,0.03)', padding: '10px', borderRadius: '6px', fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '4px' }}
+                             onClick={e => e.stopPropagation()}
+                           >
+                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', marginBottom: canManage ? '10px' : 0 }}>
+                               <p style={{ margin: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>📞 {s.customer_phone || 'No Registrado'}</p>
+                               <p style={{ margin: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>📧 {s.customer_email || 'No Registrado'}</p>
+                             </div>
+                             
+                             {canManage && (
+                               <div style={{ display: 'flex', gap: '8px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '10px' }}>
+                                 <button 
+                                   onClick={() => handleEditSale(s)}
+                                   className="btn glass" 
+                                   style={{ flex: 1, fontSize: '0.65rem', height: 'auto', padding: '6px', color: '#fff' }}
+                                 >
+                                   ✏️ Editar
+                                 </button>
+                                 <button 
+                                   onClick={() => handleDeleteSale(s.id)}
+                                   className="btn" 
+                                   style={{ flex: 1, fontSize: '0.65rem', height: 'auto', padding: '6px', backgroundColor: 'rgba(220, 53, 69, 0.15)', color: '#ff6b6b', border: '1px solid rgba(220,53,69,0.25)' }}
+                                 >
+                                   🗑️ Eliminar
+                                 </button>
+                               </div>
+                             )}
+                           </motion.div>
+                        )}
                       </div>
                     );
                   })}

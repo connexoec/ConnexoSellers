@@ -519,6 +519,90 @@ export const dataService = {
     return supabaseData.sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
   },
 
+  async updateSale(saleId, updates) {
+    try {
+      const { data, error } = await supabase
+        .from('sales')
+        .update(updates)
+        .eq('id', saleId)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      const cached = localStorage.getItem('connexo_sales');
+      if (cached) {
+        const sales = JSON.parse(cached);
+        const idx = sales.findIndex(s => s.id === saleId);
+        if (idx !== -1) {
+           sales[idx] = { ...sales[idx], ...updates };
+           localStorage.setItem('connexo_sales', JSON.stringify(sales));
+        }
+      }
+      return data;
+    } catch (err) {
+       console.warn("⚠️ Error actualizando venta, usando LocalStorage fallback:", err.message);
+       const cached = localStorage.getItem('connexo_sales');
+       if (cached) {
+          const sales = JSON.parse(cached);
+          const idx = sales.findIndex(s => s.id === saleId);
+          if (idx !== -1) {
+             sales[idx] = { ...sales[idx], ...updates };
+             localStorage.setItem('connexo_sales', JSON.stringify(sales));
+             return sales[idx];
+          }
+       }
+       throw err;
+    }
+  },
+
+  async deleteSale(saleId, userId) {
+    try {
+      // 1. Obtener la venta para saber la comisión y monto reversado
+      const { data: sale } = await supabase.from('sales').select('*').eq('id', saleId).single();
+      if (!sale) throw new Error("Venta no encontrada");
+      
+      const commToRevert = Number(sale.commission_earned || 0);
+
+      // 2. Borrar la venta física
+      const { error } = await supabase.from('sales').delete().eq('id', saleId);
+      if (error) throw error;
+
+      // 3. Revertir balance de billetera del vendedor si hay comisión
+      if (commToRevert > 0) {
+         const { data: profile } = await supabase.from('profiles').select('wallet_balance').eq('id', userId).single();
+         if (profile) {
+            const newBalance = Math.max(0, Number(profile.wallet_balance || 0) - commToRevert);
+            await supabase.from('profiles').update({ wallet_balance: newBalance }).eq('id', userId);
+            if (_currentUser && _currentUser.id === userId) {
+               _currentUser.wallet_balance = newBalance;
+            }
+         }
+      }
+
+      // Limpiar cache local
+      const cached = localStorage.getItem('connexo_sales');
+      if (cached) {
+         const sales = JSON.parse(cached).filter(s => s.id !== saleId);
+         localStorage.setItem('connexo_sales', JSON.stringify(sales));
+      }
+      
+      _metricsCache.clear();
+      return true;
+    } catch (err) {
+       console.warn("⚠️ Error borrando venta, intentando LocalStorage fallback:", err.message);
+       const cached = localStorage.getItem('connexo_sales');
+       if (cached) {
+          const sales = JSON.parse(cached);
+          const filtered = sales.filter(s => s.id !== saleId);
+          localStorage.setItem('connexo_sales', JSON.stringify(filtered));
+          _metricsCache.clear();
+          return true;
+       }
+       throw err;
+    }
+  },
+
   async getTeam(parentId) {
     let supabaseData = [];
     try {
