@@ -259,6 +259,23 @@ function App() {
         }, 800);
         addNotification("¡Has obtenido tu primera insignia oficial: Primer Impacto!", "SUCCESS");
       }
+
+      // ─── Desbloquear Insignia de Sueldo Base Activado (7 ventas anuales) ───
+      const allAnnualSales = [newSale, ...sales].filter(s => s.plan_type?.toUpperCase().includes('ANUAL'));
+      const annualCount = allAnnualSales.length;
+
+      if (annualCount >= 7 && !currentBadgesList.includes('BASE_SALARY_UNLOCKED')) {
+        const finalBadges = [...currentBadgesList, 'BASE_SALARY_UNLOCKED'];
+        setUserBadges(finalBadges);
+        await dataService.saveUserBadges(user.uid || user.id, finalBadges);
+        
+        if (user?.role === 'SELLER') {
+          setTimeout(() => {
+            alert("🎉 ¡ESPECTACULAR FELICITACIONES! 🎉\nHas alcanzado tus 7 ventas anuales y oficialmente has ACTIVADO tu Sueldo Base mensual.\n¡Disfruta de tus nuevos beneficios!");
+          }, 1200);
+          addNotification("¡Desbloqueaste la insignia Sueldo Activado! Sueldo Base ya está en línea.", "SUCCESS");
+        }
+      }
     } catch (err) {
       alert('Error al registrar venta: ' + err.message);
     } finally {
@@ -453,11 +470,16 @@ function App() {
                 }}
               >
                 <p style={{ fontSize: '0.55rem', opacity: 0.5, letterSpacing: '1px' }}>
-                  SUELDO BASE {metrics.baseUnlocked ? '' : '🔒'}
+                  SUELDO BASE {metrics.baseUnlocked ? '✅' : '🔒'}
                 </p>
-                <h3 style={{ margin: '4px 0', fontSize: '1.25rem', color: metrics.baseUnlocked && metrics.base > 0 ? 'var(--success)' : 'white' }}>
-                  ${metrics.base.toFixed(0)}
-                </h3>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+                   <h3 style={{ margin: '4px 0', fontSize: '1.25rem', color: metrics.baseUnlocked && metrics.base > 0 ? 'var(--success)' : 'white' }}>
+                     ${metrics.base.toFixed(0)}
+                   </h3>
+                   {metrics.baseUnlocked && (
+                     <span style={{ fontSize: '0.55rem', color: 'var(--success)', fontWeight: 'bold', textTransform: 'uppercase' }}>ACTIVO</span>
+                   )}
+                </div>
                 {!metrics.baseUnlocked && (
                   <p style={{ position: 'absolute', bottom: '6px', left: '12px', fontSize: '0.5rem', color: 'var(--accent)', margin: 0, fontWeight: 600 }}>
                     Req: {metrics.annualSalesCount || 0}/7 Anuales
