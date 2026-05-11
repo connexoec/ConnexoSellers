@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Package, Plus, Minus, Send, Download, Trash2, Edit, Save, X } from 'lucide-react';
+import { Package, Plus, Minus, Send, Download, Trash2, Edit, Save, X, CreditCard, Box, Shirt, Tag, DollarSign } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { dataService } from '../../services/dataService';
@@ -14,7 +14,7 @@ const InventoryManager = ({ user, team, addNotification, selectedSedeContext = '
   
   // States for Admin Adding Items
   const [isAddingNew, setIsAddingNew] = useState(false);
-  const [newItemData, setNewItemData] = useState({ name: '', description: '', category: 'NFC', stock_quantity: 0, unit_type: 'UNIDAD', detail_packaging: '' });
+  const [newItemData, setNewItemData] = useState({ name: '', description: '', category: 'NFC', stock_quantity: 0, unit_type: 'UNIDAD', detail_packaging: '', price: 0 });
   
   // States for Admin Editing
   const [editingItem, setEditingItem] = useState(null);
@@ -56,7 +56,7 @@ const InventoryManager = ({ user, team, addNotification, selectedSedeContext = '
       await dataService.addInventoryItem({ ...newItemData, sede_id: activeSedeId });
       addNotification('Producto añadido al inventario');
       setIsAddingNew(false);
-      setNewItemData({ name: '', description: '', category: 'NFC', stock_quantity: 0, unit_type: 'UNIDAD', detail_packaging: '' });
+      setNewItemData({ name: '', description: '', category: 'NFC', stock_quantity: 0, unit_type: 'UNIDAD', detail_packaging: '', price: 0 });
       loadData();
     } catch (err) {
       addNotification(err.message, 'ERROR');
@@ -128,12 +128,18 @@ const InventoryManager = ({ user, team, addNotification, selectedSedeContext = '
 
     autoTable(doc, {
       startY: 50,
-      head: [['Producto', 'Cantidad']],
-      body: req.items.map(i => [i.product_name, i.quantity])
+      head: [['Producto', 'Cantidad', 'Precio Unit.', 'Total']],
+      body: req.items.map(i => {
+        const cost = i.price || 0;
+        return [i.product_name, i.quantity, `$${cost.toFixed(2)}`, `$${(cost * i.quantity).toFixed(2)}`];
+      })
     });
 
+    const totalOrder = req.items.reduce((a, b) => a + ((b.price || 0) * b.quantity), 0);
+    doc.text(`Monto Total Estimado: $${totalOrder.toFixed(2)}`, 14, doc.lastAutoTable.finalY + 10);
+
     if (req.notes) {
-      doc.text(`Notas Adicionales: ${req.notes}`, 14, doc.lastAutoTable.finalY + 15);
+      doc.text(`Notas Adicionales: ${req.notes}`, 14, doc.lastAutoTable.finalY + 20);
     }
 
     doc.save(`despacho_connexo_${req.id || Date.now()}.pdf`);
@@ -188,110 +194,127 @@ const InventoryManager = ({ user, team, addNotification, selectedSedeContext = '
         >
           <h3 style={{ fontSize: '0.9rem', textTransform: 'uppercase', color: 'var(--accent)', margin: 0 }}>Añadir al Catálogo</h3>
           <input required placeholder="Nombre del Producto" value={newItemData.name} onChange={e => setNewItemData({...newItemData, name: e.target.value})} style={inputStyle} />
-          <input placeholder="Descripción (opcional)" value={newItemData.description} onChange={e => setNewItemData({...newItemData, description: e.target.value})} style={inputStyle} />
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
             <select value={newItemData.category} onChange={e => setNewItemData({...newItemData, category: e.target.value})} style={inputStyle}>
               <option value="NFC">Tecnología NFC</option>
               <option value="PACKAGING">Empaques / Cajas</option>
               <option value="MERCH">Merchandising</option>
             </select>
-            <input required type="number" placeholder="Stock Inicial" value={newItemData.stock_quantity || ''} onChange={e => setNewItemData({...newItemData, stock_quantity: e.target.value})} style={inputStyle} />
+            <input required type="number" step="0.01" placeholder="Precio Venta ($)" value={newItemData.price || ''} onChange={e => setNewItemData({...newItemData, price: e.target.value})} style={inputStyle} />
           </div>
-          <input placeholder="Detalle Empaque (ej. Caja de 100u)" value={newItemData.detail_packaging} onChange={e => setNewItemData({...newItemData, detail_packaging: e.target.value})} style={inputStyle} />
-          <button type="submit" className="btn btn-primary">Guardar Producto</button>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+            <input required type="number" placeholder="Stock Inicial" value={newItemData.stock_quantity || ''} onChange={e => setNewItemData({...newItemData, stock_quantity: e.target.value})} style={inputStyle} />
+            <input placeholder="Detalle Empaque (ej. Caja de 100u)" value={newItemData.detail_packaging} onChange={e => setNewItemData({...newItemData, detail_packaging: e.target.value})} style={inputStyle} />
+          </div>
+          <input placeholder="Descripción Corta" value={newItemData.description} onChange={e => setNewItemData({...newItemData, description: e.target.value})} style={inputStyle} />
+          <button type="submit" className="btn btn-primary">Guardar Producto en Sistema</button>
         </motion.form>
       )}
 
       {/* INVENTORY LIST */}
       <h3 style={{ fontSize: '0.8rem', textTransform: 'uppercase', opacity: 0.6, letterSpacing: '1px', marginBottom: '1rem' }}>Disponibilidad en Bodega</h3>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1rem', marginBottom: '3rem' }}>
+      <div style={{ 
+        display: 'grid', 
+        gridTemplateColumns: 'repeat(auto-fill, minmax(165px, 1fr))', 
+        gap: '1rem', 
+        marginBottom: '3rem' 
+      }}>
         {inventory.map(item => {
           const isEditing = editingItem === item.id;
+          const Icon = item.category === 'NFC' ? CreditCard : item.category === 'PACKAGING' ? Box : Shirt;
           
           return (
-            <div key={item.id} className="card glass" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '1rem 1.25rem', border: isEditing ? '1px solid var(--accent)' : '' }}>
-              <div style={{ flex: 1, paddingRight: '10px' }}>
+            <motion.div 
+              key={item.id} 
+              whileHover={{ y: -4 }}
+              className="card glass" 
+              style={{ 
+                display: 'flex', 
+                flexDirection: 'column', 
+                padding: '1.25rem', 
+                border: isEditing ? '1px solid var(--accent)' : '1px solid rgba(255,255,255,0.05)', 
+                position: 'relative',
+                aspectRatio: '1 / 1.1',
+                justifyContent: 'space-between',
+                overflow: 'hidden'
+              }}
+            >
+              {/* Header: Category Icon & Name */}
+              <div style={{ position: 'absolute', top: 0, right: 0, opacity: 0.05, transform: 'translate(20%, -20%)' }}>
+                 <Icon size={100} />
+              </div>
+
+              <div style={{ zIndex: 1 }}>
                 {isEditing ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <input value={editData.name} onChange={e => setEditData({...editData, name: e.target.value})} style={{...inputStyle, padding: '8px'}} />
-                    <input value={editData.description} onChange={e => setEditData({...editData, description: e.target.value})} style={{...inputStyle, padding: '8px', fontSize: '0.8rem'}} placeholder="Descripción" />
-                    <input value={editData.detail_packaging} onChange={e => setEditData({...editData, detail_packaging: e.target.value})} style={{...inputStyle, padding: '8px', fontSize: '0.8rem'}} placeholder="Detalle Empaque" />
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <input value={editData.name} onChange={e => setEditData({...editData, name: e.target.value})} style={{...inputStyle, padding: '6px', fontSize: '0.8rem'}} />
+                    <input type="number" step="0.01" value={editData.price} onChange={e => setEditData({...editData, price: e.target.value})} style={{...inputStyle, padding: '6px', fontSize: '0.8rem'}} placeholder="Precio" />
                   </div>
                 ) : (
                   <>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ fontSize: '0.6rem', padding: '2px 8px', borderRadius: '100px', background: 'rgba(255,102,0,0.1)', color: 'var(--accent)', fontWeight: 'bold' }}>
-                        {item.category}
-                      </span>
-                      <p style={{ margin: 0, fontWeight: 700, fontSize: '1rem', color: 'white' }}>{item.name}</p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+                      <div style={{ padding: '6px', borderRadius: '8px', background: 'rgba(255,102,0,0.1)', color: 'var(--accent)' }}>
+                        <Icon size={14} />
+                      </div>
+                      <span style={{ fontSize: '0.55rem', fontWeight: 'bold', letterSpacing: '1px', opacity: 0.7 }}>{item.category}</span>
                     </div>
-                    <p style={{ margin: '4px 0 0', fontSize: '0.7rem', opacity: 0.6 }}>{item.detail_packaging || item.description || 'Unidad estándar'}</p>
+                    <h4 style={{ margin: '0 0 4px', fontWeight: 700, fontSize: '0.9rem', color: 'white', lineHeight: '1.2' }}>{item.name}</h4>
+                    <p style={{ margin: 0, fontSize: '0.65rem', opacity: 0.5, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                       {item.detail_packaging || item.description || 'Estándar'}
+                    </p>
                   </>
                 )}
-                
-                {!isSuperAdmin && isRequesting && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '12px' }}>
-                    <button type="button" onClick={() => setRequestCart(prev => ({...prev, [item.id]: Math.max(0, (prev[item.id] || 0) - 1)}))} style={qtyBtnStyle}>-</button>
-                    <span style={{ fontWeight: 'bold', width: '30px', textAlign: 'center' }}>{requestCart[item.id] || 0}</span>
-                    <button type="button" onClick={() => setRequestCart(prev => ({...prev, [item.id]: (prev[item.id] || 0) + 1}))} style={qtyBtnStyle}>+</button>
-                  </div>
-                )}
+              </div>
 
-                {isSuperAdmin && !isEditing && (
-                  <div style={{ display: 'flex', gap: '10px', marginTop: '12px' }}>
-                    <button onClick={() => { setEditingItem(item.id); setEditData(item); }} style={{...qtyBtnStyle, width: 'auto', padding: '0 8px', fontSize: '0.7rem'}}>
-                      <Edit size={12} style={{marginRight: '4px'}}/> Editar
+              {/* Body: Price & Stock */}
+              <div style={{ zIndex: 1, marginTop: '12px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '8px', marginBottom: '8px' }}>
+                  <div>
+                     <p style={{ margin: 0, fontSize: '0.55rem', opacity: 0.5 }}>PRECIO</p>
+                     <p style={{ margin: 0, fontWeight: 700, fontSize: '1.1rem', color: 'var(--accent)' }}>${Number(item.price || 0).toFixed(2)}</p>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                     <p style={{ margin: 0, fontSize: '0.55rem', opacity: 0.5 }}>STOCK</p>
+                     {isSuperAdmin && isEditing ? (
+                        <input type="number" value={editData.stock_quantity} onChange={e => setEditData({...editData, stock_quantity: e.target.value})} style={{ ...inputStyle, width: '50px', padding: '4px', fontSize: '0.75rem', textAlign: 'center' }} />
+                     ) : (
+                        <p style={{ margin: 0, fontWeight: 700, fontSize: '1.1rem', color: item.stock_quantity > 10 ? 'white' : 'var(--danger)' }}>{item.stock_quantity}</p>
+                     )}
+                  </div>
+                </div>
+
+                {/* Actions Footer inside card */}
+                {!isSuperAdmin && isRequesting ? (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', padding: '4px' }}>
+                    <button type="button" onClick={() => setRequestCart(prev => ({...prev, [item.id]: Math.max(0, (prev[item.id] || 0) - 1)}))} style={{...qtyBtnStyle, width: '24px', height: '24px'}}><Minus size={12}/></button>
+                    <span style={{ fontWeight: 'bold', fontSize: '0.8rem' }}>{requestCart[item.id] || 0}</span>
+                    <button type="button" onClick={() => setRequestCart(prev => ({...prev, [item.id]: (prev[item.id] || 0) + 1}))} style={{...qtyBtnStyle, width: '24px', height: '24px', background: 'var(--accent)'}}><Plus size={12}/></button>
+                  </div>
+                ) : isSuperAdmin && !isEditing ? (
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    <button onClick={() => { setEditingItem(item.id); setEditData(item); }} className="btn glass" style={{ flex: 1, padding: '6px', fontSize: '0.65rem', height: 'auto' }}>
+                      <Edit size={12} style={{marginRight: '4px'}}/> Edit
                     </button>
-                    <button onClick={() => handleDeleteItem(item.id)} style={{...qtyBtnStyle, background: 'rgba(239,68,68,0.1)', color: 'var(--danger)', width: 'auto', padding: '0 8px', fontSize: '0.7rem'}}>
-                      <Trash2 size={12} style={{marginRight: '4px'}}/> Borrar
+                    <button onClick={() => handleDeleteItem(item.id)} className="btn" style={{ padding: '6px', fontSize: '0.65rem', height: 'auto', color: 'var(--danger)', background: 'rgba(239,68,68,0.1)' }}>
+                      <Trash2 size={12} />
                     </button>
                   </div>
-                )}
-                {isSuperAdmin && isEditing && (
-                  <div style={{ display: 'flex', gap: '10px', marginTop: '12px' }}>
-                    <button onClick={handleSaveEdit} className="btn btn-primary" style={{ padding: '4px 12px', fontSize: '0.7rem' }}>
-                      <Save size={12} style={{marginRight: '4px'}}/> Guardar
+                ) : isSuperAdmin && isEditing ? (
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    <button onClick={handleSaveEdit} className="btn btn-primary" style={{ flex: 2, padding: '6px', fontSize: '0.65rem', height: 'auto' }}>
+                      <Save size={12} style={{marginRight: '4px'}}/> Save
                     </button>
-                    <button onClick={() => setEditingItem(null)} className="btn glass" style={{ padding: '4px 12px', fontSize: '0.7rem' }}>
+                    <button onClick={() => setEditingItem(null)} className="btn glass" style={{ flex: 1, padding: '6px', fontSize: '0.65rem', height: 'auto' }}>
                       <X size={12} />
                     </button>
                   </div>
-                )}
-              </div>
-              
-              <div style={{ textAlign: 'right', minWidth: '80px' }}>
-                {isSuperAdmin ? (
-                  <>
-                    <p style={{ margin: '0 0 4px', fontSize: '0.6rem', textTransform: 'uppercase', opacity: 0.6 }}>Stock</p>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '4px' }}>
-                      <input 
-                        type="number" 
-                        value={isEditing ? editData.stock_quantity : item.stock_quantity}
-                        onChange={(e) => {
-                          if (isEditing) setEditData({...editData, stock_quantity: e.target.value});
-                        }}
-                        disabled={!isEditing}
-                        style={{
-                          ...inputStyle, 
-                          width: '70px', 
-                          padding: '6px', 
-                          textAlign: 'center', 
-                          fontSize: '1.2rem',
-                          fontWeight: 'bold',
-                          color: (isEditing ? editData.stock_quantity : item.stock_quantity) > 50 ? 'var(--success)' : 'var(--danger)',
-                          opacity: isEditing ? 1 : 0.8,
-                          cursor: isEditing ? 'text' : 'default'
-                        }}
-                      />
-                    </div>
-                  </>
                 ) : (
-                  <p style={{ fontSize: '0.75rem', color: item.stock_quantity > 0 ? 'var(--success)' : 'var(--danger)' }}>
-                    {item.stock_quantity > 0 ? 'Disponible' : 'Agotado'}
-                  </p>
+                   <div style={{ fontSize: '0.65rem', color: item.stock_quantity > 0 ? 'var(--success)' : 'var(--danger)', fontWeight: 600, textAlign: 'center', padding: '4px', borderRadius: '4px', background: 'rgba(255,255,255,0.03)' }}>
+                      {item.stock_quantity > 0 ? '✔ EN EXISTENCIA' : '✖ AGOTADO'}
+                   </div>
                 )}
               </div>
-            </div>
+            </motion.div>
           );
         })}
       </div>

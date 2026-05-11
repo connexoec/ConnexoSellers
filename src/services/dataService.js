@@ -931,6 +931,7 @@ export const dataService = {
         stock_quantity: Number(itemData.stock_quantity) || 0,
         unit_type: itemData.unit_type || 'UNIDAD',
         detail_packaging: itemData.detail_packaging || '',
+        price: Number(itemData.price) || 0,
         sede_id: itemData.sede_id || 'sede-ec-1'
       };
 
@@ -954,6 +955,7 @@ export const dataService = {
         stock_quantity: Number(itemData.stock_quantity) || 0,
         unit_type: itemData.unit_type || 'UNIDAD',
         detail_packaging: itemData.detail_packaging || '',
+        price: Number(itemData.price) || 0,
         sede_id: itemData.sede_id || 'sede-ec-1'
       };
       allItems.push(newItem);
