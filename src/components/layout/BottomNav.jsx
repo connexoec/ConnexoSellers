@@ -7,7 +7,7 @@ const BottomNav = ({ activeTab, setActiveTab, role }) => {
   const allNavItems = [
     { id: 'dashboard', label: 'Inicio',     icon: <Home size={18} />,        roles: ['SUPER_ADMIN', 'DISTRIBUTOR', 'SELLER'] },
     { id: 'sales',     label: 'Nueva Venta', icon: <PlusCircle size={18} />,   roles: ['DISTRIBUTOR', 'SELLER'] },
-    { id: 'history',   label: 'Movimientos', icon: <FileText size={18} />,     roles: ['SUPER_ADMIN', 'DISTRIBUTOR', 'SELLER'] },
+    { id: 'history',   label: 'Movimientos', icon: <FileText size={18} />,     roles: ['SUPER_ADMIN', 'SELLER'] },
     { id: 'academy',   label: 'Academia',  icon: <GraduationCap size={18} />, roles: ['SUPER_ADMIN', 'DISTRIBUTOR', 'SELLER'] },
     { id: 'inventory', label: 'Almacén',    icon: <Package size={18} />,     roles: ['SUPER_ADMIN', 'DISTRIBUTOR'] },
     { id: 'network',   label: isSuperAdmin ? 'Admin' : 'Red', icon: isSuperAdmin ? <Settings size={18} /> : <Users size={18} />, roles: ['SUPER_ADMIN', 'DISTRIBUTOR'] },
