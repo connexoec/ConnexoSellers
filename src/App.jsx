@@ -607,7 +607,8 @@ function App() {
 
           {/* Status Card */}
           {user?.role === 'SUPER_ADMIN' ? (
-            <div className="card glass" style={{ marginBottom: '2rem', border: '1px solid var(--accent-glow)', background: 'linear-gradient(135deg, var(--bg-secondary) 0%, #2b1208 100%)' }}>
+            <>
+              <div className="card glass" style={{ marginBottom: '2rem', border: '1px solid var(--accent-glow)', background: 'linear-gradient(135deg, var(--bg-secondary) 0%, #2b1208 100%)' }}>
               <p style={{ fontSize: '0.6rem', opacity: 0.6, textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '8px' }}>Control Maestro</p>
               <h2 style={{ color: 'var(--accent)', margin: '0', fontSize: '1.4rem', textShadow: '0 0 10px var(--accent-glow)' }}>
                 {selectedSedeContext === 'GLOBAL' ? 'Vista Global de Red' : selectedSedeContext === 'Ecuador' ? 'Vista Ecuador' : 'Vista Venezuela'}
@@ -689,6 +690,73 @@ function App() {
                 </button>
               </div>
             </div>
+
+            {/* TABLA DE PRECIOS / INVERSIONES TIPO BILLETERA */}
+            <motion.div 
+              initial={{ opacity: 0, y: 10 }} 
+              animate={{ opacity: 1, y: 0 }}
+              style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', marginBottom: '2.5rem' }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '0.2rem', marginTop: '0.5rem' }}>
+                <span style={{ color: 'var(--accent)', fontWeight: 'bold', fontSize: '1.1rem' }}>💼</span>
+                <h3 style={{ fontSize: '0.9rem', textTransform: 'uppercase', fontFamily: 'var(--font-heading)', margin: 0, letterSpacing: '1px' }}>Precios e Inversión Connexo</h3>
+              </div>
+
+              <div className="card glass" style={{ padding: '1.25rem' }}>
+                <h4 style={{ fontSize: '0.75rem', opacity: 0.7, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '12px', color: 'var(--accent)' }}>Planes de Inversión por Niveles</h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {[
+                    { lvl: 'Nivel 1', units: '100 unidades', inv: '$526.00', margin: '$53.20' },
+                    { lvl: 'Nivel 2', units: '200 unidades', inv: '$1,052.00', margin: '$106.40' },
+                    { lvl: 'Nivel 3', units: '300 unidades', inv: '$1,578.00', margin: '$159.60' }
+                  ].map((item, idx) => (
+                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', background: 'rgba(0,0,0,0.2)', borderRadius: '8px' }}>
+                      <div>
+                        <p style={{ margin: 0, fontWeight: 'bold', fontSize: '0.85rem', color: 'white' }}>{item.lvl}</p>
+                        <p style={{ margin: 0, fontSize: '0.65rem', opacity: 0.6 }}>{item.units}</p>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <p style={{ margin: 0, fontWeight: 'bold', fontSize: '0.85rem', color: 'var(--accent)' }}>{item.inv} Inv.</p>
+                        <p style={{ margin: 0, fontSize: '0.65rem', color: 'var(--success)', fontWeight: '600' }}>{item.margin} Margen</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="card glass" style={{ padding: '1.25rem', overflowX: 'auto' }}>
+                <h4 style={{ fontSize: '0.75rem', opacity: 0.7, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '12px', color: 'var(--accent)' }}>Detalle Costos Unitarios NFC</h4>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem', textAlign: 'left' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', color: 'var(--accent)' }}>
+                      <th style={{ padding: '8px 4px' }}>Ítem</th>
+                      <th style={{ padding: '8px 4px', textAlign: 'center' }}>Costo</th>
+                      <th style={{ padding: '8px 4px', textAlign: 'center' }}>Precio Dist.</th>
+                      <th style={{ padding: '8px 4px', textAlign: 'right' }}>Margen</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[
+                      { name: 'Tarjeta NFC Negra', cost: '$0.27', dist: '$0.45', marg: '$0.18' },
+                      { name: 'Tarjeta NFC Blanca', cost: '$0.25', dist: '$0.45', marg: '$0.20' },
+                      { name: 'Pulsera NFC', cost: '$3.60', dist: '$5.50', marg: '$1.90' },
+                      { name: 'Lector NFC', cost: '$60.00', dist: '$80.00', marg: '$20.00' },
+                      { name: 'Chips (100u)', cost: '$27.90', dist: '$40.00', marg: '$12.10' },
+                      { name: 'Empaque', cost: '$3.00', dist: '$3.00*', marg: '$0.00' },
+                      { name: 'Impresión', cost: '$4.00', dist: '$4.00*', marg: '$0.00' }
+                    ].map((row, idx) => (
+                      <tr key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+                        <td style={{ padding: '8px 4px', fontWeight: 500, color: 'white' }}>{row.name}</td>
+                        <td style={{ padding: '8px 4px', textAlign: 'center', opacity: 0.7 }}>{row.cost}</td>
+                        <td style={{ padding: '8px 4px', textAlign: 'center', color: 'var(--accent)', fontWeight: 'bold' }}>{row.dist}</td>
+                        <td style={{ padding: '8px 4px', textAlign: 'right', color: 'var(--success)' }}>{row.marg}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </motion.div>
+            </>
           ) : (
             <div className="card glass" style={{ marginBottom: '2rem', border: '1px solid var(--accent-glow)', background: 'linear-gradient(135deg, var(--bg-secondary) 0%, #2b1208 100%)' }}>
               <p style={{ fontSize: '0.6rem', opacity: 0.6, textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '8px' }}>Estatus de Agente</p>
@@ -891,6 +959,7 @@ function App() {
         <InventoryManager 
           user={user} 
           team={team}
+          metrics={metrics}
           addNotification={addNotification} 
           selectedSedeContext={selectedSedeContext}
         />

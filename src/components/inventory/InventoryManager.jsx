@@ -7,7 +7,7 @@ import autoTable from 'jspdf-autotable';
 import { dataService } from '../../services/dataService';
 import ConnexoLogo from '../../assets/CONNEXO LOGO.png';
 
-const InventoryManager = ({ user, team, addNotification, selectedSedeContext = 'GLOBAL' }) => {
+const InventoryManager = ({ user, team, metrics, addNotification, selectedSedeContext = 'GLOBAL' }) => {
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
   
   const [inventory, setInventory] = useState([]);
@@ -30,6 +30,9 @@ const InventoryManager = ({ user, team, addNotification, selectedSedeContext = '
   // States for filtering requests
   const [filterStatus, setFilterStatus] = useState('ALL');
   const [filterText, setFilterText] = useState('');
+  
+  const isDistributor = user?.role === 'DISTRIBUTOR';
+  const [distributorTab, setDistributorTab] = useState('CATALOG'); // 'CATALOG' | 'INVESTMENT'
 
   useEffect(() => {
     loadData();
@@ -187,233 +190,343 @@ const InventoryManager = ({ user, team, addNotification, selectedSedeContext = '
           </button>
         )}
       </div>
-
-      {isAddingNew && isSuperAdmin && (
-        <motion.form 
-          initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} 
-          onSubmit={handleAddNewItem} 
-          className="card glass" style={{ marginBottom: '2rem', display: 'flex', flexDirection: 'column', gap: '1rem', border: '1px solid var(--accent)' }}
-        >
-          <h3 style={{ fontSize: '0.9rem', textTransform: 'uppercase', color: 'var(--accent)', margin: 0 }}>Añadir al Catálogo</h3>
-          <input required placeholder="Nombre del Producto" value={newItemData.name} onChange={e => setNewItemData({...newItemData, name: e.target.value})} style={inputStyle} />
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-            <select value={newItemData.category} onChange={e => setNewItemData({...newItemData, category: e.target.value})} style={inputStyle}>
-              <option value="NFC">Tecnología NFC</option>
-              <option value="PACKAGING">Empaques / Cajas</option>
-              <option value="MERCH">Merchandising</option>
-            </select>
-            <input required type="number" step="0.01" placeholder="Precio Venta ($)" value={newItemData.price || ''} onChange={e => setNewItemData({...newItemData, price: e.target.value})} style={inputStyle} />
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-            <input required type="number" placeholder="Stock Inicial" value={newItemData.stock_quantity || ''} onChange={e => setNewItemData({...newItemData, stock_quantity: e.target.value})} style={inputStyle} />
-            <input placeholder="Detalle Empaque (ej. Caja de 100u)" value={newItemData.detail_packaging} onChange={e => setNewItemData({...newItemData, detail_packaging: e.target.value})} style={inputStyle} />
-          </div>
-          <input placeholder="Descripción Corta" value={newItemData.description} onChange={e => setNewItemData({...newItemData, description: e.target.value})} style={inputStyle} />
-          <button type="submit" className="btn btn-primary">Guardar Producto en Sistema</button>
-        </motion.form>
-      )}
-
-      {/* INVENTORY LIST */}
-      <h3 style={{ fontSize: '0.8rem', textTransform: 'uppercase', opacity: 0.6, letterSpacing: '1px', marginBottom: '1rem' }}>Disponibilidad en Bodega</h3>
-      <div style={{ 
-        display: 'grid', 
-        gridTemplateColumns: 'repeat(auto-fill, minmax(165px, 1fr))', 
-        gap: '1rem', 
-        marginBottom: '3rem' 
-      }}>
-        {inventory.map(item => {
-          const Icon = item.category === 'NFC' ? CreditCard : item.category === 'PACKAGING' ? Box : Shirt;
-          
-          return (
-            <motion.div 
-              key={item.id} 
-              whileHover={{ y: -4 }}
-              className="card glass" 
-              style={{ 
-                display: 'flex', 
-                flexDirection: 'column', 
-                padding: '1.25rem', 
-                border: '1px solid rgba(255,255,255,0.05)', 
-                position: 'relative',
-                aspectRatio: '1 / 1.35',
-                justifyContent: 'space-between',
-                overflow: 'hidden'
-              }}
-            >
-              {/* Brand Background Logo */}
-              <img 
-                src={ConnexoLogo} 
-                alt="Brand Logo"
-                style={{ 
-                  position: 'absolute', 
-                  top: '10px', 
-                  right: '-20px', 
-                  width: '120px',
-                  height: 'auto',
-                  opacity: 0.06, 
-                  pointerEvents: 'none',
-                  transform: 'rotate(-15deg)',
-                  zIndex: 0
-                }} 
-              />
-
-              <div style={{ zIndex: 1 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
-                  <div style={{ padding: '6px', borderRadius: '8px', background: 'rgba(255,102,0,0.1)', color: 'var(--accent)' }}>
-                    <Icon size={14} />
-                  </div>
-                  <span style={{ fontSize: '0.55rem', fontWeight: 'bold', letterSpacing: '1px', opacity: 0.7 }}>{item.category}</span>
-                </div>
-                <h4 style={{ margin: '0 0 4px', fontWeight: 700, fontSize: '0.9rem', color: 'white', lineHeight: '1.2' }}>{item.name}</h4>
-                <p style={{ margin: 0, fontSize: '0.65rem', opacity: 0.5, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
-                   {item.detail_packaging || item.description || 'Estándar'}
-                </p>
-              </div>
-
-              {/* Body: Price & Stock */}
-              <div style={{ zIndex: 1, marginTop: '12px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '8px', marginBottom: '8px' }}>
-                  <div>
-                     <p style={{ margin: 0, fontSize: '0.55rem', opacity: 0.5 }}>PRECIO</p>
-                     <p style={{ margin: 0, fontWeight: 700, fontSize: '1.1rem', color: 'var(--accent)' }}>${Number(item.price || 0).toFixed(2)}</p>
-                  </div>
-                  <div style={{ textAlign: 'right' }}>
-                     <p style={{ margin: 0, fontSize: '0.55rem', opacity: 0.5 }}>STOCK</p>
-                     <p style={{ margin: 0, fontWeight: 700, fontSize: '1.1rem', color: item.stock_quantity > 10 ? 'white' : 'var(--danger)' }}>{item.stock_quantity}</p>
-                  </div>
-                </div>
-
-                {/* Actions Footer inside card */}
-                {!isSuperAdmin && isRequesting ? (
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', padding: '4px' }}>
-                    <button type="button" onClick={() => setRequestCart(prev => ({...prev, [item.id]: Math.max(0, (prev[item.id] || 0) - 1)}))} style={{...qtyBtnStyle, width: '24px', height: '24px'}}><Minus size={12}/></button>
-                    <span style={{ fontWeight: 'bold', fontSize: '0.8rem' }}>{requestCart[item.id] || 0}</span>
-                    <button type="button" onClick={() => setRequestCart(prev => ({...prev, [item.id]: (prev[item.id] || 0) + 1}))} style={{...qtyBtnStyle, width: '24px', height: '24px', background: 'var(--accent)'}}><Plus size={12}/></button>
-                  </div>
-                ) : isSuperAdmin ? (
-                  <div style={{ display: 'flex', gap: '6px' }}>
-                    <button onClick={() => { setEditingItem(item.id); setEditData(item); }} className="btn glass" style={{ flex: 1, padding: '6px', fontSize: '0.65rem', height: 'auto' }}>
-                      <Edit size={12} style={{marginRight: '4px'}}/> Edit
-                    </button>
-                    <button onClick={() => handleDeleteItem(item.id)} className="btn" style={{ padding: '6px', fontSize: '0.65rem', height: 'auto', color: 'var(--danger)', background: 'rgba(239,68,68,0.1)' }}>
-                      <Trash2 size={12} />
-                    </button>
-                  </div>
-                ) : (
-                   <div style={{ fontSize: '0.65rem', color: item.stock_quantity > 0 ? 'var(--success)' : 'var(--danger)', fontWeight: 600, textAlign: 'center', padding: '4px', borderRadius: '4px', background: 'rgba(255,255,255,0.03)' }}>
-                      {item.stock_quantity > 0 ? '✔ EN EXISTENCIA' : '✖ AGOTADO'}
-                   </div>
-                )}
-              </div>
-            </motion.div>
-          );
-        })}
-      </div>
-
-      {/* DISTRIBUTOR REQUEST CONTROLS */}
-      {!isSuperAdmin && (
-        <div style={{ position: 'fixed', bottom: '85px', left: 0, right: 0, padding: '0 1.5rem', zIndex: 10 }}>
-          {isRequesting ? (
-             <motion.div initial={{ y: 50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="card glass" style={{ border: '1px solid var(--accent)' }}>
-               <textarea 
-                  placeholder="Notas para el administrador (ej. Enviar a oficina central)" 
-                  value={requestNotes} onChange={e => setRequestNotes(e.target.value)}
-                  style={{...inputStyle, minHeight: '60px', marginBottom: '10px'}}
-               />
-               <div style={{ display: 'flex', gap: '10px' }}>
-                 <button onClick={() => setIsRequesting(false)} className="btn glass" style={{ flex: 1 }}>Cancelar</button>
-                 <button onClick={handleSendRequest} className="btn btn-primary" style={{ flex: 2 }}>
-                   <Send size={16} /> Enviar Pedido
-                 </button>
-               </div>
-             </motion.div>
-          ) : (
-            <button onClick={() => setIsRequesting(true)} className="btn btn-primary" style={{ width: '100%', boxShadow: '0 10px 30px rgba(255,102,0,0.3)' }}>
-              <Package size={18} /> Solicitar Material NFC
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* REQUESTS HISTORY */}
-      <div style={{ marginTop: '3rem' }}>
-        <h3 style={{ fontSize: '0.8rem', textTransform: 'uppercase', opacity: 0.6, letterSpacing: '1px', marginBottom: '1rem' }}>
-          {isSuperAdmin ? 'Pedidos Entrantes' : 'Historial de Pedidos'}
-        </h3>
-        
-        {/* Filters */}
-        <div style={{ display: 'flex', gap: '10px', marginBottom: '1rem', flexDirection: isSuperAdmin ? 'row' : 'column' }}>
-          <select 
-            value={filterStatus} 
-            onChange={e => setFilterStatus(e.target.value)} 
-            style={{...inputStyle, flex: 1, padding: '8px'}}
+      {isDistributor && (
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '2rem', background: 'rgba(255,255,255,0.03)', padding: '6px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
+          <button 
+            onClick={() => setDistributorTab('CATALOG')}
+            style={{
+              flex: 1, padding: '12px', borderRadius: '8px', border: 'none', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 'bold', transition: 'all 0.2s',
+              background: distributorTab === 'CATALOG' ? 'var(--accent)' : 'transparent',
+              color: distributorTab === 'CATALOG' ? 'var(--bg-primary)' : 'var(--text-secondary)'
+            }}
           >
-            <option value="ALL">Todos los Estados</option>
-            <option value="PENDING">Pendientes</option>
-            <option value="APPROVED">Aprobados</option>
-            <option value="REJECTED">Rechazados</option>
-          </select>
-          
-          {isSuperAdmin && (
-            <input 
-              type="text" 
-              placeholder="Buscar por Nombre del Distribuidor o ID" 
-              value={filterText} 
-              onChange={e => setFilterText(e.target.value)} 
-              style={{...inputStyle, flex: 2, padding: '8px'}}
-            />
-          )}
+            CATÁLOGO / PEDIDOS
+          </button>
+          <button 
+            onClick={() => setDistributorTab('INVESTMENT')}
+            style={{
+              flex: 1, padding: '12px', borderRadius: '8px', border: 'none', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 'bold', transition: 'all 0.2s',
+              background: distributorTab === 'INVESTMENT' ? 'var(--accent)' : 'transparent',
+              color: distributorTab === 'INVESTMENT' ? 'var(--bg-primary)' : 'var(--text-secondary)'
+            }}
+          >
+            MI INVERSIÓN NFC
+          </button>
         </div>
-        
-        {filteredRequests.length === 0 ? (
-          <p style={{ textAlign: 'center', opacity: 0.4, fontSize: '0.8rem', padding: '2rem' }}>No hay solicitudes de inventario que coincidan con la búsqueda.</p>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {filteredRequests.map(req => {
-              const distributor = team?.find(t => t.id === req.distributor_id);
-              const distName = distributor?.full_name || distributor?.name || `Distribuidor ${req.distributor_id?.substring(0, 5)}`;
+      )}
+
+      {(!isDistributor || distributorTab === 'CATALOG') ? (
+        <>
+          {isAddingNew && isSuperAdmin && (
+            <motion.form 
+              initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} 
+              onSubmit={handleAddNewItem} 
+              className="card glass" style={{ marginBottom: '2rem', display: 'flex', flexDirection: 'column', gap: '1rem', border: '1px solid var(--accent)' }}
+            >
+              <h3 style={{ fontSize: '0.9rem', textTransform: 'uppercase', color: 'var(--accent)', margin: 0 }}>Añadir al Catálogo</h3>
+              <input required placeholder="Nombre del Producto" value={newItemData.name} onChange={e => setNewItemData({...newItemData, name: e.target.value})} style={inputStyle} />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <select value={newItemData.category} onChange={e => setNewItemData({...newItemData, category: e.target.value})} style={inputStyle}>
+                  <option value="NFC">Tecnología NFC</option>
+                  <option value="PACKAGING">Empaques / Cajas</option>
+                  <option value="MERCH">Merchandising</option>
+                </select>
+                <input required type="number" step="0.01" placeholder="Precio Venta ($)" value={newItemData.price || ''} onChange={e => setNewItemData({...newItemData, price: e.target.value})} style={inputStyle} />
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <input required type="number" placeholder="Stock Inicial" value={newItemData.stock_quantity || ''} onChange={e => setNewItemData({...newItemData, stock_quantity: e.target.value})} style={inputStyle} />
+                <input placeholder="Detalle Empaque (ej. Caja de 100u)" value={newItemData.detail_packaging} onChange={e => setNewItemData({...newItemData, detail_packaging: e.target.value})} style={inputStyle} />
+              </div>
+              <input placeholder="Descripción Corta" value={newItemData.description} onChange={e => setNewItemData({...newItemData, description: e.target.value})} style={inputStyle} />
+              <button type="submit" className="btn btn-primary">Guardar Producto en Sistema</button>
+            </motion.form>
+          )}
+
+          {/* INVENTORY LIST */}
+          <h3 style={{ fontSize: '0.8rem', textTransform: 'uppercase', opacity: 0.6, letterSpacing: '1px', marginBottom: '1rem' }}>Disponibilidad en Bodega</h3>
+          <div style={{ 
+            display: 'grid', 
+            gridTemplateColumns: 'repeat(auto-fill, minmax(165px, 1fr))', 
+            gap: '1rem', 
+            marginBottom: '3rem' 
+          }}>
+            {inventory.map(item => {
+              const Icon = item.category === 'NFC' ? CreditCard : item.category === 'PACKAGING' ? Box : Shirt;
               
               return (
-              <div key={req.id} className="card glass" style={{ padding: '1rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                  <div>
-                    <span style={{ 
-                      fontSize: '0.65rem', fontWeight: 'bold', padding: '2px 8px', borderRadius: '100px',
-                      background: req.status === 'PENDING' ? 'rgba(245,158,11,0.2)' : req.status === 'APPROVED' ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)',
-                      color: req.status === 'PENDING' ? '#f59e0b' : req.status === 'APPROVED' ? 'var(--success)' : 'var(--danger)'
-                    }}>
-                      {req.status}
-                    </span>
-                    <p style={{ fontSize: '0.65rem', opacity: 0.5, marginTop: '4px', margin: '4px 0 0' }}>
-                      {new Date(req.created_at).toLocaleString()}
+                <motion.div 
+                  key={item.id} 
+                  whileHover={{ y: -4 }}
+                  className="card glass" 
+                  style={{ 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    padding: '1.25rem', 
+                    border: '1px solid rgba(255,255,255,0.05)', 
+                    position: 'relative',
+                    aspectRatio: '1 / 1.35',
+                    justifyContent: 'space-between',
+                    overflow: 'hidden'
+                  }}
+                >
+                  {/* Brand Background Logo */}
+                  <img 
+                    src={ConnexoLogo} 
+                    alt="Brand Logo"
+                    style={{ 
+                      position: 'absolute', 
+                      top: '10px', 
+                      right: '-20px', 
+                      width: '120px',
+                      height: 'auto',
+                      opacity: 0.06, 
+                      pointerEvents: 'none',
+                      transform: 'rotate(-15deg)',
+                      zIndex: 0
+                    }} 
+                  />
+
+                  <div style={{ zIndex: 1 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+                      <div style={{ padding: '6px', borderRadius: '8px', background: 'rgba(255,102,0,0.1)', color: 'var(--accent)' }}>
+                        <Icon size={14} />
+                      </div>
+                      <span style={{ fontSize: '0.55rem', fontWeight: 'bold', letterSpacing: '1px', opacity: 0.7 }}>{item.category}</span>
+                    </div>
+                    <h4 style={{ margin: '0 0 4px', fontWeight: 700, fontSize: '0.9rem', color: 'white', lineHeight: '1.2' }}>{item.name}</h4>
+                    <p style={{ margin: 0, fontSize: '0.65rem', opacity: 0.5, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                       {item.detail_packaging || item.description || 'Estándar'}
                     </p>
-                    {isSuperAdmin && (
-                      <p style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--accent)', margin: '4px 0 0' }}>
-                        👤 {distName}
-                      </p>
+                  </div>
+
+                  {/* Body: Price & Stock */}
+                  <div style={{ zIndex: 1, marginTop: '12px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '8px', marginBottom: '8px' }}>
+                      <div>
+                         <p style={{ margin: 0, fontSize: '0.55rem', opacity: 0.5 }}>PRECIO</p>
+                         <p style={{ margin: 0, fontWeight: 700, fontSize: '1.1rem', color: 'var(--accent)' }}>${Number(item.price || 0).toFixed(2)}</p>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                         <p style={{ margin: 0, fontSize: '0.55rem', opacity: 0.5 }}>STOCK</p>
+                         <p style={{ margin: 0, fontWeight: 700, fontSize: '1.1rem', color: item.stock_quantity > 10 ? 'white' : 'var(--danger)' }}>{item.stock_quantity}</p>
+                      </div>
+                    </div>
+
+                    {/* Actions Footer inside card */}
+                    {!isSuperAdmin && isRequesting ? (
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', padding: '4px' }}>
+                        <button type="button" onClick={() => setRequestCart(prev => ({...prev, [item.id]: Math.max(0, (prev[item.id] || 0) - 1)}))} style={{...qtyBtnStyle, width: '24px', height: '24px'}}><Minus size={12}/></button>
+                        <span style={{ fontWeight: 'bold', fontSize: '0.8rem' }}>{requestCart[item.id] || 0}</span>
+                        <button type="button" onClick={() => setRequestCart(prev => ({...prev, [item.id]: (prev[item.id] || 0) + 1}))} style={{...qtyBtnStyle, width: '24px', height: '24px', background: 'var(--accent)'}}><Plus size={12}/></button>
+                      </div>
+                    ) : isSuperAdmin ? (
+                      <div style={{ display: 'flex', gap: '6px' }}>
+                        <button onClick={() => { setEditingItem(item.id); setEditData(item); }} className="btn glass" style={{ flex: 1, padding: '6px', fontSize: '0.65rem', height: 'auto' }}>
+                          <Edit size={12} style={{marginRight: '4px'}}/> Edit
+                        </button>
+                        <button onClick={() => handleDeleteItem(item.id)} className="btn" style={{ padding: '6px', fontSize: '0.65rem', height: 'auto', color: 'var(--danger)', background: 'rgba(239,68,68,0.1)' }}>
+                          <Trash2 size={12} />
+                        </button>
+                      </div>
+                    ) : (
+                       <div style={{ fontSize: '0.65rem', color: item.stock_quantity > 0 ? 'var(--success)' : 'var(--danger)', fontWeight: 600, textAlign: 'center', padding: '4px', borderRadius: '4px', background: 'rgba(255,255,255,0.03)' }}>
+                          {item.stock_quantity > 0 ? '✔ EN EXISTENCIA' : '✖ AGOTADO'}
+                       </div>
                     )}
                   </div>
-                  {isSuperAdmin && req.status === 'PENDING' && (
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                      <button onClick={() => handleStatusChange(req, 'REJECTED')} style={{...qtyBtnStyle, background: 'rgba(239,68,68,0.2)', color: 'var(--danger)', width: 'auto', padding: '0 10px'}}>Rechazar</button>
-                      <button onClick={() => handleStatusChange(req, 'APPROVED')} style={{...qtyBtnStyle, background: 'rgba(16,185,129,0.2)', color: 'var(--success)', width: 'auto', padding: '0 10px'}}>Aprobar y Descontar</button>
-                    </div>
-                  )}
-                </div>
-                
-                <div style={{ padding: '8px', background: 'rgba(0,0,0,0.2)', borderRadius: '8px' }}>
-                  {req.items.map((item, idx) => (
-                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem' }}>
-                      <span>{item.quantity}x {item.product_name}</span>
-                    </div>
-                  ))}
-                </div>
-                {req.notes && <p style={{ fontSize: '0.75rem', marginTop: '8px', opacity: 0.8 }}><em>Nota: {req.notes}</em></p>}
-              </div>
-            )})}
+                </motion.div>
+              );
+            })}
           </div>
-        )}
-      </div>
+
+          {/* DISTRIBUTOR REQUEST CONTROLS */}
+          {!isSuperAdmin && (
+            <div style={{ position: 'fixed', bottom: '85px', left: 0, right: 0, padding: '0 1.5rem', zIndex: 10 }}>
+              {isRequesting ? (
+                 <motion.div initial={{ y: 50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="card glass" style={{ border: '1px solid var(--accent)' }}>
+                   <textarea 
+                      placeholder="Notas para el administrador (ej. Enviar a oficina central)" 
+                      value={requestNotes} onChange={e => setRequestNotes(e.target.value)}
+                      style={{...inputStyle, minHeight: '60px', marginBottom: '10px'}}
+                   />
+                   <div style={{ display: 'flex', gap: '10px' }}>
+                     <button onClick={() => setIsRequesting(false)} className="btn glass" style={{ flex: 1 }}>Cancelar</button>
+                     <button onClick={handleSendRequest} className="btn btn-primary" style={{ flex: 2 }}>
+                       <Send size={16} /> Enviar Pedido
+                     </button>
+                   </div>
+                 </motion.div>
+              ) : (
+                <button onClick={() => setIsRequesting(true)} className="btn btn-primary" style={{ width: '100%', boxShadow: '0 10px 30px rgba(255,102,0,0.3)' }}>
+                  <Package size={18} /> Solicitar Material NFC
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* REQUESTS HISTORY */}
+          <div style={{ marginTop: '3rem' }}>
+            <h3 style={{ fontSize: '0.8rem', textTransform: 'uppercase', opacity: 0.6, letterSpacing: '1px', marginBottom: '1rem' }}>
+              {isSuperAdmin ? 'Pedidos Entrantes' : 'Historial de Pedidos'}
+            </h3>
+            
+            {/* Filters */}
+            <div style={{ display: 'flex', gap: '10px', marginBottom: '1rem', flexDirection: isSuperAdmin ? 'row' : 'column' }}>
+              <select 
+                value={filterStatus} 
+                onChange={e => setFilterStatus(e.target.value)} 
+                style={{...inputStyle, flex: 1, padding: '8px'}}
+              >
+                <option value="ALL">Todos los Estados</option>
+                <option value="PENDING">Pendientes</option>
+                <option value="APPROVED">Aprobados</option>
+                <option value="REJECTED">Rechazados</option>
+              </select>
+              
+              {isSuperAdmin && (
+                <input 
+                  type="text" 
+                  placeholder="Buscar por Nombre del Distribuidor o ID" 
+                  value={filterText} 
+                  onChange={e => setFilterText(e.target.value)} 
+                  style={{...inputStyle, flex: 2, padding: '8px'}}
+                />
+              )}
+            </div>
+            
+            {filteredRequests.length === 0 ? (
+              <p style={{ textAlign: 'center', opacity: 0.4, fontSize: '0.8rem', padding: '2rem' }}>No hay solicitudes de inventario que coincidan con la búsqueda.</p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {filteredRequests.map(req => {
+                  const distributor = team?.find(t => t.id === req.distributor_id);
+                  const distName = distributor?.full_name || distributor?.name || `Distribuidor ${req.distributor_id?.substring(0, 5)}`;
+                  
+                  return (
+                  <div key={req.id} className="card glass" style={{ padding: '1rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                      <div>
+                        <span style={{ 
+                          fontSize: '0.65rem', fontWeight: 'bold', padding: '2px 8px', borderRadius: '100px',
+                          background: req.status === 'PENDING' ? 'rgba(245,158,11,0.2)' : req.status === 'APPROVED' ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)',
+                          color: req.status === 'PENDING' ? '#f59e0b' : req.status === 'APPROVED' ? 'var(--success)' : 'var(--danger)'
+                        }}>
+                          {req.status}
+                        </span>
+                        <p style={{ fontSize: '0.65rem', opacity: 0.5, marginTop: '4px', margin: '4px 0 0' }}>
+                          {new Date(req.created_at).toLocaleString()}
+                        </p>
+                        {isSuperAdmin && (
+                          <p style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--accent)', margin: '4px 0 0' }}>
+                            👤 {distName}
+                          </p>
+                        )}
+                      </div>
+                      {isSuperAdmin && req.status === 'PENDING' && (
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <button onClick={() => handleStatusChange(req, 'REJECTED')} style={{...qtyBtnStyle, background: 'rgba(239,68,68,0.2)', color: 'var(--danger)', width: 'auto', padding: '0 10px'}}>Rechazar</button>
+                          <button onClick={() => handleStatusChange(req, 'APPROVED')} style={{...qtyBtnStyle, background: 'rgba(16,185,129,0.2)', color: 'var(--success)', width: 'auto', padding: '0 10px'}}>Aprobar y Descontar</button>
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div style={{ padding: '8px', background: 'rgba(0,0,0,0.2)', borderRadius: '8px' }}>
+                      {req.items.map((item, idx) => (
+                        <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem' }}>
+                          <span>{item.quantity}x {item.product_name}</span>
+                        </div>
+                      ))}
+                    </div>
+                    {req.notes && <p style={{ fontSize: '0.75rem', marginTop: '8px', opacity: 0.8 }}><em>Nota: {req.notes}</em></p>}
+                  </div>
+                )})}
+              </div>
+            )}
+          </div>
+        </>
+      ) : (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+          <div className="card glass" style={{ marginBottom: '2rem', borderLeft: '4px solid var(--accent)' }}>
+            <p style={{ fontSize: '0.6rem', opacity: 0.6, textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '8px' }}>Nivel Actual de Distribución</p>
+            <h3 style={{ margin: 0, fontSize: '1.4rem', color: 'var(--accent)' }}>{metrics?.level || 'DISTRIBUIDOR 1'}</h3>
+            <p style={{ fontSize: '0.75rem', opacity: 0.7, marginTop: '8px', lineHeight: '1.5' }}>
+              Como Distribuidor Connexo, su cuenta tiene asignada una estructura de costos preferencial para la expansión de tecnología NFC. A continuación se detalla la proyección de inversión recomendada para su escala operativa actual.
+            </p>
+          </div>
+
+          <h3 style={{ fontSize: '0.8rem', textTransform: 'uppercase', opacity: 0.6, letterSpacing: '1px', marginBottom: '1rem' }}>Proyección de Inversión por Niveles</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2.5rem' }}>
+            {[
+              { lvl: 'Nivel 1', units: '100 unidades', inv: '$526.00', margin: '$53.20', label: 'DISTRIBUIDOR 1' },
+              { lvl: 'Nivel 2', units: '200 unidades', inv: '$1,052.00', margin: '$106.40', label: 'DISTRIBUIDOR 2' },
+              { lvl: 'Nivel 3', units: '300 unidades', inv: '$1,578.00', margin: '$159.60', label: 'DISTRIBUIDOR 3' }
+            ].map((dLevel, idx) => {
+              const isActive = (metrics?.level || 'DISTRIBUIDOR 1').toUpperCase().includes(dLevel.label);
+              return (
+                <div 
+                  key={idx} 
+                  className="card glass" 
+                  style={{ 
+                    border: isActive ? '1px solid var(--accent)' : '1px solid rgba(255,255,255,0.05)',
+                    background: isActive ? 'linear-gradient(135deg, rgba(255,102,0,0.05) 0%, rgba(0,0,0,0.2) 100%)' : 'rgba(0,0,0,0.2)',
+                    padding: '1.25rem',
+                    position: 'relative'
+                  }}
+                >
+                  {isActive && (
+                    <span style={{ position: 'absolute', top: '10px', right: '10px', fontSize: '0.55rem', background: 'var(--accent)', color: 'var(--bg-primary)', fontWeight: 900, padding: '2px 6px', borderRadius: '100px' }}>TU NIVEL ACTIVO</span>
+                  )}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <h4 style={{ margin: 0, fontWeight: 'bold', fontSize: '0.95rem', color: isActive ? 'var(--accent)' : 'white' }}>{dLevel.lvl}</h4>
+                      <p style={{ margin: '4px 0 0', fontSize: '0.7rem', opacity: 0.6 }}>Capacidad Operativa: {dLevel.units}</p>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <p style={{ margin: 0, fontWeight: 'bold', fontSize: '1.1rem' }}>{dLevel.inv}</p>
+                      <p style={{ margin: 0, fontSize: '0.65rem', color: 'var(--success)', fontWeight: '600' }}>+{dLevel.margin} Margen Connexo</p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <h3 style={{ fontSize: '0.8rem', textTransform: 'uppercase', opacity: 0.6, letterSpacing: '1px', marginBottom: '1rem' }}>Estructura Detallada de Costos NFC</h3>
+          <div className="card glass" style={{ padding: '1rem', overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem', textAlign: 'left' }}>
+              <thead>
+                <tr style={{ borderBottom: '2px solid rgba(255,255,255,0.1)', color: 'var(--accent)' }}>
+                  <th style={{ padding: '10px 6px' }}>ÍTEM</th>
+                  <th style={{ padding: '10px 6px', textAlign: 'center' }}>COSTO BASE</th>
+                  <th style={{ padding: '10px 6px', textAlign: 'center' }}>PRECIO DIST.</th>
+                  <th style={{ padding: '10px 6px', textAlign: 'center' }}>MARGEN ($)</th>
+                  <th style={{ padding: '10px 6px', textAlign: 'right' }}>MARGEN (%)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[
+                  { name: 'Tarjeta NFC Negra', cost: '$0.27', dist: '$0.45', mVal: '$0.18', mPct: '40.00%' },
+                  { name: 'Tarjeta NFC Blanca', cost: '$0.25', dist: '$0.45', mVal: '$0.20', mPct: '44.44%' },
+                  { name: 'Pulsera NFC', cost: '$3.60', dist: '$5.50', mVal: '$1.90', mPct: '34.55%' },
+                  { name: 'Lector NFC', cost: '$60.00', dist: '$80.00', mVal: '$20.00', mPct: '25.00%' },
+                  { name: 'Chips NFC (100u)', cost: '$27.90', dist: '$40.00', mVal: '$12.10', mPct: '30.25%' },
+                  { name: 'Caja / Empaque', cost: '$3.00', dist: '$3.00*', mVal: '$0.00', mPct: '0.00%' },
+                  { name: 'Impresión', cost: '$4.00', dist: '$4.00*', mVal: '$0.00', mPct: '0.00%' }
+                ].map((row, i) => (
+                  <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                    <td style={{ padding: '10px 6px', fontWeight: 'bold', color: 'white' }}>{row.name}</td>
+                    <td style={{ padding: '10px 6px', textAlign: 'center', opacity: 0.8 }}>{row.cost}</td>
+                    <td style={{ padding: '10px 6px', textAlign: 'center', color: 'var(--accent)', fontWeight: 'bold' }}>{row.dist}</td>
+                    <td style={{ padding: '10px 6px', textAlign: 'center', color: 'var(--success)', fontWeight: 'bold' }}>{row.mVal}</td>
+                    <td style={{ padding: '10px 6px', textAlign: 'right', opacity: 0.8 }}>{row.mPct}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <p style={{ fontSize: '0.6rem', opacity: 0.4, marginTop: '12px', fontStyle: 'italic', margin: '12px 0 0' }}>* El precio distribuidor marcado con asterisco (*) corresponde al costo base operativo neto sin recargo comercial.</p>
+          </div>
+        </motion.div>
+      )}
 
       {editingItem && createPortal(
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(5px)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
