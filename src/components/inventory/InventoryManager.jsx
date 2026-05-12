@@ -33,6 +33,7 @@ const InventoryManager = ({ user, team, metrics, addNotification, selectedSedeCo
   
   const isDistributor = user?.role === 'DISTRIBUTOR';
   const [distributorTab, setDistributorTab] = useState('CATALOG'); // 'CATALOG' | 'INVESTMENT'
+  const [selectedLevelDetail, setSelectedLevelDetail] = useState(null);
 
   useEffect(() => {
     loadData();
@@ -105,8 +106,13 @@ const InventoryManager = ({ user, team, metrics, addNotification, selectedSedeCo
       const itemsList = Object.keys(requestCart)
         .filter(key => requestCart[key] > 0)
         .map(key => {
-          const product = inventory.find(i => i.id === key);
-          return { product_id: key, product_name: product.name, quantity: requestCart[key] };
+          const product = inventory.find(item => item.id === key);
+          return { 
+            product_id: key, 
+            product_name: product.name, 
+            quantity: requestCart[key],
+            price: product.price || 0 
+          };
         });
 
       if (itemsList.length === 0) return addNotification('Añade al menos un producto a la solicitud', 'ERROR');
@@ -135,12 +141,16 @@ const InventoryManager = ({ user, team, metrics, addNotification, selectedSedeCo
       startY: 50,
       head: [['Producto', 'Cantidad', 'Precio Unit.', 'Total']],
       body: req.items.map(i => {
-        const cost = i.price || 0;
+        const liveProd = inventory.find(p => p.id === i.product_id);
+        const cost = i.price || liveProd?.price || 0;
         return [i.product_name, i.quantity, `$${cost.toFixed(2)}`, `$${(cost * i.quantity).toFixed(2)}`];
       })
     });
 
-    const totalOrder = req.items.reduce((a, b) => a + ((b.price || 0) * b.quantity), 0);
+    const totalOrder = req.items.reduce((a, b) => {
+      const liveProd = inventory.find(p => p.id === b.product_id);
+      return a + ((b.price || liveProd?.price || 0) * b.quantity);
+    }, 0);
     doc.text(`Monto Total Estimado: $${totalOrder.toFixed(2)}`, 14, doc.lastAutoTable.finalY + 10);
 
     if (req.notes) {
@@ -431,11 +441,25 @@ const InventoryManager = ({ user, team, metrics, addNotification, selectedSedeCo
                     </div>
                     
                     <div style={{ padding: '8px', background: 'rgba(0,0,0,0.2)', borderRadius: '8px' }}>
-                      {req.items.map((item, idx) => (
-                        <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem' }}>
-                          <span>{item.quantity}x {item.product_name}</span>
-                        </div>
-                      ))}
+                      {req.items.map((item, idx) => {
+                        const liveItem = inventory.find(pi => pi.id === item.product_id);
+                        const itemPrice = item.price || liveItem?.price || 0;
+                        return (
+                          <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', marginBottom: '2px' }}>
+                            <span style={{ opacity: 0.8 }}>{item.quantity}x {item.product_name}</span>
+                            <span style={{ fontWeight: 'bold', color: 'var(--accent)' }}>${(itemPrice * item.quantity).toFixed(2)}</span>
+                          </div>
+                        );
+                      })}
+                      <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', marginTop: '6px', paddingTop: '6px', display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', fontWeight: 'bold' }}>
+                        <span style={{ opacity: 0.6 }}>Monto Total:</span>
+                        <span style={{ color: 'white' }}>
+                          ${req.items.reduce((acc, curr) => {
+                            const li = inventory.find(pi => pi.id === curr.product_id);
+                            return acc + ((curr.price || li?.price || 0) * curr.quantity);
+                          }, 0).toFixed(2)}
+                        </span>
+                      </div>
                     </div>
                     {req.notes && <p style={{ fontSize: '0.75rem', marginTop: '8px', opacity: 0.8 }}><em>Nota: {req.notes}</em></p>}
                   </div>
@@ -450,82 +474,115 @@ const InventoryManager = ({ user, team, metrics, addNotification, selectedSedeCo
             <p style={{ fontSize: '0.6rem', opacity: 0.6, textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '8px' }}>Nivel Actual de Distribución</p>
             <h3 style={{ margin: 0, fontSize: '1.4rem', color: 'var(--accent)' }}>{metrics?.level || 'DISTRIBUIDOR 1'}</h3>
             <p style={{ fontSize: '0.75rem', opacity: 0.7, marginTop: '8px', lineHeight: '1.5' }}>
-              Como Distribuidor Connexo, su cuenta tiene asignada una estructura de costos preferencial para la expansión de tecnología NFC. A continuación se detalla la proyección de inversión recomendada para su escala operativa actual.
+              Como Distribuidor Connexo, tu cuenta cuenta con una asignación de planes preferencial. A continuación, haz clic en tu nivel activo para ver el detalle exacto de lo que estás adquiriendo con tu inversión.
             </p>
           </div>
 
           <h3 style={{ fontSize: '0.8rem', textTransform: 'uppercase', opacity: 0.6, letterSpacing: '1px', marginBottom: '1rem' }}>Proyección de Inversión por Niveles</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2.5rem' }}>
             {[
-              { lvl: 'Nivel 1', units: '100 unidades', inv: '$526.00', margin: '$53.20', label: 'DISTRIBUIDOR 1' },
-              { lvl: 'Nivel 2', units: '200 unidades', inv: '$1,052.00', margin: '$106.40', label: 'DISTRIBUIDOR 2' },
-              { lvl: 'Nivel 3', units: '300 unidades', inv: '$1,578.00', margin: '$159.60', label: 'DISTRIBUIDOR 3' }
+              { lvl: 'Nivel 1', units: '100 unidades', inv: '$526.00', label: 'DISTRIBUIDOR 1' },
+              { lvl: 'Nivel 2', units: '200 unidades', inv: '$1,052.00', label: 'DISTRIBUIDOR 2' },
+              { lvl: 'Nivel 3', units: '300 unidades', inv: '$1,578.00', label: 'DISTRIBUIDOR 3' }
             ].map((dLevel, idx) => {
               const isActive = (metrics?.level || 'DISTRIBUIDOR 1').toUpperCase().includes(dLevel.label);
               return (
-                <div 
+                <motion.div 
                   key={idx} 
+                  whileHover={isActive ? { scale: 1.01 } : {}}
+                  onClick={() => { if (isActive) setSelectedLevelDetail(dLevel); }}
                   className="card glass" 
                   style={{ 
-                    border: isActive ? '1px solid var(--accent)' : '1px solid rgba(255,255,255,0.05)',
-                    background: isActive ? 'linear-gradient(135deg, rgba(255,102,0,0.05) 0%, rgba(0,0,0,0.2) 100%)' : 'rgba(0,0,0,0.2)',
+                    border: isActive ? '1px solid var(--accent)' : '1px solid rgba(255,255,255,0.03)',
+                    background: isActive ? 'linear-gradient(135deg, rgba(255,102,0,0.06) 0%, rgba(0,0,0,0.3) 100%)' : 'rgba(0,0,0,0.1)',
                     padding: '1.25rem',
-                    position: 'relative'
+                    position: 'relative',
+                    cursor: isActive ? 'pointer' : 'not-allowed',
+                    opacity: isActive ? 1 : 0.6,
+                    transition: 'all 0.2s'
                   }}
                 >
-                  {isActive && (
-                    <span style={{ position: 'absolute', top: '10px', right: '10px', fontSize: '0.55rem', background: 'var(--accent)', color: 'var(--bg-primary)', fontWeight: 900, padding: '2px 6px', borderRadius: '100px' }}>TU NIVEL ACTIVO</span>
+                  {isActive ? (
+                    <span style={{ position: 'absolute', top: '10px', right: '10px', fontSize: '0.55rem', background: 'var(--accent)', color: 'var(--bg-primary)', fontWeight: 900, padding: '2px 8px', borderRadius: '100px', letterSpacing: '0.5px' }}>TU NIVEL ACTIVO</span>
+                  ) : (
+                    <span style={{ position: 'absolute', top: '10px', right: '10px', fontSize: '0.55rem', opacity: 0.5, fontWeight: 600 }}>🔒 BLOQUEADO</span>
                   )}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div>
-                      <h4 style={{ margin: 0, fontWeight: 'bold', fontSize: '0.95rem', color: isActive ? 'var(--accent)' : 'white' }}>{dLevel.lvl}</h4>
+                      <h4 style={{ margin: 0, fontWeight: 'bold', fontSize: '0.95rem', color: isActive ? 'var(--accent)' : '#aaa' }}>{dLevel.lvl}</h4>
                       <p style={{ margin: '4px 0 0', fontSize: '0.7rem', opacity: 0.6 }}>Capacidad Operativa: {dLevel.units}</p>
+                      {isActive && (
+                        <p style={{ margin: '6px 0 0', fontSize: '0.6rem', color: 'var(--accent)', fontStyle: 'italic' }}>💡 Haz clic para ver el detalle del plan</p>
+                      )}
                     </div>
                     <div style={{ textAlign: 'right' }}>
-                      <p style={{ margin: 0, fontWeight: 'bold', fontSize: '1.1rem' }}>{dLevel.inv}</p>
-                      <p style={{ margin: 0, fontSize: '0.65rem', color: 'var(--success)', fontWeight: '600' }}>+{dLevel.margin} Margen Connexo</p>
+                      <p style={{ margin: 0, fontWeight: 'bold', fontSize: '1.1rem', color: isActive ? 'white' : '#777' }}>
+                        {isActive ? dLevel.inv : '***.**'}
+                      </p>
+                      {!isActive && (
+                        <p style={{ margin: '2px 0 0', fontSize: '0.55rem', opacity: 0.6 }}>Requiere Rango {dLevel.label.split(' ')[1]}</p>
+                      )}
                     </div>
                   </div>
-                </div>
+                </motion.div>
               );
             })}
           </div>
-
-          <h3 style={{ fontSize: '0.8rem', textTransform: 'uppercase', opacity: 0.6, letterSpacing: '1px', marginBottom: '1rem' }}>Estructura Detallada de Costos NFC</h3>
-          <div className="card glass" style={{ padding: '1rem', overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem', textAlign: 'left' }}>
-              <thead>
-                <tr style={{ borderBottom: '2px solid rgba(255,255,255,0.1)', color: 'var(--accent)' }}>
-                  <th style={{ padding: '10px 6px' }}>ÍTEM</th>
-                  <th style={{ padding: '10px 6px', textAlign: 'center' }}>COSTO BASE</th>
-                  <th style={{ padding: '10px 6px', textAlign: 'center' }}>PRECIO DIST.</th>
-                  <th style={{ padding: '10px 6px', textAlign: 'center' }}>MARGEN ($)</th>
-                  <th style={{ padding: '10px 6px', textAlign: 'right' }}>MARGEN (%)</th>
-                </tr>
-              </thead>
-              <tbody>
-                {[
-                  { name: 'Tarjeta NFC Negra', cost: '$0.27', dist: '$0.45', mVal: '$0.18', mPct: '40.00%' },
-                  { name: 'Tarjeta NFC Blanca', cost: '$0.25', dist: '$0.45', mVal: '$0.20', mPct: '44.44%' },
-                  { name: 'Pulsera NFC', cost: '$3.60', dist: '$5.50', mVal: '$1.90', mPct: '34.55%' },
-                  { name: 'Lector NFC', cost: '$60.00', dist: '$80.00', mVal: '$20.00', mPct: '25.00%' },
-                  { name: 'Chips NFC (100u)', cost: '$27.90', dist: '$40.00', mVal: '$12.10', mPct: '30.25%' },
-                  { name: 'Caja / Empaque', cost: '$3.00', dist: '$3.00*', mVal: '$0.00', mPct: '0.00%' },
-                  { name: 'Impresión', cost: '$4.00', dist: '$4.00*', mVal: '$0.00', mPct: '0.00%' }
-                ].map((row, i) => (
-                  <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                    <td style={{ padding: '10px 6px', fontWeight: 'bold', color: 'white' }}>{row.name}</td>
-                    <td style={{ padding: '10px 6px', textAlign: 'center', opacity: 0.8 }}>{row.cost}</td>
-                    <td style={{ padding: '10px 6px', textAlign: 'center', color: 'var(--accent)', fontWeight: 'bold' }}>{row.dist}</td>
-                    <td style={{ padding: '10px 6px', textAlign: 'center', color: 'var(--success)', fontWeight: 'bold' }}>{row.mVal}</td>
-                    <td style={{ padding: '10px 6px', textAlign: 'right', opacity: 0.8 }}>{row.mPct}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <p style={{ fontSize: '0.6rem', opacity: 0.4, marginTop: '12px', fontStyle: 'italic', margin: '12px 0 0' }}>* El precio distribuidor marcado con asterisco (*) corresponde al costo base operativo neto sin recargo comercial.</p>
-          </div>
         </motion.div>
+      )}
+
+      {selectedLevelDetail && createPortal(
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(10px)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+          <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="card glass" style={{ maxWidth: '420px', width: '100%', border: '1px solid var(--accent)', position: 'relative', padding: '2rem' }}>
+            <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+              <span style={{ background: 'rgba(255,102,0,0.1)', color: 'var(--accent)', padding: '4px 12px', borderRadius: '100px', fontSize: '0.65rem', fontWeight: 800, letterSpacing: '1px' }}>DETALLE DE PLAN ACTIVO</span>
+              <h3 style={{ margin: '8px 0 4px', fontSize: '1.4rem', color: 'white', fontWeight: 800 }}>{selectedLevelDetail.lvl}</h3>
+              <h2 style={{ margin: 0, color: 'var(--accent)', fontSize: '1.8rem', fontWeight: 900 }}>{selectedLevelDetail.inv}</h2>
+              <p style={{ margin: '4px 0 0', fontSize: '0.75rem', opacity: 0.6 }}>Inversión para {selectedLevelDetail.units}</p>
+            </div>
+
+            <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: '12px', padding: '1.2rem', border: '1px solid rgba(255,255,255,0.05)' }}>
+              <h4 style={{ margin: '0 0 12px', fontSize: '0.75rem', letterSpacing: '1px', textTransform: 'uppercase', opacity: 0.8 }}>¿Qué incluye esta inversión?</h4>
+              <ul style={{ padding: 0, margin: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {(
+                  selectedLevelDetail.label === 'DISTRIBUIDOR 1' ? [
+                    '100 Licencias de Activación de Plan NFC Connexo.',
+                    'Acceso Directo al Ecosistema de Red para Vendedores.',
+                    'Herramientas de Control de Stock Local y Distribución.',
+                    'Soporte Técnico de Nivel 1 integrado.',
+                    'Acceso Completo a módulos de Connexo Academy.'
+                  ] : selectedLevelDetail.label === 'DISTRIBUIDOR 2' ? [
+                    '200 Licencias de Activación de Plan NFC Connexo.',
+                    'Herramientas Avanzadas para Gestión de Equipos Vendedores.',
+                    'Canal de Soporte Técnico Prioritario de Nivel 2.',
+                    'Análisis de Métricas de Rendimiento Avanzado de Red.',
+                    'Prioridad en Asignación de Leads y Asesoría Operativa.'
+                  ] : [
+                    '300 Licencias de Activación de Plan NFC Connexo.',
+                    'Control Máximo Operativo de Ecosistema Multisede.',
+                    'Soporte VIP Directo 24/7 de Alto Rendimiento.',
+                    'Asesoría Estratégica Uno a Uno para Crecimiento de Red.',
+                    'Acceso Total a Herramientas Pro de Automatización de Nóminas.'
+                  ]
+                ).map((text, i) => (
+                  <li key={i} style={{ fontSize: '0.75rem', display: 'flex', alignItems: 'flex-start', gap: '8px', lineHeight: '1.4' }}>
+                    <span style={{ color: 'var(--accent)', fontSize: '0.9rem', marginTop: '-2px' }}>✓</span>
+                    <span style={{ color: 'rgba(255,255,255,0.9)' }}>{text}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <button 
+              onClick={() => setSelectedLevelDetail(null)} 
+              className="btn btn-primary" 
+              style={{ width: '100%', marginTop: '1.5rem' }}
+            >
+              CERRAR DETALLE
+            </button>
+          </motion.div>
+        </div>,
+        document.body
       )}
 
       {editingItem && createPortal(
