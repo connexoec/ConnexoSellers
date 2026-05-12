@@ -921,22 +921,26 @@ export const dataService = {
       const cached = localStorage.getItem('connexo_inventory');
       let items = cached ? JSON.parse(cached) : [];
 
-      const needsMigration = items.length === 0 || items.some(i => !i.sede_id);
+      const needsMigration = items.length === 0 || items.some(i => !i.sede_id || i.price === undefined || i.name.includes('Tarjetas NFC ('));
       if (needsMigration) {
         const defaultInventory = [
-          // Ecuador Items
-          { id: 'inv-ec-1', name: 'Tarjetas NFC (EC)', description: 'Tarjetas de presentación inteligente con tecnología NFC', category: 'NFC', stock_quantity: 500, unit_type: 'UNIDAD', detail_packaging: 'Cajas de 100 u.', sede_id: 'sede-ec-1' },
-          { id: 'inv-ec-2', name: 'Pulseras NFC (EC)', description: 'Pulseras ajustables con chip NFC integrado', category: 'NFC', stock_quantity: 300, unit_type: 'UNIDAD', detail_packaging: 'Bolsas de 50 u.', sede_id: 'sede-ec-1' },
-          { id: 'inv-ec-3', name: 'Chips NFC (EC)', description: 'Stickers / Chips NFC adhesivos pequeños', category: 'NFC', stock_quantity: 1000, unit_type: 'UNIDAD', detail_packaging: 'Empaques de 200 u.', sede_id: 'sede-ec-1' },
-          { id: 'inv-ec-4', name: 'Cajas de Presentación (EC)', description: 'Cajas elegantes de empaque para productos NFC', category: 'PACKAGING', stock_quantity: 200, unit_type: 'UNIDAD', detail_packaging: 'Caja Kraft Premium', sede_id: 'sede-ec-1' },
-          { id: 'inv-ec-5', name: 'Empaques Connexo (EC)', description: 'Empaques sellados con branding de Connexo', category: 'PACKAGING', stock_quantity: 400, unit_type: 'UNIDAD', detail_packaging: 'Sobres acolchados', sede_id: 'sede-ec-1' },
+          // Ecuador Items (sede-ec-1)
+          { id: 'inv-ec-nfc-negra', name: 'Tarjeta NFC Negra (EC)', description: 'Tarjeta inteligente de presentación premium negra con tecnología NFC.', category: 'NFC', stock_quantity: 500, unit_type: 'UNIDAD', detail_packaging: 'Empaque individual', price: 0.45, sede_id: 'sede-ec-1' },
+          { id: 'inv-ec-nfc-blanca', name: 'Tarjeta NFC Blanca (EC)', description: 'Tarjeta inteligente de presentación estándar blanca con tecnología NFC.', category: 'NFC', stock_quantity: 500, unit_type: 'UNIDAD', detail_packaging: 'Empaque individual', price: 0.45, sede_id: 'sede-ec-1' },
+          { id: 'inv-ec-pulsera', name: 'Pulsera NFC (EC)', description: 'Pulsera ergonómica y ajustable con chip NFC integrado.', category: 'NFC', stock_quantity: 300, unit_type: 'UNIDAD', detail_packaging: 'Bolsas protectoras', price: 5.50, sede_id: 'sede-ec-1' },
+          { id: 'inv-ec-lector', name: 'Lector NFC (EC)', description: 'Lector/Grabador de mesa NFC para sincronización masiva.', category: 'NFC', stock_quantity: 50, unit_type: 'UNIDAD', detail_packaging: 'Caja sellada con cable USB', price: 80.00, sede_id: 'sede-ec-1' },
+          { id: 'inv-ec-chips', name: 'Chips NFC (Paquete 100u) (EC)', description: 'Paquete de microchips NFC autoadhesivos pequeños.', category: 'NFC', stock_quantity: 1000, unit_type: 'UNIDAD', detail_packaging: 'Rollo sellado de 100 chips', price: 40.00, sede_id: 'sede-ec-1' },
+          { id: 'inv-ec-caja', name: 'Caja / Empaque (EC)', description: 'Caja de presentación Kraft Premium para productos Connexo.', category: 'PACKAGING', stock_quantity: 200, unit_type: 'UNIDAD', detail_packaging: 'Caja rígida premium', price: 3.00, sede_id: 'sede-ec-1' },
+          { id: 'inv-ec-impresion', name: 'Servicio de Impresión (EC)', description: 'Personalización y grabado de imagen corporativa sobre tarjeta NFC.', category: 'MERCH', stock_quantity: 400, unit_type: 'UNIDAD', detail_packaging: 'Acabado mate/brillante', price: 4.00, sede_id: 'sede-ec-1' },
 
-          // Venezuela Items
-          { id: 'inv-ve-1', name: 'Tarjetas NFC (VE)', description: 'Tarjetas de presentación inteligente con tecnología NFC', category: 'NFC', stock_quantity: 150, unit_type: 'UNIDAD', detail_packaging: 'Cajas de 100 u.', sede_id: 'sede-ve-1' },
-          { id: 'inv-ve-2', name: 'Pulseras NFC (VE)', description: 'Pulseras ajustables con chip NFC integrado', category: 'NFC', stock_quantity: 80, unit_type: 'UNIDAD', detail_packaging: 'Bolsas de 50 u.', sede_id: 'sede-ve-1' },
-          { id: 'inv-ve-3', name: 'Chips NFC (VE)', description: 'Stickers / Chips NFC adhesivos pequeños', category: 'NFC', stock_quantity: 250, unit_type: 'UNIDAD', detail_packaging: 'Empaques de 200 u.', sede_id: 'sede-ve-1' },
-          { id: 'inv-ve-4', name: 'Cajas de Presentación (VE)', description: 'Cajas elegantes de empaque para productos NFC', category: 'PACKAGING', stock_quantity: 50, unit_type: 'UNIDAD', detail_packaging: 'Caja Kraft Premium', sede_id: 'sede-ve-1' },
-          { id: 'inv-ve-5', name: 'Empaques Connexo (VE)', description: 'Empaques sellados con branding de Connexo', category: 'PACKAGING', stock_quantity: 100, unit_type: 'UNIDAD', detail_packaging: 'Sobres acolchados', sede_id: 'sede-ve-1' }
+          // Venezuela Items (sede-ve-1)
+          { id: 'inv-ve-nfc-negra', name: 'Tarjeta NFC Negra (VE)', description: 'Tarjeta inteligente de presentación premium negra con tecnología NFC.', category: 'NFC', stock_quantity: 150, unit_type: 'UNIDAD', detail_packaging: 'Empaque individual', price: 0.45, sede_id: 'sede-ve-1' },
+          { id: 'inv-ve-nfc-blanca', name: 'Tarjeta NFC Blanca (VE)', description: 'Tarjeta inteligente de presentación estándar blanca con tecnología NFC.', category: 'NFC', stock_quantity: 150, unit_type: 'UNIDAD', detail_packaging: 'Empaque individual', price: 0.45, sede_id: 'sede-ve-1' },
+          { id: 'inv-ve-pulsera', name: 'Pulsera NFC (VE)', description: 'Pulsera ergonómica y ajustable con chip NFC integrado.', category: 'NFC', stock_quantity: 80, unit_type: 'UNIDAD', detail_packaging: 'Bolsas protectoras', price: 5.50, sede_id: 'sede-ve-1' },
+          { id: 'inv-ve-lector', name: 'Lector NFC (VE)', description: 'Lector/Grabador de mesa NFC para sincronización masiva.', category: 'NFC', stock_quantity: 20, unit_type: 'UNIDAD', detail_packaging: 'Caja sellada con cable USB', price: 80.00, sede_id: 'sede-ve-1' },
+          { id: 'inv-ve-chips', name: 'Chips NFC (Paquete 100u) (VE)', description: 'Paquete de microchips NFC autoadhesivos pequeños.', category: 'NFC', stock_quantity: 250, unit_type: 'UNIDAD', detail_packaging: 'Rollo sellado de 100 chips', price: 40.00, sede_id: 'sede-ve-1' },
+          { id: 'inv-ve-caja', name: 'Caja / Empaque (VE)', description: 'Caja de presentación Kraft Premium para productos Connexo.', category: 'PACKAGING', stock_quantity: 50, unit_type: 'UNIDAD', detail_packaging: 'Caja rígida premium', price: 3.00, sede_id: 'sede-ve-1' },
+          { id: 'inv-ve-impresion', name: 'Servicio de Impresión (VE)', description: 'Personalización y grabado de imagen corporativa sobre tarjeta NFC.', category: 'MERCH', stock_quantity: 100, unit_type: 'UNIDAD', detail_packaging: 'Acabado mate/brillante', price: 4.00, sede_id: 'sede-ve-1' }
         ];
         localStorage.setItem('connexo_inventory', JSON.stringify(defaultInventory));
         items = defaultInventory;
