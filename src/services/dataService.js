@@ -921,10 +921,11 @@ export const dataService = {
       const cached = localStorage.getItem('connexo_inventory');
       let items = cached ? JSON.parse(cached) : [];
 
-      const needsMigration = items.length === 0 || items.some(i => !i.sede_id || i.price === undefined || i.name.includes('Tarjetas NFC ('));
+      const needsMigration = items.length === 0 || items.some(i => !i.sede_id || i.price === undefined || i.name.includes('Tarjetas NFC (')) || !items.some(it => it.category === 'PLAN');
       if (needsMigration) {
         const defaultInventory = [
           // Ecuador Items (sede-ec-1)
+          { id: 'inv-ec-plan', name: 'Licencia de Plan Connexo (EC)', description: 'Licencia para activación del ecosistema de plan inteligente Connexo.', category: 'PLAN', stock_quantity: 5000, unit_type: 'LICENCIA', detail_packaging: 'Distribución Digital', price: 5.26, sede_id: 'sede-ec-1' },
           { id: 'inv-ec-nfc-negra', name: 'Tarjeta NFC Negra (EC)', description: 'Tarjeta inteligente de presentación premium negra con tecnología NFC.', category: 'NFC', stock_quantity: 500, unit_type: 'UNIDAD', detail_packaging: 'Empaque individual', price: 0.45, sede_id: 'sede-ec-1' },
           { id: 'inv-ec-nfc-blanca', name: 'Tarjeta NFC Blanca (EC)', description: 'Tarjeta inteligente de presentación estándar blanca con tecnología NFC.', category: 'NFC', stock_quantity: 500, unit_type: 'UNIDAD', detail_packaging: 'Empaque individual', price: 0.45, sede_id: 'sede-ec-1' },
           { id: 'inv-ec-pulsera', name: 'Pulsera NFC (EC)', description: 'Pulsera ergonómica y ajustable con chip NFC integrado.', category: 'NFC', stock_quantity: 300, unit_type: 'UNIDAD', detail_packaging: 'Bolsas protectoras', price: 5.50, sede_id: 'sede-ec-1' },
@@ -934,6 +935,7 @@ export const dataService = {
           { id: 'inv-ec-impresion', name: 'Servicio de Impresión (EC)', description: 'Personalización y grabado de imagen corporativa sobre tarjeta NFC.', category: 'MERCH', stock_quantity: 400, unit_type: 'UNIDAD', detail_packaging: 'Acabado mate/brillante', price: 4.00, sede_id: 'sede-ec-1' },
 
           // Venezuela Items (sede-ve-1)
+          { id: 'inv-ve-plan', name: 'Licencia de Plan Connexo (VE)', description: 'Licencia para activación del ecosistema de plan inteligente Connexo.', category: 'PLAN', stock_quantity: 2000, unit_type: 'LICENCIA', detail_packaging: 'Distribución Digital', price: 5.26, sede_id: 'sede-ve-1' },
           { id: 'inv-ve-nfc-negra', name: 'Tarjeta NFC Negra (VE)', description: 'Tarjeta inteligente de presentación premium negra con tecnología NFC.', category: 'NFC', stock_quantity: 150, unit_type: 'UNIDAD', detail_packaging: 'Empaque individual', price: 0.45, sede_id: 'sede-ve-1' },
           { id: 'inv-ve-nfc-blanca', name: 'Tarjeta NFC Blanca (VE)', description: 'Tarjeta inteligente de presentación estándar blanca con tecnología NFC.', category: 'NFC', stock_quantity: 150, unit_type: 'UNIDAD', detail_packaging: 'Empaque individual', price: 0.45, sede_id: 'sede-ve-1' },
           { id: 'inv-ve-pulsera', name: 'Pulsera NFC (VE)', description: 'Pulsera ergonómica y ajustable con chip NFC integrado.', category: 'NFC', stock_quantity: 80, unit_type: 'UNIDAD', detail_packaging: 'Bolsas protectoras', price: 5.50, sede_id: 'sede-ve-1' },
