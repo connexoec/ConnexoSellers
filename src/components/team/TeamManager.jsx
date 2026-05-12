@@ -323,86 +323,167 @@ const TeamManager = ({ users, currentUser, onAddUser, sales, selectedSedeContext
             </motion.form>
           )}
 
-          <h3 style={{ marginBottom: '1.2rem', fontSize: '0.9rem', textTransform: 'uppercase', opacity: 0.6, letterSpacing: '1px' }}>Miembros de Red ({myTeam.length})</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {myTeam.length === 0 ? (
-              <p style={{ textAlign: 'center', opacity: 0.4, padding: '3rem', fontSize: '0.85rem' }}>
-                No se han detectado agentes vinculados.<br/>Use el botón superior para expandir su red.
-              </p>
-            ) : (
-              myTeam.map(u => (
-                <div key={u.id} className="card glass" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  <div 
-                    style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '15px', width: '100%' }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
-                      <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: 'var(--accent)' }}>
-                        {(u.full_name || u.name || 'U').charAt(0)}
-                      </div>
-                      <div style={{ minWidth: 0 }}>
-                        <p style={{ margin: 0, fontWeight: 700, fontSize: '0.9rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.full_name || u.name}</p>
-                        
-                        {/* Selector de Nivel para Super Admin */}
-                        {currentUser?.role === 'SUPER_ADMIN' ? (
-                          <select 
-                            value={u.tier || 'AUTO'}
-                            onChange={async (e) => {
-                              const newTier = e.target.value === 'AUTO' ? null : e.target.value;
-                              const updates = {
-                                tier: newTier,
-                                tier_start_date: newTier ? new Date().toISOString() : null
-                              };
-                              await dataService.updateProfile(u.id, updates);
-                              window.location.reload();
-                            }}
-                            style={{ background: 'none', border: 'none', color: 'var(--accent)', fontSize: '0.7rem', fontWeight: 700, padding: 0, cursor: 'pointer' }}
-                          >
-                            <option value="AUTO" style={{ background: 'var(--bg-primary)' }}>🤖 CÁLCULO AUTO</option>
-                            {(u.role === 'SELLER' ? TIERS.SELLER : TIERS.DISTRIBUTOR).map(t => (
-                              <option key={t.id} value={t.id} style={{ background: 'var(--bg-primary)' }}>
-                                💎 {t.label}
-                              </option>
-                            ))}
-                          </select>
-                        ) : (
-                          <p style={{ margin: 0, fontSize: '0.7rem', color: u.is_certified ? 'var(--success)' : 'var(--text-secondary)' }}>
-                            {u.is_certified ? '✓ Certificado' : '⏳ Verificación Pendiente'}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                    <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
-                      <div style={{ textAlign: 'right' }}>
-                        <p style={{ margin: 0, fontWeight: 700, color: 'var(--text-primary)', fontSize: '1rem' }}>
-                          ${sales.filter(s => s.seller_id === u.id).reduce((acc, s) => acc + (s.amount || 0), 0).toFixed(0)}
-                        </p>
-                        <p style={{ margin: 0, fontSize: '0.6rem', opacity: 0.4, textTransform: 'uppercase' }}>volumen</p>
-                      </div>
-                      {currentUser?.role === 'SUPER_ADMIN' && (
-                        <button
-                          onClick={async (e) => {
-                            e.stopPropagation();
-                            if (confirm(`¿Estás seguro de eliminar permanentemente a ${u.full_name || u.name}? Esta acción no se puede deshacer.`)) {
-                              try {
-                                await dataService.deleteTeamMember(u.id);
-                                alert("Usuario eliminado correctamente.");
-                                window.location.reload();
-                              } catch (err) {
-                                alert("Error al eliminar usuario: " + err.message);
-                              }
-                            }
+          {(() => {
+            const rootDisplay = currentUser?.role === 'SUPER_ADMIN'
+              ? myTeam.filter(u => {
+                  if (u.role === 'SELLER' && u.parent_id) {
+                    const parent = users.find(x => x.id === u.parent_id);
+                    if (parent && parent.role === 'DISTRIBUTOR') return false;
+                  }
+                  return true;
+                })
+              : myTeam;
+
+            return (
+              <>
+                <h3 style={{ marginBottom: '1.2rem', fontSize: '0.9rem', textTransform: 'uppercase', opacity: 0.6, letterSpacing: '1px' }}>
+                  {currentUser?.role === 'SUPER_ADMIN' ? 'Redes y Canales' : 'Miembros de Red'} ({rootDisplay.length})
+                </h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {rootDisplay.length === 0 ? (
+                    <p style={{ textAlign: 'center', opacity: 0.4, padding: '3rem', fontSize: '0.85rem' }}>
+                      No se han detectado agentes vinculados.<br/>Use el botón superior para expandir su red.
+                    </p>
+                  ) : (
+                    rootDisplay.map(u => {
+                      const isDist = u.role === 'DISTRIBUTOR';
+                      const subSellers = isDist ? users.filter(s => s.parent_id === u.id) : [];
+                      const isExpanded = expandedUserId === u.id;
+
+                      return (
+                        <div 
+                          key={u.id} 
+                          className="card glass" 
+                          onClick={isDist ? () => toggleExpand(u.id) : undefined}
+                          style={{ 
+                            display: 'flex', 
+                            flexDirection: 'column', 
+                            gap: '10px', 
+                            cursor: isDist ? 'pointer' : 'default',
+                            border: isExpanded ? '1px solid var(--accent)' : '1px solid rgba(255,255,255,0.05)',
+                            transition: 'all 0.2s ease'
                           }}
-                          style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', color: 'var(--danger)', padding: '2px 8px', borderRadius: '4px', fontSize: '0.6rem', cursor: 'pointer', marginTop: '2px' }}
                         >
-                          Eliminar
-                        </button>
-                      )}
-                    </div>
-                  </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '15px', width: '100%' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
+                              <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: isDist ? 'rgba(255,102,0,0.15)' : 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: 'var(--accent)' }}>
+                                {(u.full_name || u.name || 'U').charAt(0)}
+                              </div>
+                              <div style={{ minWidth: 0 }}>
+                                <p style={{ margin: 0, fontWeight: 700, fontSize: '0.9rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  {u.full_name || u.name} {isDist && '🏢'}
+                                </p>
+                                
+                                {currentUser?.role === 'SUPER_ADMIN' ? (
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                    <select 
+                                      value={u.tier || 'AUTO'}
+                                      onClick={e => e.stopPropagation()}
+                                      onChange={async (e) => {
+                                        e.stopPropagation();
+                                        const newTier = e.target.value === 'AUTO' ? null : e.target.value;
+                                        const updates = {
+                                          tier: newTier,
+                                          tier_start_date: newTier ? new Date().toISOString() : null
+                                        };
+                                        await dataService.updateProfile(u.id, updates);
+                                        window.location.reload();
+                                      }}
+                                      style={{ background: 'none', border: 'none', color: 'var(--accent)', fontSize: '0.7rem', fontWeight: 700, padding: 0, cursor: 'pointer', width: 'max-content' }}
+                                    >
+                                      <option value="AUTO" style={{ background: 'var(--bg-primary)' }}>🤖 CÁLCULO AUTO</option>
+                                      {(u.role === 'SELLER' ? TIERS.SELLER : TIERS.DISTRIBUTOR).map(t => (
+                                        <option key={t.id} value={t.id} style={{ background: 'var(--bg-primary)' }}>
+                                          💎 {t.label}
+                                        </option>
+                                      ))}
+                                    </select>
+                                    {isDist && (
+                                      <p style={{ margin: 0, fontSize: '0.65rem', color: 'rgba(255,102,0,0.8)', fontWeight: 700 }}>
+                                        {isExpanded ? '▼ Ocultar Red' : `▶ Ver Red (${subSellers.length} agentes)`}
+                                      </p>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <p style={{ margin: 0, fontSize: '0.7rem', color: u.is_certified ? 'var(--success)' : 'var(--text-secondary)' }}>
+                                    {u.is_certified ? '✓ Certificado' : '⏳ Verificación Pendiente'}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                            <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+                              <div style={{ textAlign: 'right' }}>
+                                <p style={{ margin: 0, fontWeight: 700, color: 'var(--text-primary)', fontSize: '1rem' }}>
+                                  ${sales.filter(s => s.seller_id === u.id).reduce((acc, s) => acc + (s.amount || 0), 0).toFixed(0)}
+                                </p>
+                                <p style={{ margin: 0, fontSize: '0.6rem', opacity: 0.4, textTransform: 'uppercase' }}>volumen</p>
+                              </div>
+                              {currentUser?.role === 'SUPER_ADMIN' && (
+                                <button
+                                  onClick={async (e) => {
+                                    e.stopPropagation();
+                                    if (confirm(`¿Estás seguro de eliminar permanentemente a ${u.full_name || u.name}? Esta acción no se puede deshacer.`)) {
+                                      try {
+                                        await dataService.deleteTeamMember(u.id);
+                                        alert("Usuario eliminado correctamente.");
+                                        window.location.reload();
+                                      } catch (err) {
+                                        alert("Error al eliminar usuario: " + err.message);
+                                      }
+                                    }
+                                  }}
+                                  style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', color: 'var(--danger)', padding: '2px 8px', borderRadius: '4px', fontSize: '0.6rem', cursor: 'pointer', marginTop: '2px' }}
+                                >
+                                  Eliminar
+                                </button>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Accordion expandible con la red interna del distribuidor */}
+                          {isDist && isExpanded && (
+                            <motion.div 
+                              initial={{ opacity: 0, height: 0 }} 
+                              animate={{ opacity: 1, height: 'auto' }}
+                              onClick={e => e.stopPropagation()}
+                              style={{ marginTop: '8px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '12px' }}
+                            >
+                              <p style={{ fontSize: '0.65rem', textTransform: 'uppercase', color: 'rgba(255,255,255,0.4)', fontWeight: 700, letterSpacing: '0.5px', marginBottom: '8px' }}>👥 Integrantes de su Red</p>
+                              {subSellers.length === 0 ? (
+                                <p style={{ fontSize: '0.7rem', opacity: 0.5, fontStyle: 'italic', padding: '8px' }}>Este distribuidor aún no cuenta con vendedores vinculados.</p>
+                              ) : (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                  {subSellers.map(sub => (
+                                    <div key={sub.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 10px', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.03)' }}>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                        <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', fontWeight: 700 }}>
+                                          {(sub.full_name || sub.name || 'S').charAt(0)}
+                                        </div>
+                                        <div>
+                                          <p style={{ margin: 0, fontSize: '0.75rem', fontWeight: 600 }}>{sub.full_name || sub.name}</p>
+                                          <p style={{ margin: 0, fontSize: '0.6rem', opacity: 0.5 }}>{sub.email} · <span style={{ color: sub.is_certified ? 'var(--success)' : '#f59e0b' }}>{sub.is_certified ? 'Certificado' : 'Pendiente'}</span></p>
+                                        </div>
+                                      </div>
+                                      <div style={{ textAlign: 'right' }}>
+                                        <p style={{ margin: 0, fontSize: '0.8rem', fontWeight: 700, color: 'white' }}>
+                                          ${sales.filter(s => s.seller_id === sub.id).reduce((acc, s) => acc + (s.amount || 0), 0).toFixed(0)}
+                                        </p>
+                                        <p style={{ margin: 0, fontSize: '0.55rem', opacity: 0.4 }}>Volumen</p>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </motion.div>
+                          )}
+                        </div>
+                      );
+                    })
+                  )}
                 </div>
-              ))
-            )}
-          </div>
+              </>
+            );
+          })()}
         </>
       ) : (
         /* PESTAÑA DEDICADA EXCLUSIVA PARA INSIGNIAS */
