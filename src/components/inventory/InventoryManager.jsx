@@ -101,6 +101,24 @@ const InventoryManager = ({ user, team, metrics, addNotification, selectedSedeCo
     }
   };
 
+  const handleOrderPlan = (planData) => {
+    const licenseId = selectedSedeContext === 'Venezuela' ? 'inv-ve-plan' : 'inv-ec-plan';
+    const quantity = planData.label === 'DISTRIBUIDOR 1' ? 100 
+                   : planData.label === 'DISTRIBUIDOR 2' ? 200 
+                   : 300;
+
+    // Pre-cargar el carrito con las licencias del plan seleccionado
+    setRequestCart({
+      [licenseId]: quantity
+    });
+
+    setSelectedLevelDetail(null);
+    setDistributorTab('CATALOG');
+    setIsRequesting(true);
+
+    addNotification(`🚀 Plan de Inversión añadido: ${quantity} Licencias listas para procesar.`);
+  };
+
   const handleSendRequest = async () => {
     try {
       const itemsList = Object.keys(requestCart)
@@ -574,11 +592,27 @@ const InventoryManager = ({ user, team, metrics, addNotification, selectedSedeCo
             </div>
 
             <button 
-              onClick={() => setSelectedLevelDetail(null)} 
+              onClick={() => handleOrderPlan(selectedLevelDetail)} 
               className="btn btn-primary" 
-              style={{ width: '100%', marginTop: '1.5rem' }}
+              style={{ 
+                width: '100%', 
+                marginTop: '1.5rem', 
+                background: 'linear-gradient(90deg, #e65100, var(--accent))', 
+                boxShadow: '0 4px 20px rgba(255,102,0,0.25)',
+                fontWeight: 900,
+                letterSpacing: '0.5px',
+                textTransform: 'uppercase'
+              }}
             >
-              CERRAR DETALLE
+              🚀 SOLICITAR ESTE PLAN AHORA
+            </button>
+
+            <button 
+              onClick={() => setSelectedLevelDetail(null)} 
+              className="btn glass" 
+              style={{ width: '100%', marginTop: '0.75rem', fontSize: '0.75rem' }}
+            >
+              Regresar
             </button>
           </motion.div>
         </div>,
