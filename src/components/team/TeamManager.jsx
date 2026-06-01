@@ -414,7 +414,14 @@ const TeamManager = ({ users, currentUser, onAddUser, sales, selectedSedeContext
                             <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
                               <div style={{ textAlign: 'right' }}>
                                 <p style={{ margin: 0, fontWeight: 700, color: 'var(--text-primary)', fontSize: '1rem' }}>
-                                  ${sales.filter(s => s.seller_id === u.id).reduce((acc, s) => acc + (s.amount || 0), 0).toFixed(0)}
+                                  ${sales.filter(s => {
+                                    if (s.seller_id === u.id) return true;
+                                    if (isDist) {
+                                      const sUser = users.find(x => x.id === s.seller_id);
+                                      return sUser && sUser.parent_id === u.id;
+                                    }
+                                    return false;
+                                  }).reduce((acc, s) => acc + (s.amount || 0), 0).toFixed(0)}
                                 </p>
                                 <p style={{ margin: 0, fontSize: '0.6rem', opacity: 0.4, textTransform: 'uppercase' }}>volumen</p>
                               </div>

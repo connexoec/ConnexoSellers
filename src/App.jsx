@@ -926,7 +926,7 @@ function App() {
                 </div>
                 <div style={{ textAlign: 'right' }}>
                   <p style={{ fontSize: '0.6rem', opacity: 0.5, textTransform: 'uppercase' }}>Precio</p>
-                  <h3 style={{ margin: 0, color: 'var(--tier-ultra)', fontSize: '1.4rem' }}>$179</h3>
+                  <h3 style={{ margin: 0, color: 'var(--tier-ultra)', fontSize: '1.4rem' }}>$197</h3>
                 </div>
               </div>
             </div>

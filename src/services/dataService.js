@@ -2,7 +2,7 @@ import { supabase } from '../lib/supabase';
 
 export const PLANS = {
   PRO:   { id: 'PRO',   price: 97.00,  label: 'Plan PRO' },
-  ULTRA: { id: 'ULTRA', price: 179.00, label: 'Plan ULTRA' },
+  ULTRA: { id: 'ULTRA', price: 197.00, label: 'Plan ULTRA' },
   CONNECTA: { id: 'CONNECTA', price: 0.00, label: 'Plan Connecta' }
 };
 
@@ -309,7 +309,7 @@ export const dataService = {
     if (planKey === 'PRO') {
       basePrice = isMonthly ? 9.00 : 97.00;
     } else if (planKey === 'ULTRA') {
-      basePrice = isMonthly ? 17.00 : 179.00;
+      basePrice = isMonthly ? 17.00 : 197.00;
     } else if (planKey === 'CONNECTA') {
       basePrice = 0.00;
     }
@@ -1427,7 +1427,7 @@ export const dataService = {
       for (let j = 1; j <= 40; j++) {
         const isProPlan = Math.random() > 0.4; // 60% PRO, 40% ULTRA
         const planKey = isProPlan ? 'PRO' : 'ULTRA';
-        const basePrice = isProPlan ? 97.00 : 179.00; // Suscripción anual
+        const basePrice = isProPlan ? 97.00 : 197.00; // Suscripción anual
         const rate = 0.07; // Vendedor PRO rate = 7%
         const commission = basePrice * rate;
         totalSellerWallet += commission;
@@ -1584,7 +1584,7 @@ export const dataService = {
     // ── Helper: genera una venta anual de prueba ──────────────────────────────
     const makeSale = (sellerId, planKey, isAnnual = true, sedeId = 'sede-ec-1') => {
       const annual = isAnnual;
-      const basePrice = planKey === 'PRO' ? (annual ? 97.00 : 9.00) : (annual ? 179.00 : 17.00);
+      const basePrice = planKey === 'PRO' ? (annual ? 97.00 : 9.00) : (annual ? 197.00 : 17.00);
       const rate = 0.07;
       const names = ['Sofia Ruiz','Elena Castro','Maria Silva','Laura Gomez','Ana Torres','Lucia Diaz','Camila Rios','Valeria Perez','Diana Vega','Paula Mora'];
       const cName = names[Math.floor(Math.random() * names.length)];
