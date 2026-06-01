@@ -766,7 +766,11 @@ function App() {
               {(() => {
                 let target = 100;
                 if (user?.role === 'SELLER') {
-                  target = 31;
+                  if (user?.tier === 'ULTRA') {
+                    target = 50;
+                  } else {
+                    target = 31;
+                  }
                 } else if (metrics.level === 'DISTRIBUIDOR 1') {
                   target = 101;
                 } else if (metrics.level === 'DISTRIBUIDOR 2') {
@@ -780,7 +784,7 @@ function App() {
                   <div style={{ margin: '20px 0' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
                       <p style={{ fontSize: '0.65rem', opacity: 0.8 }}>Progreso de Nivel</p>
-                      <p style={{ fontSize: '0.65rem', color: 'var(--accent)' }}>{percent}%</p>
+                      <p style={{ fontSize: '0.65rem', color: 'var(--accent)', fontWeight: 600 }}>{sales.length} / {target} ({percent}%)</p>
                     </div>
                     <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '10px', overflow: 'hidden' }}>
                       <motion.div 
@@ -807,7 +811,10 @@ function App() {
                   {user?.role === 'SELLER' ? (
                     <>
                       {user?.tier === 'ULTRA' ? (
-                        <p style={{ fontSize: '0.75rem', color: 'var(--success)', margin: 0, fontWeight: 700 }}>Nivel de Élite Alcanzado</p>
+                        <>
+                          {sales.length < 50 && <p style={{ fontSize: '0.75rem', color: 'var(--accent)', margin: 0, fontWeight: 600 }}>Objetivo Máximo: 50 ventas (Faltan {Math.max(0, 50 - sales.length)})</p>}
+                          {sales.length >= 50 && <p style={{ fontSize: '0.75rem', color: 'var(--success)', margin: 0, fontWeight: 700 }}>Nivel de Élite Alcanzado</p>}
+                        </>
                       ) : (
                         <>
                           {sales.length < 31 && <p style={{ fontSize: '0.75rem', color: 'var(--accent)', margin: 0, fontWeight: 600 }}>Próximo: ULTRA ({(31 - sales.length)} ventas restantes)</p>}
