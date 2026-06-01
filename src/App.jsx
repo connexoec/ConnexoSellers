@@ -806,8 +806,14 @@ function App() {
                   <p style={{ fontSize: '0.6rem', opacity: 0.7, marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '1px' }}>Objetivo de Rango:</p>
                   {user?.role === 'SELLER' ? (
                     <>
-                      {sales.length < 31 && <p style={{ fontSize: '0.75rem', color: 'var(--accent)', margin: 0, fontWeight: 600 }}>Próximo: ULTRA ({(31 - sales.length)} ventas restantes)</p>}
-                      {sales.length >= 31 && <p style={{ fontSize: '0.75rem', color: 'var(--success)', margin: 0, fontWeight: 700 }}>Nivel de Élite Alcanzado</p>}
+                      {user?.tier === 'ULTRA' ? (
+                        <p style={{ fontSize: '0.75rem', color: 'var(--success)', margin: 0, fontWeight: 700 }}>Nivel de Élite Alcanzado</p>
+                      ) : (
+                        <>
+                          {sales.length < 31 && <p style={{ fontSize: '0.75rem', color: 'var(--accent)', margin: 0, fontWeight: 600 }}>Próximo: ULTRA ({(31 - sales.length)} ventas restantes)</p>}
+                          {sales.length >= 31 && <p style={{ fontSize: '0.75rem', color: 'var(--success)', margin: 0, fontWeight: 700 }}>Nivel de Élite Alcanzado</p>}
+                        </>
+                      )}
                     </>
                   ) : (
                     <>

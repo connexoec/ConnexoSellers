@@ -1636,8 +1636,8 @@ export const dataService = {
     // ── 1. VENDEDOR 1 — VENDEDOR PRO (7 anuales) ────────────────────
     const { userData: v1 } = await processSeller('Vendedor 1 — PRO', 'vendedor1.pro@connexo.ec', adminId || null, 0, 7);
 
-    // ── 2. VENDEDOR 2 — VENDEDOR ULTRA (21 mensuales + 10 anuales = 31 total) ─
-    const { userData: v2 } = await processSeller('Vendedor 2 — ULTRA', 'vendedor2.ultra@connexo.ec', adminId || null, 21, 10);
+    // ── 2. VENDEDOR 2 — VENDEDOR ULTRA (0 mensuales + 10 anuales = 10 total) ─
+    const { userData: v2 } = await processSeller('Vendedor 2 — ULTRA', 'vendedor2.ultra@connexo.ec', adminId || null, 0, 10);
     // V2 is ULTRA, update tier
     await supabase.from('profiles').update({ tier: 'ULTRA' }).eq('id', v2.id);
 
