@@ -25,7 +25,7 @@ const SaleForm = ({ plan, onConfirm, onCancel }) => {
     ? 0.00
     : plan.id === 'PRO'
       ? (billingCycle === 'monthly' ? 9.00 : 97.00)
-      : (billingCycle === 'monthly' ? 17.00 : 179.00);
+      : (billingCycle === 'monthly' ? 17.00 : 197.00);
 
   const set = (field) => (e) => setCustomer({ ...customer, [field]: e.target.value });
 
