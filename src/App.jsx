@@ -1232,6 +1232,71 @@ function App() {
                 >
                   🗑️ Limpiar Caché Local
                 </button>
+
+                {user?.role === 'SUPER_ADMIN' && (
+                  <button 
+                    onClick={async () => {
+                      setShowProfileSettings(false);
+                      const executePurge = async () => {
+                        const confirmReset = confirm("¿ESTÁS ABSOLUTAMENTE SEGURO? Esta acción borrará todas las ventas, clientes y equipo registrado para iniciar de cero. No se puede deshacer.");
+                        if (confirmReset) {
+                          setIsLoading(true);
+                          try {
+                            await dataService.purgeAllData();
+                            addNotification("¡Ecosistema restaurado con éxito!", "SUCCESS");
+                            alert("Ecosistema purgado e iniciado de cero con éxito.");
+                            window.location.reload();
+                          } catch (err) {
+                            alert("Error al purgar los datos: " + err.message);
+                          } finally {
+                            setIsLoading(false);
+                          }
+                        }
+                      };
+
+                      if (window.PublicKeyCredential) {
+                        try {
+                          const challenge = new Uint8Array([1, 2, 3, 4]);
+                          const options = {
+                            publicKey: {
+                              challenge,
+                              rp: { name: "Connexo App" },
+                              user: { id: new Uint8Array([1, 2, 3, 4]), name: user?.email, displayName: user?.full_name },
+                              pubKeyCredParams: [{ type: "public-key", alg: -7 }]
+                            }
+                          };
+                          await navigator.credentials.create(options);
+                          await executePurge();
+                          return;
+                        } catch (e) {
+                          console.warn("Biometrics failed or cancelled, falling back to password:", e);
+                        }
+                      }
+
+                      const password = prompt("🔒 Confirmación de Seguridad:\nIngresa la contraseña del Super Admin para completar la depuración:");
+                      if (password === 'ConnexoApp666') {
+                        await executePurge();
+                      } else if (password !== null) {
+                        alert("Contraseña incorrecta. Acción cancelada.");
+                      }
+                    }}
+                    className="btn glass" 
+                    style={{ fontSize: '0.7rem', padding: '10px', height: 'auto', width: '100%', justifyContent: 'flex-start', gap: '8px', background: 'rgba(239,68,68,0.1)', color: 'var(--danger)', borderColor: 'rgba(239,68,68,0.3)' }}
+                  >
+                    ⚠️ Restaurar Datos de Fábrica
+                  </button>
+                )}
+
+                <button 
+                  onClick={() => {
+                    localStorage.removeItem('connexo_session');
+                    window.location.reload();
+                  }}
+                  className="btn glass" 
+                  style={{ fontSize: '0.7rem', padding: '10px', height: 'auto', width: '100%', justifyContent: 'flex-start', gap: '8px', color: 'var(--danger)', borderColor: 'rgba(239,68,68,0.2)' }}
+                >
+                  🚪 Finalizar Sesión de Agente
+                </button>
               </div>
             </motion.div>
           )}
@@ -1248,116 +1313,11 @@ function App() {
           {user?.role === 'SUPER_ADMIN' && (
             <div className="card glass" style={{ margin: '2rem 0', textAlign: 'left', padding: '1.5rem', background: 'rgba(239,68,68,0.02)', border: '1px solid rgba(239,68,68,0.2)' }}>
               <p style={{ fontSize: '0.65rem', textTransform: 'uppercase', color: 'var(--danger)', marginBottom: '0.5rem', letterSpacing: '2px', fontWeight: 700 }}>Seguridad y Control del Sistema</p>
-              <h4 style={{ margin: '0 0 10px', color: 'white', fontSize: '0.95rem' }}>Restaurar Ecosistema de Fábrica</h4>
+              <h4 style={{ margin: '0 0 10px', color: 'white', fontSize: '0.95rem' }}>Generar Escenario de Prueba</h4>
               <p style={{ fontSize: '0.75rem', opacity: 0.6, lineHeight: '1.4', margin: '0 0 1.2rem' }}>
-                Borra permanentemente todos los clientes, ventas, pedidos de inventario y personal registrado (excepto los Super Administradores maestros) para comenzar de cero.
+                Esto creará un escenario completo de prueba (Vendedores PRO, ULTRA y Distribuidores 1, 2 y 3).
               </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <button 
-                  onClick={async () => {
-                    const executePurge = async () => {
-                      const confirmReset = confirm("¿ESTÁS ABSOLUTAMENTE SEGURO? Esta acción borrará todas las ventas, clientes y equipo registrado para iniciar de cero. No se puede deshacer.");
-                      if (confirmReset) {
-                        setIsLoading(true);
-                        try {
-                          await dataService.purgeAllData();
-                          addNotification("¡Ecosistema restaurado con éxito!", "SUCCESS");
-                          alert("Ecosistema purgado e iniciado de cero con éxito.");
-                          window.location.reload();
-                        } catch (err) {
-                          alert("Error al purgar los datos: " + err.message);
-                        } finally {
-                          setIsLoading(false);
-                        }
-                      }
-                    };
-
-                    // 1. Intentar Biometría del dispositivo (TouchID/FaceID)
-                    if (window.PublicKeyCredential) {
-                      try {
-                        // Desplegar solicitud de biometría sutil (WebAuthn)
-                        const challenge = new Uint8Array([1, 2, 3, 4]);
-                        const options = {
-                          publicKey: {
-                            challenge,
-                            rp: { name: "Connexo App" },
-                            user: {
-                              id: new Uint8Array([1, 2, 3, 4]),
-                              name: user?.email,
-                              displayName: user?.full_name
-                            },
-                            pubKeyCredParams: [{ type: "public-key", alg: -7 }]
-                          }
-                        };
-                        await navigator.credentials.create(options);
-                        // Biometría autorizada con éxito!
-                        await executePurge();
-                        return;
-                      } catch (e) {
-                        console.warn("Biometrics failed or cancelled, falling back to password:", e);
-                      }
-                    }
-
-                    // 2. Fallback de seguridad por contraseña
-                    const password = prompt("🔒 Confirmación de Seguridad:\nIngresa la contraseña del Super Admin para completar la depuración:");
-                    if (password === 'ConnexoApp666') {
-                      await executePurge();
-                    } else if (password !== null) {
-                      alert("Contraseña incorrecta. Acción cancelada.");
-                    }
-                  }}
-                  className="btn glass" 
-                  style={{ width: '100%', background: 'rgba(239,68,68,0.1)', color: 'var(--danger)', borderColor: 'rgba(239,68,68,0.3)', fontSize: '0.75rem', fontWeight: 700 }}
-                >
-                  Restaurar Datos de Fábrica
-                </button>
-
-                <button 
-                  onClick={async () => {
-                    const confirmSeed = confirm("¿Deseas sembrar 10 Vendedores PRO de Prueba, cada uno con 40 planes PRO/ULTRA mensuales (400 ventas en total)? Esto simulará un ecosistema activo.");
-                    if (confirmSeed) {
-                      setIsLoading(true);
-                      try {
-                        await dataService.seedTestData(user.id || user.uid);
-                        addNotification("¡Ecosistema sembrado con éxito!", "SUCCESS");
-                        alert("Se han creado 10 vendedores PRO con 40 ventas mensuales cada uno de forma exitosa.");
-                        window.location.reload();
-                      } catch (err) {
-                        alert("Error al sembrar datos: " + err.message);
-                      } finally {
-                        setIsLoading(false);
-                      }
-                    }
-                  }}
-                  className="btn btn-primary" 
-                  style={{ width: '100%', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase' }}
-                >
-                  Sembrar 10 Vendedores PRO Mensual (400 Ventas)
-                </button>
-
-                <button 
-                  onClick={async () => {
-                    const confirmSeed = confirm("¿Deseas sembrar 10 Vendedores PRO de Prueba, cada uno con 40 planes PRO/ULTRA anuales (400 ventas en total)? Esto simulará un ecosistema activo de suscripciones anuales.");
-                    if (confirmSeed) {
-                      setIsLoading(true);
-                      try {
-                        await dataService.seedTestDataAnnual(user.id || user.uid);
-                        addNotification("¡Ecosistema sembrado con éxito!", "SUCCESS");
-                        alert("Se han creado 10 vendedores PRO con 40 ventas anuales cada uno de forma exitosa.");
-                        window.location.reload();
-                      } catch (err) {
-                        alert("Error al sembrar datos: " + err.message);
-                      } finally {
-                        setIsLoading(false);
-                      }
-                    }
-                  }}
-                  className="btn btn-primary" 
-                  style={{ width: '100%', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', background: 'linear-gradient(135deg, var(--accent-dark) 0%, var(--accent) 100%)' }}
-                >
-                  Sembrar 10 Vendedores PRO Anual (400 Ventas)
-                </button>
-
                 <button 
                   onClick={async () => {
                     const confirmSeed = confirm("¿Deseas crear el ESCENARIO COMPLETO de prueba?\n\n• Vendedor 1 (PRO) — 7 planes anuales (meta exacta)\n• Vendedor 2 (ULTRA) — 10 planes anuales + 31 ventas totales\n• Distribuidor 1 — 3 vendedores, 27 anuales equipo (meta: 25)\n• Distribuidor 2 — 5 vendedores, 55 anuales equipo (meta: 50)\n• Distribuidor 3 — 10 vendedores, 100 anuales equipo (meta: 100)\n\nTodos con sueldo base ACTIVADO.");
@@ -1383,17 +1343,6 @@ function App() {
               </div>
             </div>
           )}
-
-          <button 
-            onClick={() => {
-              localStorage.removeItem('connexo_session');
-              window.location.reload();
-            }}
-            className="btn glass" 
-            style={{ width: '100%', marginTop: '1rem', color: 'var(--danger)', borderColor: 'rgba(239,68,68,0.2)', fontSize: '0.8rem' }}
-          >
-            Finalizar Sesión de Agente
-          </button>
         </motion.div>
       );
 
