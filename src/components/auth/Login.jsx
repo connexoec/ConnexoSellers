@@ -107,6 +107,34 @@ const Login = ({ onLogin, onAdminBypass }) => {
         </button>
       </form>
 
+      <div style={{ marginTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '8px', width: '100%', maxWidth: '350px' }}>
+        <p style={{ fontSize: '0.65rem', textAlign: 'center', opacity: 0.6, letterSpacing: '1px', textTransform: 'uppercase' }}>Accesos Rápidos de Prueba</p>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', justifyContent: 'center' }}>
+          {[
+            { label: 'V1 (PRO)', email: 'vendedor1.pro@connexo.ec', role: 'VENDEDOR' },
+            { label: 'V2 (ULTRA)', email: 'vendedor2.ultra@connexo.ec', role: 'VENDEDOR' },
+            { label: 'Dist. 1', email: 'distribuidor1@connexo.ec', role: 'DISTRIBUIDOR' },
+            { label: 'Dist. 2', email: 'distribuidor2@connexo.ec', role: 'DISTRIBUIDOR' },
+            { label: 'Dist. 3', email: 'distribuidor3@connexo.ec', role: 'DISTRIBUIDOR' }
+          ].map(acc => (
+            <button
+              key={acc.label}
+              onClick={() => {
+                setEmail(acc.email);
+                setPassword('connexo123');
+                setActiveRole(acc.role);
+                // Auto login after small delay
+                setTimeout(() => onLogin(acc.email, 'connexo123', acc.role), 100);
+              }}
+              className="btn glass"
+              style={{ padding: '6px 12px', fontSize: '0.65rem', borderRadius: '100px' }}
+            >
+              {acc.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <p style={{ marginTop: '2rem', fontSize: '0.7rem', opacity: 0.5 }}>Connexo v2.0 © 2026</p>
 
     </motion.div>
