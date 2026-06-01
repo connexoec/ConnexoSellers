@@ -834,7 +834,7 @@ function App() {
                    )}
                 </div>
                 <p style={{ position: 'absolute', bottom: '6px', left: '12px', fontSize: '0.5rem', color: metrics.baseUnlocked ? 'var(--success)' : 'var(--accent)', margin: 0, fontWeight: 600 }}>
-                  Req: {metrics.annualSalesCount || 0}/{metrics.annualSalesGoal || 7} Anuales
+                  Req: {Math.min(metrics.annualSalesCount || 0, metrics.annualSalesGoal || 7)}/{metrics.annualSalesGoal || 7} Anuales
                 </p>
               </div>
               <div className="card glass" style={{ borderLeft: `3px solid ${metrics.rate > 0 ? 'var(--accent)' : 'rgba(255,255,255,0.3)'}`, position: 'relative' }}>
