@@ -1568,6 +1568,12 @@ export const dataService = {
   },
 
   async seedCompleteScenario(adminId) {
+    // ─────────────────────────────────────────────────────────────────────────
+    // LIMPIEZA AUTOMÁTICA
+    // Purga de todos los datos anteriores para evitar conflictos (constraints)
+    // ─────────────────────────────────────────────────────────────────────────
+    await this.purgeAllData();
+
     const now = new Date();
     const thisMonthISO = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
 
