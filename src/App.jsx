@@ -762,23 +762,37 @@ function App() {
               <p style={{ fontSize: '0.6rem', opacity: 0.6, textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '8px' }}>Estatus de Agente</p>
               <h2 style={{ color: 'var(--accent)', margin: '0', fontSize: '1.4rem', textShadow: '0 0 10px var(--accent-glow)' }}>{metrics.level}</h2>
               
-              {/* Progreso de Nivel (Original) */}
-              <div style={{ margin: '20px 0' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                  <p style={{ fontSize: '0.65rem', opacity: 0.8 }}>Progreso de Nivel</p>
-                  <p style={{ fontSize: '0.65rem', color: 'var(--accent)' }}>{Math.min(sales.length, 100)}%</p>
-                </div>
-                <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '10px', overflow: 'hidden' }}>
-                  <motion.div 
-                    initial={{ width: 0 }}
-                    animate={{ width: `${Math.min(sales.length, 100)}%` }}
-                    transition={{ duration: 1, ease: "easeOut" }}
-                    style={{ height: '100%', background: 'linear-gradient(90deg, var(--accent-dark), var(--accent))', boxShadow: '0 0 10px var(--accent-glow)' }} 
-                  />
-                </div>
-              </div>
-
-              {/* Meta Mensual Extra Removida */}
+              {/* Progreso de Nivel (Dinámico) */}
+              {(() => {
+                let target = 100;
+                if (user?.role === 'SELLER') {
+                  target = 31;
+                } else if (metrics.level === 'DISTRIBUIDOR 1') {
+                  target = 101;
+                } else if (metrics.level === 'DISTRIBUIDOR 2') {
+                  target = 201;
+                } else if (metrics.level === 'DISTRIBUIDOR 3') {
+                  target = 300;
+                }
+                const percent = Math.min((sales.length / target) * 100, 100).toFixed(0);
+                
+                return (
+                  <div style={{ margin: '20px 0' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                      <p style={{ fontSize: '0.65rem', opacity: 0.8 }}>Progreso de Nivel</p>
+                      <p style={{ fontSize: '0.65rem', color: 'var(--accent)' }}>{percent}%</p>
+                    </div>
+                    <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '10px', overflow: 'hidden' }}>
+                      <motion.div 
+                        initial={{ width: 0 }}
+                        animate={{ width: `${percent}%` }}
+                        transition={{ duration: 1, ease: "easeOut" }}
+                        style={{ height: '100%', background: 'linear-gradient(90deg, var(--accent-dark), var(--accent))', boxShadow: '0 0 10px var(--accent-glow)' }} 
+                      />
+                    </div>
+                  </div>
+                );
+              })()}
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: user?.is_certified ? 'var(--success)' : 'var(--danger)', boxShadow: `0 0 10px ${user?.is_certified ? 'var(--success)' : 'var(--danger)'}` }} />
@@ -799,7 +813,11 @@ function App() {
                     <>
                       {metrics.level === 'DISTRIBUIDOR 1' && <p style={{ fontSize: '0.75rem', color: 'var(--accent)', margin: 0, fontWeight: 600 }}>D2: Objetivo 101 ventas de equipo (Faltan {Math.max(0, 101 - sales.length)})</p>}
                       {metrics.level === 'DISTRIBUIDOR 2' && <p style={{ fontSize: '0.75rem', color: 'var(--accent)', margin: 0, fontWeight: 600 }}>D3: Objetivo 201 ventas de equipo (Faltan {Math.max(0, 201 - sales.length)})</p>}
-                      {metrics.level === 'DISTRIBUIDOR 3' && <p style={{ fontSize: '0.75rem', color: 'var(--success)', margin: 0, fontWeight: 700 }}>Máxima Jerarquía</p>}
+                      {metrics.level === 'DISTRIBUIDOR 3' && (
+                        sales.length < 300 
+                          ? <p style={{ fontSize: '0.75rem', color: 'var(--accent)', margin: 0, fontWeight: 600 }}>Objetivo Máximo: 300 ventas (Faltan {Math.max(0, 300 - sales.length)})</p>
+                          : <p style={{ fontSize: '0.75rem', color: 'var(--success)', margin: 0, fontWeight: 700 }}>Máxima Jerarquía y Meta Completada</p>
+                      )}
                     </>
                   )}
               </div>
