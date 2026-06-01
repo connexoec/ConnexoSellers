@@ -833,11 +833,9 @@ function App() {
                      <span style={{ fontSize: '0.55rem', color: 'var(--success)', fontWeight: 'bold', textTransform: 'uppercase' }}>ACTIVO</span>
                    )}
                 </div>
-                {!metrics.baseUnlocked && (
-                  <p style={{ position: 'absolute', bottom: '6px', left: '12px', fontSize: '0.5rem', color: 'var(--accent)', margin: 0, fontWeight: 600 }}>
-                    Req: {metrics.annualSalesCount || 0}/{metrics.annualSalesGoal || 7} Anuales
-                  </p>
-                )}
+                <p style={{ position: 'absolute', bottom: '6px', left: '12px', fontSize: '0.5rem', color: metrics.baseUnlocked ? 'var(--success)' : 'var(--accent)', margin: 0, fontWeight: 600 }}>
+                  Req: {metrics.annualSalesCount || 0}/{metrics.annualSalesGoal || 7} Anuales
+                </p>
               </div>
               <div className="card glass" style={{ borderLeft: `3px solid ${metrics.rate > 0 ? 'var(--accent)' : 'rgba(255,255,255,0.3)'}`, position: 'relative' }}>
                 <p style={{ fontSize: '0.55rem', opacity: 0.5, letterSpacing: '1px' }}>COMISIÓN</p>
