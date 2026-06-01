@@ -873,6 +873,26 @@ function App() {
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            {/* Plan Connecta Card */}
+            <div 
+              className="card glass" 
+              onClick={() => !isLoading && setSelectedPlan('CONNECTA')}
+              style={{ cursor: 'pointer', borderLeft: '4px solid var(--success)', padding: '1.5rem', background: 'linear-gradient(135deg, rgba(16,185,129,0.05) 0%, rgba(43,18,8,0) 100%)' }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div>
+                  <span className="tier-badge" style={{ marginBottom: '8px', display: 'inline-block', background: 'rgba(16,185,129,0.2)', color: 'var(--success)', border: '1px solid rgba(16,185,129,0.4)', padding: '2px 8px', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 'bold' }}>PLAN CONNECTA</span>
+                  <h3 style={{ margin: '4px 0 12px', fontSize: '1.5rem' }}>Connexo Connecta</h3>
+                  <p style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', lineHeight: '1.4' }}>Versión de prueba por 7 días gratis para experimentar la aplicación.</p>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <p style={{ fontSize: '0.6rem', opacity: 0.5, textTransform: 'uppercase' }}>Precio</p>
+                  <h3 style={{ margin: 0, color: 'var(--success)', fontSize: '1.4rem' }}>Gratis</h3>
+                  <p style={{ fontSize: '0.55rem', opacity: 0.6, margin: 0 }}>7 días de prueba</p>
+                </div>
+              </div>
+            </div>
+
             {/* Plan PRO Card */}
             <div 
               className="card glass" 
@@ -1336,6 +1356,29 @@ function App() {
                   style={{ width: '100%', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', background: 'linear-gradient(135deg, var(--accent-dark) 0%, var(--accent) 100%)' }}
                 >
                   Sembrar 10 Vendedores PRO Anual (400 Ventas)
+                </button>
+
+                <button 
+                  onClick={async () => {
+                    const confirmSeed = confirm("¿Deseas crear el ESCENARIO COMPLETO de prueba?\n\n• Vendedor 1 (PRO) — 7 planes anuales (meta exacta)\n• Vendedor 2 (ULTRA) — 10 planes anuales + 31 ventas totales\n• Distribuidor 1 — 3 vendedores, 27 anuales equipo (meta: 25)\n• Distribuidor 2 — 5 vendedores, 55 anuales equipo (meta: 50)\n• Distribuidor 3 — 10 vendedores, 100 anuales equipo (meta: 100)\n\nTodos con sueldo base ACTIVADO.");
+                    if (confirmSeed) {
+                      setIsLoading(true);
+                      try {
+                        const result = await dataService.seedCompleteScenario(user.id || user.uid);
+                        addNotification("¡Escenario completo sembrado con éxito!", "SUCCESS");
+                        alert(`✅ ESCENARIO COMPLETO CREADO:\n\n• ${result.vendedor1.full_name} → 7 anuales\n• ${result.vendedor2.full_name} → 10 anuales + 31 total\n• ${result.distribuidor1.full_name} → 3 vendedores, 27 anuales\n• ${result.distribuidor2.full_name} → 5 vendedores, 55 anuales\n• ${result.distribuidor3.full_name} → 10 vendedores, 100 anuales\n\nContraseña universal: connexo123`);
+                        window.location.reload();
+                      } catch (err) {
+                        alert("Error al sembrar escenario: " + err.message);
+                      } finally {
+                        setIsLoading(false);
+                      }
+                    }
+                  }}
+                  className="btn btn-primary" 
+                  style={{ width: '100%', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)', border: '1px solid rgba(16,185,129,0.4)' }}
+                >
+                  🧪 Sembrar Escenario Completo (V1+V2+D1+D2+D3)
                 </button>
               </div>
             </div>

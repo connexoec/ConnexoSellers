@@ -21,9 +21,11 @@ const SaleForm = ({ plan, onConfirm, onCancel }) => {
   });
   const [billingCycle, setBillingCycle] = useState('annually'); // 'annually' o 'monthly'
 
-  const currentPrice = plan.id === 'PRO'
-    ? (billingCycle === 'monthly' ? 7.00 : 97.00)
-    : (billingCycle === 'monthly' ? 15.00 : 179.00);
+  const currentPrice = plan.id === 'CONNECTA'
+    ? 0.00
+    : plan.id === 'PRO'
+      ? (billingCycle === 'monthly' ? 9.00 : 97.00)
+      : (billingCycle === 'monthly' ? 17.00 : 179.00);
 
   const set = (field) => (e) => setCustomer({ ...customer, [field]: e.target.value });
 
@@ -65,42 +67,52 @@ const SaleForm = ({ plan, onConfirm, onCancel }) => {
         }}>
           <div>
             <p style={{ fontSize: '0.6rem', opacity: 0.6, marginBottom: '4px', textTransform: 'uppercase' }}>Plan Seleccionado</p>
-            <h3 style={{ margin: 0, color: 'var(--accent)', fontSize: '1.1rem' }}>{plan.label} {billingCycle === 'monthly' ? 'Mensual' : 'Anual'}</h3>
+            <h3 style={{ margin: 0, color: 'var(--accent)', fontSize: '1.1rem' }}>
+              {plan.id === 'CONNECTA' ? plan.label : `${plan.label} ${billingCycle === 'monthly' ? 'Mensual' : 'Anual'}`}
+            </h3>
           </div>
           <div style={{ textAlign: 'right' }}>
             <p style={{ fontSize: '0.6rem', opacity: 0.6, marginBottom: '4px', textTransform: 'uppercase' }}>Precio</p>
-            <h3 style={{ margin: 0, fontSize: '1.1rem' }}>${currentPrice.toFixed(2)}<span style={{ fontSize: '0.7rem', opacity: 0.7 }}>{billingCycle === 'monthly' ? '/mes' : '/año'}</span></h3>
+            <h3 style={{ margin: 0, fontSize: '1.1rem' }}>
+              {plan.id === 'CONNECTA' ? (
+                <>Gratis <span style={{ fontSize: '0.7rem', opacity: 0.7 }}>(7 días)</span></>
+              ) : (
+                <>${currentPrice.toFixed(2)}<span style={{ fontSize: '0.7rem', opacity: 0.7 }}>{billingCycle === 'monthly' ? '/mes' : '/año'}</span></>
+              )}
+            </h3>
           </div>
         </div>
 
         {/* Frecuencia Selector Segment */}
-        <div style={{ marginBottom: '1.5rem' }}>
-          <p style={{ fontSize: '0.65rem', opacity: 0.6, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '8px', fontWeight: 700 }}>Frecuencia de Facturación</p>
-          <div style={{ display: 'flex', background: 'rgba(0,0,0,0.3)', padding: '4px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
-            <button
-              type="button"
-              onClick={() => setBillingCycle('annually')}
-              style={{
-                flex: 1, padding: '8px', borderRadius: '6px', border: 'none', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s',
-                background: billingCycle === 'annually' ? 'var(--accent)' : 'transparent',
-                color: billingCycle === 'annually' ? 'var(--bg-primary)' : 'rgba(255,255,255,0.5)'
-              }}
-            >
-              Suscripción Anual
-            </button>
-            <button
-              type="button"
-              onClick={() => setBillingCycle('monthly')}
-              style={{
-                flex: 1, padding: '8px', borderRadius: '6px', border: 'none', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s',
-                background: billingCycle === 'monthly' ? 'var(--accent)' : 'transparent',
-                color: billingCycle === 'monthly' ? 'var(--bg-primary)' : 'rgba(255,255,255,0.5)'
-              }}
-            >
-              Suscripción Mensual
-            </button>
+        {plan.id !== 'CONNECTA' && (
+          <div style={{ marginBottom: '1.5rem' }}>
+            <p style={{ fontSize: '0.65rem', opacity: 0.6, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '8px', fontWeight: 700 }}>Frecuencia de Facturación</p>
+            <div style={{ display: 'flex', background: 'rgba(0,0,0,0.3)', padding: '4px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
+              <button
+                type="button"
+                onClick={() => setBillingCycle('annually')}
+                style={{
+                  flex: 1, padding: '8px', borderRadius: '6px', border: 'none', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s',
+                  background: billingCycle === 'annually' ? 'var(--accent)' : 'transparent',
+                  color: billingCycle === 'annually' ? 'var(--bg-primary)' : 'rgba(255,255,255,0.5)'
+                }}
+              >
+                Suscripción Anual
+              </button>
+              <button
+                type="button"
+                onClick={() => setBillingCycle('monthly')}
+                style={{
+                  flex: 1, padding: '8px', borderRadius: '6px', border: 'none', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s',
+                  background: billingCycle === 'monthly' ? 'var(--accent)' : 'transparent',
+                  color: billingCycle === 'monthly' ? 'var(--bg-primary)' : 'rgba(255,255,255,0.5)'
+                }}
+              >
+                Suscripción Mensual
+              </button>
+            </div>
           </div>
-        </div>
+        )}
 
         <h3 style={{ marginBottom: '1.2rem', fontSize: '0.9rem', textTransform: 'uppercase', opacity: 0.8 }}>
           Datos del Cliente / Empresa
@@ -197,7 +209,10 @@ const SaleForm = ({ plan, onConfirm, onCancel }) => {
               className="btn btn-primary"
               style={{ flex: 2, fontSize: '0.8rem', textTransform: 'uppercase' }}
             >
-              Registrar Venta · {plan.id} {billingCycle === 'monthly' ? 'Mensual' : 'Anual'}
+              {plan.id === 'CONNECTA' 
+                ? `Registrar Prueba · ${plan.id}`
+                : `Registrar Venta · ${plan.id} ${billingCycle === 'monthly' ? 'Mensual' : 'Anual'}`
+              }
             </button>
           </div>
         </form>
