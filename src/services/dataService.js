@@ -1568,20 +1568,9 @@ export const dataService = {
   },
 
   async seedCompleteScenario(adminId) {
-    // ─────────────────────────────────────────────────────────────────────────
-    // ESCENARIO COMPLETO: Perfiles al tope de ventas según lógica establecida
-    //
-    // • Vendedor 1  → VENDEDOR PRO  → 7 planes anuales del mes (meta exacta)
-    // • Vendedor 2  → VENDEDOR ULTRA → 10 planes anuales del mes + 31 ventas totales
-    // • Dist. 1     → DISTRIBUIDOR 1 → equipo mínimo para activar sueldo base (25 anuales equipo/mes)
-    // • Dist. 2     → DISTRIBUIDOR 2 → equipo ≥101 ventas totales, 50 anuales/mes equipo
-    // • Dist. 3     → DISTRIBUIDOR 3 → equipo ≥201 ventas totales, 100 anuales/mes equipo
-    // ─────────────────────────────────────────────────────────────────────────
-
     const now = new Date();
     const thisMonthISO = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
 
-    // ── Helper: genera una venta anual de prueba ──────────────────────────────
     const makeSale = (sellerId, planKey, isAnnual = true, sedeId = 'sede-ec-1') => {
       const annual = isAnnual;
       const basePrice = planKey === 'PRO' ? (annual ? 97.00 : 9.00) : (annual ? 197.00 : 17.00);
@@ -1603,56 +1592,50 @@ export const dataService = {
       };
     };
 
-    // ── 1. VENDEDOR 1 — VENDEDOR PRO con 7 planes anuales ────────────────────
-    const v1Profile = {
-      full_name: 'Vendedor 1 — PRO',
-      email: 'vendedor1.pro@connexo.ec',
-      password: 'connexo123',
-      role: ROLES.SELLER,
-      tier: 'PRO',
-      tier_start_date: thisMonthISO,
-      is_certified: true,
-      wallet_balance: 0,
-      parent_id: adminId || null,
-      sede_asignada: 'sede-ec-1'
+    let allSales = [];
+
+    // Helper to process a seller
+    const processSeller = async (name, email, parentId, numMensual, numAnual, rate = 0.07) => {
+      // Create profile first
+      const profile = {
+        full_name: name,
+        email: email,
+        password: 'connexo123',
+        role: ROLES.SELLER,
+        tier: 'PRO',
+        tier_start_date: thisMonthISO,
+        is_certified: true,
+        wallet_balance: 0,
+        parent_id: parentId,
+        sede_asignada: 'sede-ec-1'
+      };
+      
+      const { data: userData, error: userErr } = await supabase.from('profiles').insert([profile]).select().single();
+      if (userErr) throw new Error(`Error creando vendedor ${name}: ` + userErr.message);
+
+      // Generate sales
+      const sales = [];
+      for (let i = 0; i < numMensual; i++) sales.push(makeSale(userData.id, 'PRO', false));
+      for (let i = 0; i < numAnual; i++) sales.push(makeSale(userData.id, i % 2 === 0 ? 'PRO' : 'ULTRA', true));
+      
+      const walletTotal = sales.reduce((a, s) => a + s.commission_earned, 0);
+      
+      // Update wallet balance immediately
+      await supabase.from('profiles').update({ wallet_balance: walletTotal }).eq('id', userData.id);
+      
+      allSales.push(...sales);
+      return { userData, sales };
     };
-    const { data: v1, error: v1Err } = await supabase.from('profiles').insert([v1Profile]).select().single();
-    if (v1Err) throw new Error('Error creando Vendedor 1: ' + v1Err.message);
 
-    // 7 ventas anuales del mes actual (exactamente la meta PRO)
-    const v1Sales = [];
-    for (let i = 0; i < 7; i++) v1Sales.push(makeSale(v1.id, i % 2 === 0 ? 'PRO' : 'ULTRA', true));
-    const v1WalletTotal = v1Sales.reduce((a, s) => a + s.commission_earned, 0);
-    await supabase.from('sales').insert(v1Sales);
-    await supabase.from('profiles').update({ wallet_balance: v1WalletTotal }).eq('id', v1.id);
+    // ── 1. VENDEDOR 1 — VENDEDOR PRO (7 anuales) ────────────────────
+    const { userData: v1 } = await processSeller('Vendedor 1 — PRO', 'vendedor1.pro@connexo.ec', adminId || null, 0, 7);
 
-    // ── 2. VENDEDOR 2 — VENDEDOR ULTRA con 10 planes anuales + 31 ventas total ─
-    const v2Profile = {
-      full_name: 'Vendedor 2 — ULTRA',
-      email: 'vendedor2.ultra@connexo.ec',
-      password: 'connexo123',
-      role: ROLES.SELLER,
-      tier: 'ULTRA',
-      tier_start_date: thisMonthISO,
-      is_certified: true,
-      wallet_balance: 0,
-      parent_id: adminId || null,
-      sede_asignada: 'sede-ec-1'
-    };
-    const { data: v2, error: v2Err } = await supabase.from('profiles').insert([v2Profile]).select().single();
-    if (v2Err) throw new Error('Error creando Vendedor 2: ' + v2Err.message);
+    // ── 2. VENDEDOR 2 — VENDEDOR ULTRA (21 mensuales + 10 anuales = 31 total) ─
+    const { userData: v2 } = await processSeller('Vendedor 2 — ULTRA', 'vendedor2.ultra@connexo.ec', adminId || null, 21, 10);
+    // V2 is ULTRA, update tier
+    await supabase.from('profiles').update({ tier: 'ULTRA' }).eq('id', v2.id);
 
-    // 31 ventas totales (21 mensuales previas + 10 anuales del mes actual)
-    const v2Sales = [];
-    for (let i = 0; i < 21; i++) v2Sales.push(makeSale(v2.id, i % 2 === 0 ? 'PRO' : 'ULTRA', false)); // mensuales históricas
-    for (let i = 0; i < 10; i++) v2Sales.push(makeSale(v2.id, i % 2 === 0 ? 'PRO' : 'ULTRA', true)); // 10 anuales del mes
-    const v2WalletTotal = v2Sales.reduce((a, s) => a + s.commission_earned, 0);
-    await supabase.from('sales').insert(v2Sales);
-    await supabase.from('profiles').update({ wallet_balance: v2WalletTotal }).eq('id', v2.id);
-
-    // ── 3. DISTRIBUIDOR 1 — D1 con equipo mínimo (25 anuales del mes) ─────────
-    // D1 necesita 25 ventas anuales del mes en su equipo para activar sueldo $500
-    // Estrategia: 3 vendedores bajo D1, cada uno con ~9 ventas anuales ≈ 25+ total
+    // ── 3. DISTRIBUIDOR 1 — D1 (3 vendedores, 9 anuales c/u) ─────────
     const d1Profile = {
       full_name: 'Distribuidor 1',
       email: 'distribuidor1@connexo.ec',
@@ -1668,39 +1651,14 @@ export const dataService = {
     const { data: d1, error: d1Err } = await supabase.from('profiles').insert([d1Profile]).select().single();
     if (d1Err) throw new Error('Error creando Distribuidor 1: ' + d1Err.message);
 
-    // 3 vendedores bajo D1 con 9 ventas anuales cada uno = 27 anuales totales (≥25 meta D1)
-    const d1SellerIds = [];
     let d1WalletTotal = 0;
     for (let sv = 1; sv <= 3; sv++) {
-      const svProfile = {
-        full_name: `Vendedor D1-${sv}`,
-        email: `vendedor.d1.${sv}@connexo.ec`,
-        password: 'connexo123',
-        role: ROLES.SELLER,
-        tier: 'PRO',
-        tier_start_date: thisMonthISO,
-        is_certified: true,
-        wallet_balance: 0,
-        parent_id: d1.id,
-        sede_asignada: 'sede-ec-1'
-      };
-      const { data: svData, error: svErr } = await supabase.from('profiles').insert([svProfile]).select().single();
-      if (svErr) throw new Error(`Error creando vendedor D1-${sv}: ` + svErr.message);
-      d1SellerIds.push(svData.id);
-
-      const svSales = [];
-      for (let i = 0; i < 9; i++) svSales.push(makeSale(svData.id, i % 2 === 0 ? 'PRO' : 'ULTRA', true));
-      const svWallet = svSales.reduce((a, s) => a + s.commission_earned, 0);
-      await supabase.from('sales').insert(svSales);
-      await supabase.from('profiles').update({ wallet_balance: svWallet }).eq('id', svData.id);
-      // Override D1: 12% sobre cada venta del vendedor
-      d1WalletTotal += svSales.reduce((a, s) => a + s.amount * 0.12, 0);
+      const { sales } = await processSeller(`Vendedor D1-${sv}`, `vendedor.d1.${sv}@connexo.ec`, d1.id, 0, 9);
+      d1WalletTotal += sales.reduce((a, s) => a + s.amount * 0.12, 0);
     }
     await supabase.from('profiles').update({ wallet_balance: d1WalletTotal }).eq('id', d1.id);
 
-    // ── 4. DISTRIBUIDOR 2 — D2 con equipo ≥101 ventas totales y 50 anuales/mes ─
-    // Necesita: 101+ ventas totales (para nivel D2) y 50 anuales del mes
-    // Estrategia: 5 vendedores × 21 ventas totales (105 total) + 50 anuales distribuidas
+    // ── 4. DISTRIBUIDOR 2 — D2 (5 vendedores, 10 mensuales + 11 anuales c/u) ─
     const d2Profile = {
       full_name: 'Distribuidor 2',
       email: 'distribuidor2@connexo.ec',
@@ -1716,39 +1674,14 @@ export const dataService = {
     const { data: d2, error: d2Err } = await supabase.from('profiles').insert([d2Profile]).select().single();
     if (d2Err) throw new Error('Error creando Distribuidor 2: ' + d2Err.message);
 
-    // 5 vendedores bajo D2: cada uno con 11 ventas anuales del mes + 10 mensuales = 21 total
     let d2WalletTotal = 0;
     for (let sv = 1; sv <= 5; sv++) {
-      const svProfile = {
-        full_name: `Vendedor D2-${sv}`,
-        email: `vendedor.d2.${sv}@connexo.ec`,
-        password: 'connexo123',
-        role: ROLES.SELLER,
-        tier: 'PRO',
-        tier_start_date: thisMonthISO,
-        is_certified: true,
-        wallet_balance: 0,
-        parent_id: d2.id,
-        sede_asignada: 'sede-ec-1'
-      };
-      const { data: svData, error: svErr } = await supabase.from('profiles').insert([svProfile]).select().single();
-      if (svErr) throw new Error(`Error creando vendedor D2-${sv}: ` + svErr.message);
-
-      const svSales = [];
-      // 10 mensuales históricas
-      for (let i = 0; i < 10; i++) svSales.push(makeSale(svData.id, 'PRO', false));
-      // 11 anuales del mes (5 vendedores × 11 = 55 anuales ≥ 50 meta D2)
-      for (let i = 0; i < 11; i++) svSales.push(makeSale(svData.id, i % 2 === 0 ? 'PRO' : 'ULTRA', true));
-      const svWallet = svSales.reduce((a, s) => a + s.commission_earned, 0);
-      await supabase.from('sales').insert(svSales);
-      await supabase.from('profiles').update({ wallet_balance: svWallet }).eq('id', svData.id);
-      d2WalletTotal += svSales.reduce((a, s) => a + s.amount * 0.15, 0);
+      const { sales } = await processSeller(`Vendedor D2-${sv}`, `vendedor.d2.${sv}@connexo.ec`, d2.id, 10, 11);
+      d2WalletTotal += sales.reduce((a, s) => a + s.amount * 0.15, 0);
     }
     await supabase.from('profiles').update({ wallet_balance: d2WalletTotal }).eq('id', d2.id);
 
-    // ── 5. DISTRIBUIDOR 3 — D3 con equipo ≥201 ventas totales y 100 anuales/mes ─
-    // Necesita: 201+ ventas totales (para nivel D3) y 100 anuales del mes
-    // Estrategia: 10 vendedores × 21 ventas totales (210 total) + 100 anuales distribuidas
+    // ── 5. DISTRIBUIDOR 3 — D3 (10 vendedores, 11 mensuales + 10 anuales c/u) ─
     const d3Profile = {
       full_name: 'Distribuidor 3',
       email: 'distribuidor3@connexo.ec',
@@ -1764,35 +1697,17 @@ export const dataService = {
     const { data: d3, error: d3Err } = await supabase.from('profiles').insert([d3Profile]).select().single();
     if (d3Err) throw new Error('Error creando Distribuidor 3: ' + d3Err.message);
 
-    // 10 vendedores bajo D3: cada uno con 11 ventas anuales del mes + 10 mensuales = 21 total
     let d3WalletTotal = 0;
     for (let sv = 1; sv <= 10; sv++) {
-      const svProfile = {
-        full_name: `Vendedor D3-${sv}`,
-        email: `vendedor.d3.${sv}@connexo.ec`,
-        password: 'connexo123',
-        role: ROLES.SELLER,
-        tier: 'PRO',
-        tier_start_date: thisMonthISO,
-        is_certified: true,
-        wallet_balance: 0,
-        parent_id: d3.id,
-        sede_asignada: 'sede-ec-1'
-      };
-      const { data: svData, error: svErr } = await supabase.from('profiles').insert([svProfile]).select().single();
-      if (svErr) throw new Error(`Error creando vendedor D3-${sv}: ` + svErr.message);
-
-      const svSales = [];
-      // 11 mensuales históricas
-      for (let i = 0; i < 11; i++) svSales.push(makeSale(svData.id, 'PRO', false));
-      // 10 anuales del mes (10 vendedores × 10 = 100 anuales ≥ 100 meta D3)
-      for (let i = 0; i < 10; i++) svSales.push(makeSale(svData.id, i % 2 === 0 ? 'PRO' : 'ULTRA', true));
-      const svWallet = svSales.reduce((a, s) => a + s.commission_earned, 0);
-      await supabase.from('sales').insert(svSales);
-      await supabase.from('profiles').update({ wallet_balance: svWallet }).eq('id', svData.id);
-      d3WalletTotal += svSales.reduce((a, s) => a + s.amount * 0.18, 0);
+      const { sales } = await processSeller(`Vendedor D3-${sv}`, `vendedor.d3.${sv}@connexo.ec`, d3.id, 11, 10);
+      d3WalletTotal += sales.reduce((a, s) => a + s.amount * 0.18, 0);
     }
     await supabase.from('profiles').update({ wallet_balance: d3WalletTotal }).eq('id', d3.id);
+
+    // ── BULK INSERT ALL SALES ───────────────────────────────────────
+    // Supabase can handle up to 1000 rows per insert, we have around 380
+    const { error: salesErr } = await supabase.from('sales').insert(allSales);
+    if (salesErr) throw new Error('Error insertando ventas en bulk: ' + salesErr.message);
 
     _metricsCache.clear();
     return {
