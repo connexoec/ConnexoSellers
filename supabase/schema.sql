@@ -97,8 +97,16 @@ on conflict (id) do nothing;
 -- directamente (incluido el login leyendo email+password). Por eso, para que
 -- funcione tal cual está hoy, las tablas deben quedar accesibles por 'anon'.
 --
--- OPCIÓN A (igual que el proyecto anterior, lo más simple): dejar RLS DESACTIVADO.
---   No ejecutes nada más; las tablas ya son accesibles con la anon key.
+-- OPCIÓN A (igual que el proyecto anterior, lo más simple): RLS DESACTIVADO.
+--   IMPORTANTE: en proyectos nuevos Supabase suele dejar el RLS ACTIVADO, lo que
+--   bloquea los INSERT con anon (error 42501) y rompe el login. Ejecuta esto para
+--   desactivarlo en las 6 tablas:
+alter table public.profiles            disable row level security;
+alter table public.sales               disable row level security;
+alter table public.inventory           disable row level security;
+alter table public.inventory_requests  disable row level security;
+alter table public.academy_courses     disable row level security;
+alter table public.sedes               disable row level security;
 --
 -- OPCIÓN B (RLS activado con políticas permisivas — mismo nivel de acceso,
 --   pero explícito). Descomenta el bloque siguiente si lo prefieres:
