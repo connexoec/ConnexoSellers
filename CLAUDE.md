@@ -118,6 +118,50 @@ El Super Admin puede fijar el rango (tier) manualmente o dejarlo en AUTO
 - Commiteado `pnpm-lock.yaml` y `pnpm-workspace.yaml`.
 - Creada documentación técnica (`DOCUMENTACION_TECNICA.md` + PDF) y este `CLAUDE.md`.
 
+### 2026-07-06
+- **Diagnóstico completo por reporte de "muchas funciones fallando":**
+  - Supabase (`aisjtkezgumawgjmwckb`) verificado sano: SELECT en las 6 tablas → 200,
+    INSERT + DELETE de prueba en `profiles` → OK, RLS desactivado.
+  - App local probada en vivo (login super admin + las 6 pestañas): **cero errores**
+    de consola y cero requests fallidos.
+  - La base está casi vacía: `sales`, `inventory_requests` y `academy_courses` sin
+    registros (los datos históricos se perdieron con el proyecto Supabase anterior).
+    "No hay registros" en Movimientos NO es un bug.
+  - Conclusión: si producción falla, la causa más probable es la Lección #2
+    (env vars viejas en Vercel sin Redeploy) y/o caché localStorage del navegador
+    con datos del proyecto viejo.
+- **Causa raíz confirmada del "no se ven ventas/volumen":** el
+  `seedCompleteScenario` del 2026-06-29 19:54 se interrumpió a mitad de camino
+  (se detuvo en `Vendedor D3-6`: wallet en 0, faltan D3-7 a D3-10, Distribuidor 3
+  con wallet 0). Como las ~380 ventas se insertan en UN solo bulk insert al FINAL
+  de la función (`dataService.js` → `seedCompleteScenario`), la interrupción dejó
+  los perfiles creados pero la tabla `sales` totalmente VACÍA. Ver Lección #5.
+
+### Lección #5 (preliminar) — Seed interrumpido = perfiles sin ventas
+- **Síntoma:** los usuarios de prueba existen y tienen wallet, pero volumen,
+  ventas y niveles marcan 0; "Movimientos" vacío.
+- **Causa:** `seedCompleteScenario` inserta perfiles uno a uno pero acumula TODAS
+  las ventas en memoria y las inserta en un único bulk al final. Si algo falla a
+  mitad (red, cierre de pestaña), no hay rollback: quedan perfiles huérfanos sin
+  ventas.
+- **Remedio inmediato:** re-ejecutar "SEMBRAR ESCENARIO COMPLETO" (hace purga
+  automática antes de sembrar).
+- **Fix aplicado (2026-07-06):** las 3 funciones de siembra (`seedCompleteScenario`,
+  `seedTestData`, `seedTestDataAnnual`) ahora insertan las ventas de CADA vendedor
+  inmediatamente después de crearlo (y antes de actualizar su wallet). Una
+  interrupción ya no pierde todas las ventas.
+- **Bug similar reparado:** `updateRequestStatus` leía el estado del pedido
+  DESPUÉS de marcarlo APPROVED, por lo que la condición `status !== 'APPROVED'`
+  siempre era falsa y **el stock nunca se descontaba** al aprobar un pedido (vía
+  Supabase). Ahora lee el estado previo ANTES de actualizar y descuenta una sola vez.
+- **⚠️ Advertencia (no modificado):** `seedCompleteScenario` llama a `purgeAllData`,
+  que borra TODOS los perfiles excepto los 2 super admins — incluidos vendedores
+  REALES creados a mano. No re-sembrar el escenario si ya hay usuarios reales
+  cargados, o respaldarlos antes.
+- **Observado, no tocado (riesgo bajo):** `deleteSale` revierte la wallet después
+  de borrar la venta sin rollback si falla el paso 2; el fallback localStorage de
+  `registerSale`/`deleteSale` puede divergir de la DB si falla un paso intermedio.
+
 ---
 
 ## 8. Errores encontrados y lecciones aprendidas

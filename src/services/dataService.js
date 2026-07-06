@@ -1153,6 +1153,14 @@ export const dataService = {
 
   async updateRequestStatus(requestId, status) {
     try {
+      // Leer el estado PREVIO antes de actualizar: si se consulta después, el
+      // pedido ya figura APPROVED y el descuento de stock jamás se ejecuta
+      const { data: prevReq } = await supabase
+        .from('inventory_requests')
+        .select('*')
+        .eq('id', requestId)
+        .single();
+
       const { data, error } = await supabase
         .from('inventory_requests')
         .update({ status })
@@ -1161,16 +1169,12 @@ export const dataService = {
         .single();
 
       if (error) throw error;
-      
+
       // Si se aprueba y actualizó bien en DB, descontar stock automáticamente
-      if (status === 'APPROVED') {
-        const requests = await this.getInventoryRequests();
-        const req = requests.find(r => r.id === requestId);
-        if (req && req.status !== 'APPROVED') {
-          // Descontar cada ítem del stock
-          for (const item of req.items) {
-            await this.updateInventoryStock(item.product_id, item.quantity, 'sub');
-          }
+      // (solo si NO estaba ya aprobado, para no descontar dos veces)
+      if (status === 'APPROVED' && prevReq && prevReq.status !== 'APPROVED' && Array.isArray(prevReq.items)) {
+        for (const item of prevReq.items) {
+          await this.updateInventoryStock(item.product_id, item.quantity, 'sub');
         }
       }
       return data;
@@ -1339,11 +1343,11 @@ export const dataService = {
     if (sellerError) throw new Error("Error sembrando vendedores: " + sellerError.message);
 
     // 2. Generar 40 ventas mensuales de prueba (PRO o ULTRA) para cada vendedor
-    const salesToInsert = [];
     const customerFirstNames = ['Maria', 'Ana', 'Laura', 'Isabella', 'Lucia', 'Sofia', 'Camila', 'Valentina', 'Victoria', 'Juliana'];
     const customerLastNames = ['Ruiz', 'Giraldo', 'Soto', 'Herrera', 'Castro', 'Vargas', 'Rios', 'Mendoza', 'Munoz', 'Ortega'];
 
     for (const seller of insertedSellers) {
+      const salesToInsert = [];
       let totalSellerWallet = 0;
       for (let j = 1; j <= 40; j++) {
         const isProPlan = Math.random() > 0.4; // 60% PRO, 40% ULTRA
@@ -1370,19 +1374,20 @@ export const dataService = {
         });
       }
 
+      // Insertar las ventas de ESTE vendedor de inmediato (no en bulk al final):
+      // si el proceso se interrumpe, los vendedores ya creados conservan sus ventas
+      const { error: salesError } = await supabase
+        .from('sales')
+        .insert(salesToInsert);
+
+      if (salesError) throw new Error("Error sembrando ventas: " + salesError.message);
+
       // Actualizar billetera del vendedor con la suma acumulada de las comisiones
       await supabase
         .from('profiles')
         .update({ wallet_balance: totalSellerWallet })
         .eq('id', seller.id);
     }
-
-    // Insertar todas las ventas juntas (batch insert)
-    const { error: salesError } = await supabase
-      .from('sales')
-      .insert(salesToInsert);
-
-    if (salesError) throw new Error("Error sembrando ventas: " + salesError.message);
 
     _metricsCache.clear();
     return true;
@@ -1418,11 +1423,11 @@ export const dataService = {
     if (sellerError) throw new Error("Error sembrando vendedores anuales: " + sellerError.message);
 
     // 2. Generar 40 ventas anuales de prueba (PRO o ULTRA) para cada vendedor
-    const salesToInsert = [];
     const customerFirstNames = ['Elena', 'Patricia', 'Clara', 'Diana', 'Gabriela', 'Raquel', 'Teresa', 'Ines', 'Beatriz', 'Alicia'];
     const customerLastNames = ['Guzman', 'Navarro', 'Delgado', 'Acosta', 'Cabrera', 'Romero', 'Molina', 'Miranda', 'Suarez', 'Salazar'];
 
     for (const seller of insertedSellers) {
+      const salesToInsert = [];
       let totalSellerWallet = 0;
       for (let j = 1; j <= 40; j++) {
         const isProPlan = Math.random() > 0.4; // 60% PRO, 40% ULTRA
@@ -1448,19 +1453,20 @@ export const dataService = {
         });
       }
 
+      // Insertar las ventas de ESTE vendedor de inmediato (no en bulk al final):
+      // si el proceso se interrumpe, los vendedores ya creados conservan sus ventas
+      const { error: salesError } = await supabase
+        .from('sales')
+        .insert(salesToInsert);
+
+      if (salesError) throw new Error("Error sembrando ventas anuales: " + salesError.message);
+
       // Actualizar billetera del vendedor con la suma acumulada de las comisiones
       await supabase
         .from('profiles')
         .update({ wallet_balance: totalSellerWallet })
         .eq('id', seller.id);
     }
-
-    // Insertar todas las ventas juntas (batch insert)
-    const { error: salesError } = await supabase
-      .from('sales')
-      .insert(salesToInsert);
-
-    if (salesError) throw new Error("Error sembrando ventas anuales: " + salesError.message);
 
     _metricsCache.clear();
     return true;
@@ -1598,8 +1604,6 @@ export const dataService = {
       };
     };
 
-    let allSales = [];
-
     // Helper to process a seller
     const processSeller = async (name, email, parentId, numMensual, numAnual, rate = 0.07) => {
       // Create profile first
@@ -1623,13 +1627,17 @@ export const dataService = {
       const sales = [];
       for (let i = 0; i < numMensual; i++) sales.push(makeSale(userData.id, 'PRO', false));
       for (let i = 0; i < numAnual; i++) sales.push(makeSale(userData.id, i % 2 === 0 ? 'PRO' : 'ULTRA', true));
-      
+
+      // Insertar las ventas de ESTE vendedor de inmediato (no en bulk al final):
+      // si el proceso se interrumpe, los vendedores ya creados conservan sus ventas
+      const { error: salesErr } = await supabase.from('sales').insert(sales);
+      if (salesErr) throw new Error(`Error insertando ventas de ${name}: ` + salesErr.message);
+
       const walletTotal = sales.reduce((a, s) => a + s.commission_earned, 0);
-      
+
       // Update wallet balance immediately
       await supabase.from('profiles').update({ wallet_balance: walletTotal }).eq('id', userData.id);
-      
-      allSales.push(...sales);
+
       return { userData, sales };
     };
 
@@ -1709,11 +1717,6 @@ export const dataService = {
       d3WalletTotal += sales.reduce((a, s) => a + s.amount * 0.18, 0);
     }
     await supabase.from('profiles').update({ wallet_balance: d3WalletTotal }).eq('id', d3.id);
-
-    // ── BULK INSERT ALL SALES ───────────────────────────────────────
-    // Supabase can handle up to 1000 rows per insert, we have around 380
-    const { error: salesErr } = await supabase.from('sales').insert(allSales);
-    if (salesErr) throw new Error('Error insertando ventas en bulk: ' + salesErr.message);
 
     _metricsCache.clear();
     return {
