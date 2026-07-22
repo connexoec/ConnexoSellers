@@ -7,6 +7,7 @@ import Login        from './components/auth/Login';
 import TeamManager  from './components/team/TeamManager';
 import Onboarding   from './components/onboarding/Onboarding';
 import SaleForm     from './components/sales/SaleForm';
+import { getProfileLabel } from './constants/customerProfiles';
 import Academy      from './components/academy/Academy';
 import InventoryManager from './components/inventory/InventoryManager';
 import { dataService, PLANS } from './services/dataService';
@@ -497,7 +498,14 @@ function App() {
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                           <div>
                             <p style={{ margin: 0, fontWeight: 700, fontSize: '0.9rem', color: 'white' }}>{s.customer_name || 'Cliente'}</p>
-                            <p style={{ margin: '2px 0 0', fontSize: '0.7rem', color: 'var(--accent)', fontWeight: 600 }}>{s.plan_type} · ${s.amount}</p>
+                            <p style={{ margin: '2px 0 0', fontSize: '0.7rem', color: 'var(--accent)', fontWeight: 600 }}>
+                              {s.plan_type} · ${s.amount}
+                              {getProfileLabel(s.profile_type) && (
+                                <span style={{ marginLeft: '6px', fontSize: '0.6rem', padding: '1px 6px', borderRadius: '4px', background: 'rgba(255,255,255,0.08)', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                                  {getProfileLabel(s.profile_type)}
+                                </span>
+                              )}
+                            </p>
                           </div>
                           <div style={{ textAlign: 'right' }}>
                             <p style={{ margin: 0, fontSize: '0.65rem', opacity: 0.5 }}>{new Date(s.created_at).toLocaleDateString()}</p>
@@ -540,7 +548,7 @@ function App() {
                             {s.customer_name || 'Cliente'}
                           </p>
                           <p style={{ margin: 0, fontSize: '0.65rem', opacity: 0.5 }}>
-                            {s.plan_type} · {new Date(s.created_at).toLocaleDateString()}
+                            {s.plan_type}{getProfileLabel(s.profile_type) ? ` · ${getProfileLabel(s.profile_type)}` : ''} · {new Date(s.created_at).toLocaleDateString()}
                           </p>
                         </div>
                         <div style={{ textAlign: 'right', flexShrink: 0 }}>
