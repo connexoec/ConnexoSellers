@@ -33,3 +33,6 @@ pnpm-debug.log*
 
 # OS Files
 Thumbs.db
+
+# Supabase CLI (estado local, no versionar)
+supabase/.temp/

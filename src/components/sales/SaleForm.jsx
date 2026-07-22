@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
 import { User, Phone, Mail, Building2, FileText } from 'lucide-react';
+import { CUSTOMER_PROFILES, DEFAULT_PROFILE_TYPE } from '../../constants/customerProfiles';
 
 const inputStyle = {
   width: '100%',
@@ -20,6 +21,7 @@ const SaleForm = ({ plan, onConfirm, onCancel }) => {
     name: '', phone: '', email: '', company: '', notes: ''
   });
   const [billingCycle, setBillingCycle] = useState('annually'); // 'annually' o 'monthly'
+  const [profileType, setProfileType] = useState(DEFAULT_PROFILE_TYPE);
 
   const currentPrice = plan.id === 'CONNECTA'
     ? 0.00
@@ -31,7 +33,7 @@ const SaleForm = ({ plan, onConfirm, onCancel }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onConfirm(customer, billingCycle);
+    onConfirm({ ...customer, profileType }, billingCycle);
   };
 
   return createPortal(
@@ -113,6 +115,35 @@ const SaleForm = ({ plan, onConfirm, onCancel }) => {
             </div>
           </div>
         )}
+
+        {/* Tipo de Perfil del Cliente */}
+        <div style={{ marginBottom: '1.5rem' }}>
+          <p style={{ fontSize: '0.65rem', opacity: 0.6, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '8px', fontWeight: 700 }}>Tipo de Perfil del Cliente</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
+            {CUSTOMER_PROFILES.map(({ id, label, icon: Icon }) => {
+              const active = profileType === id;
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setProfileType(id)}
+                  aria-pressed={active}
+                  style={{
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '5px',
+                    padding: '10px 4px', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s',
+                    fontSize: '0.6rem', fontWeight: 700, lineHeight: 1.2, textAlign: 'center',
+                    background: active ? 'rgba(255,102,0,0.15)' : 'rgba(0,0,0,0.25)',
+                    border: `1px solid ${active ? 'var(--accent)' : 'var(--glass-border)'}`,
+                    color: active ? 'var(--accent)' : 'rgba(255,255,255,0.55)'
+                  }}
+                >
+                  <Icon size={16} />
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
 
         <h3 style={{ marginBottom: '1.2rem', fontSize: '0.9rem', textTransform: 'uppercase', opacity: 0.8 }}>
           Datos del Cliente / Empresa

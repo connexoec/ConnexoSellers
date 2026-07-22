@@ -69,8 +69,7 @@ Super Admins predefinidos (acceso garantizado, se crean solos al primer login):
 
 | Email | Clave | Notas |
 |-------|-------|-------|
-| thony.karter@gmail.com | ConnexoApp666 | Master Admin (puede borrar sedes). |
-| emapmvisual@gmail.com | ConnexoApp666 | Super Admin. |
+| thony.karter@gmail.com | ConnexoApp666 | Master Admin (puede borrar sedes). Único super admin. |
 
 ### 3.2 Distribuidor (DISTRIBUTOR)
 
