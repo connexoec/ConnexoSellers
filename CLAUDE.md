@@ -62,10 +62,12 @@ ocultar problemas de conexión: la app "parece" andar aunque la base esté caíd
   "override" sobre las ventas de su red. Maneja inventario.
 - `SELLER` — vende; gana comisión solo si está **certificado**.
 
-### Super Admins hardcodeados (en `dataService.login`)
-- `emapmvisual@gmail.com` y `thony.karter@gmail.com`, clave `ConnexoApp666`.
-- Se **crean solos** en su primer login si no existen en `profiles`.
-- `thony.karter@gmail.com` es el **Master Admin** (único que puede borrar sedes).
+### Super Admin hardcodeado (en `dataService.login`)
+- `thony.karter@gmail.com`, clave `ConnexoApp666`. **Es el único.**
+- Se **crea solo** en su primer login si no existe en `profiles`.
+- Es el **Master Admin** (único que puede borrar sedes).
+- ⚠️ `emapmvisual@gmail.com` fue **eliminado de raíz** el 2026-07-22 (código, docs y DB).
+  No re-añadirlo.
 
 ### Planes y precios (`PLANS` / `SaleForm`)
 | Plan | Anual | Mensual |
@@ -136,6 +138,40 @@ El Super Admin puede fijar el rango (tier) manualmente o dejarlo en AUTO
   con wallet 0). Como las ~380 ventas se insertan en UN solo bulk insert al FINAL
   de la función (`dataService.js` → `seedCompleteScenario`), la interrupción dejó
   los perfiles creados pero la tabla `sales` totalmente VACÍA. Ver Lección #5.
+
+### 2026-07-22
+- **Tipo de perfil del cliente en la terminal de ventas.** Al activar un plan,
+  vendedores y distribuidores ahora eligen el perfil que recibe el cliente:
+  Estándar · Barbería · Gastronomía · Petcare/Veterinaria · Salud/Médico ·
+  E-commerce · Artista/Músico · Inmobiliaria · Sublimados/Textil.
+  - Catálogo único en `src/constants/customerProfiles.js` (`CUSTOMER_PROFILES`,
+    `DEFAULT_PROFILE_TYPE`, `getProfileLabel`). Añadir perfiles nuevos SOLO ahí.
+  - `SaleForm.jsx`: grilla de 3 columnas con iconos lucide; default `ESTANDAR`;
+    se envía en `customerData.profileType`.
+  - `dataService.registerSale`: persiste en la nueva columna `sales.profile_type`.
+  - `App.jsx`: el perfil se muestra como chip/sufijo en el historial de Movimientos.
+  - **Requiere migración SQL** (`supabase/schema.sql`):
+    `alter table public.sales add column if not exists profile_type text default 'ESTANDAR';`
+    Mientras no se ejecute, `registerSale` detecta el error de columna inexistente
+    y **reintenta el INSERT sin `profile_type`** (la venta no se pierde, pero el
+    perfil no queda guardado en la DB). Ver Lección #6.
+- **`emapmvisual@gmail.com` eliminado de raíz.** Ya no es super admin ni existe
+  en la app: quitado de `hardcodedAdmins` en `dataService.login`, quitado de la
+  exclusión de `purgeAllData` (antes sobrevivía a toda purga) y de la docs
+  (`CLAUDE.md`, `DOCUMENTACION_TECNICA.md`). Verificado en Supabase
+  (`aisjtkezgumawgjmwckb`): no existe ninguna fila con ese email en `profiles`.
+  **Único super admin: `thony.karter@gmail.com`.**
+
+### Lección #6 — Cambiar el esquema requiere DDL manual en Supabase
+- La app solo tiene la `anon key`, que **no puede correr DDL** (`alter table`).
+  Toda columna nueva hay que añadirla a mano en el SQL Editor de Supabase además
+  de dejarla en `supabase/schema.sql`.
+- **Síntoma si se olvida:** PostgREST devuelve `42703 - column X does not exist`
+  y, por el patrón "Supabase con fallback a LocalStorage", el error queda oculto
+  y la app parece funcionar mientras el dato nunca llega a la base.
+- **Prevención:** verificar la columna con
+  `curl "$URL/rest/v1/<tabla>?select=<columna>&limit=1" -H "apikey: $ANON"`
+  antes de dar por hecho el cambio.
 
 ### Lección #5 (preliminar) — Seed interrumpido = perfiles sin ventas
 - **Síntoma:** los usuarios de prueba existen y tienen wallet, pero volumen,

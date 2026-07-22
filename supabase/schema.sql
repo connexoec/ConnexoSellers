@@ -37,8 +37,12 @@ create table if not exists public.sales (
   customer_company  text,
   customer_notes    text,
   status            text default 'COMPLETED',
-  sede_id           text
+  sede_id           text,
+  profile_type      text default 'ESTANDAR'  -- ESTANDAR | BARBERIA | GASTRONOMIA | PETCARE | SALUD | ECOMMERCE | ARTISTA | INMOBILIARIA | SUBLIMADOS
 );
+
+-- Migración para bases ya existentes (creadas antes de 2026-07-22):
+alter table public.sales add column if not exists profile_type text default 'ESTANDAR';
 
 -- ── 3. INVENTORY (productos / stock por sede) ───────────────────────────────
 create table if not exists public.inventory (

@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { DEFAULT_PROFILE_TYPE } from '../constants/customerProfiles';
 
 export const PLANS = {
   PRO:   { id: 'PRO',   price: 97.00,  label: 'Plan PRO' },
@@ -171,7 +172,6 @@ export const dataService = {
   async login(email, password, selectedRole = null) {
     // 1. Validación de Super Admins Principales
     const hardcodedAdmins = {
-      'emapmvisual@gmail.com': { password: 'ConnexoApp666', name: 'Ema PM (Admin)' },
       'thony.karter@gmail.com': { password: 'ConnexoApp666', name: 'Thony Karter (Admin)' }
     };
 
@@ -357,15 +357,28 @@ export const dataService = {
       customer_company: customerData.company || null,
       customer_notes: notes,
       status: 'COMPLETED',
-      sede_id: sedeId || 'sede-ec-1' // Auto-Etiquetado con contexto activo
+      sede_id: sedeId || 'sede-ec-1', // Auto-Etiquetado con contexto activo
+      profile_type: customerData.profileType || DEFAULT_PROFILE_TYPE
     };
 
     try {
-      const { data: sale, error } = await supabase
+      let { data: sale, error } = await supabase
         .from('sales')
         .insert([newSale])
         .select()
         .single();
+
+      // Compatibilidad: si la columna profile_type todavía no existe en la base
+      // (migración pendiente), reintentar sin ella para no perder la venta.
+      if (error && /profile_type/i.test(error.message || '')) {
+        console.warn("⚠️ Columna 'profile_type' ausente en Supabase — reintentando sin ella. Ejecuta supabase/schema.sql.");
+        const { profile_type, ...saleWithoutProfile } = newSale;
+        ({ data: sale, error } = await supabase
+          .from('sales')
+          .insert([saleWithoutProfile])
+          .select()
+          .single());
+      }
 
       if (error) throw new Error(error.message);
 
@@ -1281,9 +1294,8 @@ export const dataService = {
       await supabase.from('sales').delete().neq('id', '00000000-0000-0000-0000-000000000000');
       // Borrar todos los pedidos de inventario
       await supabase.from('inventory_requests').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-      // Borrar todos los usuarios (profiles) excepto los dos super admins principales
+      // Borrar todos los usuarios (profiles) excepto el super admin principal
       await supabase.from('profiles').delete()
-        .neq('email', 'emapmvisual@gmail.com')
         .neq('email', 'thony.karter@gmail.com');
     } catch (e) {
       console.warn("Supabase purge error:", e);
