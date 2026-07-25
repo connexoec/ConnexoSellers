@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
-import { User, Phone, Mail, Building2, FileText } from 'lucide-react';
+import { User, Phone, Mail, Building2, FileText, ChevronDown } from 'lucide-react';
 import { CUSTOMER_PROFILES, DEFAULT_PROFILE_TYPE } from '../../constants/customerProfiles';
 
 const inputStyle = {
@@ -22,6 +22,8 @@ const SaleForm = ({ plan, onConfirm, onCancel }) => {
   });
   const [billingCycle, setBillingCycle] = useState('annually'); // 'annually' o 'monthly'
   const [profileType, setProfileType] = useState(DEFAULT_PROFILE_TYPE);
+
+  const ProfileIcon = (CUSTOMER_PROFILES.find(p => p.id === profileType) || CUSTOMER_PROFILES[0]).icon;
 
   const currentPrice = plan.id === 'CONNECTA'
     ? 0.00
@@ -119,29 +121,21 @@ const SaleForm = ({ plan, onConfirm, onCancel }) => {
         {/* Tipo de Perfil del Cliente */}
         <div style={{ marginBottom: '1.5rem' }}>
           <p style={{ fontSize: '0.65rem', opacity: 0.6, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '8px', fontWeight: 700 }}>Tipo de Perfil del Cliente</p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
-            {CUSTOMER_PROFILES.map(({ id, label, icon: Icon }) => {
-              const active = profileType === id;
-              return (
-                <button
-                  key={id}
-                  type="button"
-                  onClick={() => setProfileType(id)}
-                  aria-pressed={active}
-                  style={{
-                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '5px',
-                    padding: '10px 4px', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s',
-                    fontSize: '0.6rem', fontWeight: 700, lineHeight: 1.2, textAlign: 'center',
-                    background: active ? 'rgba(255,102,0,0.15)' : 'rgba(0,0,0,0.25)',
-                    border: `1px solid ${active ? 'var(--accent)' : 'var(--glass-border)'}`,
-                    color: active ? 'var(--accent)' : 'rgba(255,255,255,0.55)'
-                  }}
-                >
-                  <Icon size={16} />
+          <div style={{ position: 'relative' }}>
+            <ProfileIcon size={16} style={iconStyle} />
+            <select
+              value={profileType}
+              onChange={(e) => setProfileType(e.target.value)}
+              aria-label="Tipo de perfil del cliente"
+              style={{ ...inputStyle, cursor: 'pointer', appearance: 'none', paddingRight: '32px' }}
+            >
+              {CUSTOMER_PROFILES.map(({ id, label }) => (
+                <option key={id} value={id} style={{ background: 'var(--bg-primary)', color: 'white' }}>
                   {label}
-                </button>
-              );
-            })}
+                </option>
+              ))}
+            </select>
+            <ChevronDown size={16} style={{ position: 'absolute', right: '12px', top: '12px', opacity: 0.45, pointerEvents: 'none' }} />
           </div>
         </div>
 
