@@ -16,12 +16,12 @@ export const ROLES = {
 export const TIERS = {
   SELLER: [
     { id: 'PRO',   label: 'VENDEDOR PRO',   rate: 0.07, base: 250 },
-    { id: 'ULTRA', label: 'VENDEDOR ULTRA', rate: 0.09, base: 300 },
+    { id: 'ULTRA', label: 'VENDEDOR ULTRA', rate: 0.09, base: 350 },
   ],
   DISTRIBUTOR: [
     { id: 'D1',    label: 'DISTRIBUIDOR 1',     rate: 0.12, base: 500 },
-    { id: 'D2',    label: 'DISTRIBUIDOR 2',     rate: 0.15, base: 600 },
-    { id: 'D3',    label: 'DISTRIBUIDOR 3',     rate: 0.18, base: 600 },
+    { id: 'D2',    label: 'DISTRIBUIDOR 2',     rate: 0.15, base: 700 },
+    { id: 'D3',    label: 'DISTRIBUIDOR 3',     rate: 0.18, base: 850 },
   ]
 };
 
@@ -36,21 +36,21 @@ async function calcMetrics(user) {
   const cached = _metricsCache.get(cacheKey);
   if (cached && Date.now() - cached.ts < 30_000) return cached.data;
 
-  const cache = (data) => { 
+  const cache = (data) => {
     // NUEVA REGLA: Mapeo dinámico de umbral de ventas anuales del mes según nivel
-    let goal = 7; // Default base
+    let goal = 8; // Default base
     const lvl = (data.level || '').toUpperCase();
-    
+
     if (lvl.includes('ULTRA')) {
-      goal = 10;
+      goal = 13;
     } else if (lvl.includes('DISTRIBUIDOR 1')) {
       goal = 25;
     } else if (lvl.includes('DISTRIBUIDOR 2')) {
       goal = 50;
     } else if (lvl.includes('DISTRIBUIDOR 3')) {
-      goal = 100;
+      goal = 75;
     } else if (lvl.includes('PRO')) {
-      goal = 7;
+      goal = 8;
     }
 
     if (data.level !== 'BLOQUEADO') {
@@ -59,8 +59,8 @@ async function calcMetrics(user) {
       data.baseUnlocked = (data.annualSalesCount || 0) >= goal;
     }
 
-    _metricsCache.set(cacheKey, { data, ts: Date.now() }); 
-    return data; 
+    _metricsCache.set(cacheKey, { data, ts: Date.now() });
+    return data;
   };
 
   if (!user.is_certified) return cache({ rate: 0, base: 0, level: 'BLOQUEADO', annualSalesCount: 0, baseUnlocked: false });
@@ -72,14 +72,14 @@ async function calcMetrics(user) {
   const countSales = (query) => startDate ? query.gte('created_at', startDate) : query;
 
   let annualSalesCount = 0;
-  
+
   // Helper para contar ventas anuales específicamente (SOLO DEL MES ACTUAL)
   const countAnnualSales = async (ids) => {
     try {
       const now = new Date();
       // Capturar inicio del mes calendario actual
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-      
+
       const { count } = await supabase.from('sales')
           .select('*', { count: 'exact', head: true })
           .in('seller_id', ids)
@@ -99,7 +99,7 @@ async function calcMetrics(user) {
     if (manualTier) {
       let total = 0;
       let currentAnnual = 0;
-      
+
       // Contar ventas desde la asignación para detectar si ya subió de nivel
       if (user.role === ROLES.SELLER) {
         try {
@@ -112,8 +112,8 @@ async function calcMetrics(user) {
           console.warn("calcMetrics fallback for manual SELLER:", e.message);
         }
         // Si ya superó los umbrales del siguiente nivel, subir automáticamente
-        if (total >= 31) return cache({ rate: 0.09, base: 300, level: 'VENDEDOR ULTRA', salesCount: total, annualSalesCount: currentAnnual, baseUnlocked: currentAnnual >= 7 });
-        if (total >= 20) return cache({ rate: 0.07, base: 250, level: 'VENDEDOR PRO',   salesCount: total, annualSalesCount: currentAnnual, baseUnlocked: currentAnnual >= 7 });
+        if (total >= 50) return cache({ rate: 0.09, base: 350, level: 'VENDEDOR ULTRA', salesCount: total, annualSalesCount: currentAnnual, baseUnlocked: currentAnnual >= 13 });
+        if (total >= 31) return cache({ rate: 0.07, base: 250, level: 'VENDEDOR PRO',   salesCount: total, annualSalesCount: currentAnnual, baseUnlocked: currentAnnual >= 8 });
       } else if (user.role === ROLES.DISTRIBUTOR) {
          try {
             const { data: team } = await supabase.from('profiles').select('id').eq('parent_id', uid);
@@ -139,7 +139,7 @@ async function calcMetrics(user) {
       console.warn("calcMetrics fallback for SELLER:", e.message);
     }
     // cache() recalcula baseUnlocked dinámicamente según el nivel
-    if (total >= 31) return cache({ rate: 0.09, base: 300, level: 'VENDEDOR ULTRA', salesCount: total, annualSalesCount: currentAnnual });
+    if (total >= 50) return cache({ rate: 0.09, base: 350, level: 'VENDEDOR ULTRA', salesCount: total, annualSalesCount: currentAnnual });
     return cache({ rate: 0.07, base: 250, level: 'VENDEDOR PRO', salesCount: total, annualSalesCount: currentAnnual });
   }
 
@@ -160,8 +160,8 @@ async function calcMetrics(user) {
       console.warn("calcMetrics fallback for DISTRIBUTOR:", e.message);
     }
     // cache() recalcula baseUnlocked dinámicamente según el nivel
-    if (total >= 201) return cache({ rate: 0.18, base: 600, level: 'DISTRIBUIDOR 3', salesCount: total, annualSalesCount: currentAnnual });
-    if (total >= 101) return cache({ rate: 0.15, base: 600, level: 'DISTRIBUIDOR 2', salesCount: total, annualSalesCount: currentAnnual });
+    if (total >= 300) return cache({ rate: 0.18, base: 850, level: 'DISTRIBUIDOR 3', salesCount: total, annualSalesCount: currentAnnual });
+    if (total >= 200) return cache({ rate: 0.15, base: 700, level: 'DISTRIBUIDOR 2', salesCount: total, annualSalesCount: currentAnnual });
     return cache({ rate: 0.12, base: 500, level: 'DISTRIBUIDOR 1', salesCount: total, annualSalesCount: currentAnnual });
   }
 
@@ -1653,11 +1653,11 @@ export const dataService = {
       return { userData, sales };
     };
 
-    // ── 1. VENDEDOR 1 — VENDEDOR PRO (7 anuales) ────────────────────
-    const { userData: v1 } = await processSeller('Vendedor 1 — PRO', 'vendedor1.pro@connexo.ec', adminId || null, 0, 7);
+    // ── 1. VENDEDOR 1 — VENDEDOR PRO (8 anuales) ────────────────────
+    const { userData: v1 } = await processSeller('Vendedor 1 — PRO', 'vendedor1.pro@connexo.ec', adminId || null, 0, 8);
 
-    // ── 2. VENDEDOR 2 — VENDEDOR ULTRA (0 mensuales + 10 anuales = 10 total) ─
-    const { userData: v2 } = await processSeller('Vendedor 2 — ULTRA', 'vendedor2.ultra@connexo.ec', adminId || null, 0, 10);
+    // ── 2. VENDEDOR 2 — VENDEDOR ULTRA (0 mensuales + 13 anuales = 13 total) ─
+    const { userData: v2 } = await processSeller('Vendedor 2 — ULTRA', 'vendedor2.ultra@connexo.ec', adminId || null, 0, 13);
     // V2 is ULTRA, update tier
     await supabase.from('profiles').update({ tier: 'ULTRA' }).eq('id', v2.id);
 

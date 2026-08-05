@@ -76,20 +76,30 @@ ocultar problemas de conexión: la app "parece" andar aunque la base esté caíd
 | ULTRA | $197.00 | $17.00 |
 | CONNECTA | Gratis (prueba 7 días, 0 comisión) | — |
 
-### Niveles y tasas de comisión
+### Niveles, cuotas y comisiones (cifras vigentes desde 2026-08-05)
+
+| Nivel | Planes vendidos | Comisión | Meta anuales/mes | Sueldo base |
+|-------|-----------------|----------|------------------|-------------|
+| VENDEDOR PRO | 31 | 7% | 8 | $250 |
+| VENDEDOR ULTRA | 50 | 9% | 13 | $350 |
+| DISTRIBUIDOR 1 | 100 | 12% | 25 | $500 |
+| DISTRIBUIDOR 2 | 200 | 15% | 50 | $700 |
+| DISTRIBUIDOR 3 | 300 | 18% | 75 | $850 |
+
 **Vendedor** (sobre el precio del plan):
-- VENDEDOR PRO → 7% (a partir de 20 ventas; es también el nivel base).
-- VENDEDOR ULTRA → 9% (a partir de 31 ventas acumuladas).
+- VENDEDOR PRO → 7% (nivel base; su cuota son 31 ventas).
+- VENDEDOR ULTRA → 9% (a partir de 50 ventas acumuladas desde `tier_start_date`).
 
 **Distribuidor** (sobre el volumen de su red = él + sus vendedores):
-- DISTRIBUIDOR 1 → 12% (base) · DISTRIBUIDOR 2 → 15% (≥101) · DISTRIBUIDOR 3 → 18% (≥201).
+- DISTRIBUIDOR 1 → 12% (base, cuota 100) · DISTRIBUIDOR 2 → 15% (≥200) ·
+  DISTRIBUIDOR 3 → 18% (≥300).
 
 **Comisión por venta** = `precio × tasa` (solo si el vendedor está certificado;
 si no, 0). El distribuidor padre recibe además un **override** = `precio × tasa_del_padre`.
 
 ### Meta mensual de ventas anuales (`annualSalesGoal`)
 Cuenta solo planes con "ANUAL" del **mes calendario actual**. Desbloquea el
-"base" del nivel. Umbrales: PRO 7 · ULTRA 10 · DIST.1 25 · DIST.2 50 · DIST.3 100.
+"base" del nivel. Umbrales: PRO 8 · ULTRA 13 · DIST.1 25 · DIST.2 50 · DIST.3 75.
 
 ### Tier manual vs. AUTO
 El Super Admin puede fijar el rango (tier) manualmente o dejarlo en AUTO
@@ -110,6 +120,22 @@ El Super Admin puede fijar el rango (tier) manualmente o dejarlo en AUTO
 ---
 
 ## 7. Registro de cambios (changelog)
+
+### 2026-08-05
+- **Actualización de CIFRAS de niveles/comisiones** (ver §4). Solo números: la
+  lógica de `calcMetrics`, el tier manual del Super Admin y la UI quedan igual.
+  - Umbrales de ascenso: ULTRA 31→**50** · D2 101→**200** · D3 201→**300**.
+    PRO (31) y D1 (100) siguen siendo los niveles base.
+  - Sueldos base: ULTRA $300→**$350** · D2 $600→**$700** · D3 $600→**$850**.
+    PRO ($250) y D1 ($500) sin cambio.
+  - Comisiones sin cambio: 7 · 9 · 12 · 15 · 18 %.
+  - Metas de anuales del mes: PRO 7→**8** · ULTRA 10→**13** · D3 100→**75**
+    (D1 25 y D2 50 sin cambio).
+  - Archivos tocados: `dataService.js` (`TIERS`, mapeo de `goal` en `cache()`,
+    umbrales de `calcMetrics`, cantidades del seed), `App.jsx` (objetivos del
+    dashboard + texto del confirm de siembra), `BadgeGrid.jsx` (descripción de
+    la insignia de sueldo).
+  - Sin cambios de esquema en Supabase (no hace falta DDL).
 
 ### 2026-06-29
 - Migración a un **nuevo proyecto Supabase** (`aisjtkezgumawgjmwckb`) porque el
