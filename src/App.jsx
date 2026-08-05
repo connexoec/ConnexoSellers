@@ -273,7 +273,7 @@ function App() {
          return isAnnual && saleDate >= currentMonthStart;
       });
       const annualCount = currentMonthAnnualSales.length;
-      const goal = metrics.annualSalesGoal || 7;
+      const goal = metrics.annualSalesGoal || 8;
 
       if (annualCount >= goal && !currentBadgesList.includes('BASE_SALARY_UNLOCKED')) {
         const finalBadges = [...currentBadgesList, 'BASE_SALARY_UNLOCKED'];
@@ -780,14 +780,14 @@ function App() {
                     target = 31;
                   }
                 } else if (metrics.level === 'DISTRIBUIDOR 1') {
-                  target = 101;
+                  target = 100;
                 } else if (metrics.level === 'DISTRIBUIDOR 2') {
-                  target = 201;
+                  target = 200;
                 } else if (metrics.level === 'DISTRIBUIDOR 3') {
                   target = 300;
                 }
                 const percent = Math.min((sales.length / target) * 100, 100).toFixed(0);
-                
+
                 return (
                   <div style={{ margin: '20px 0' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
@@ -825,17 +825,17 @@ function App() {
                         </>
                       ) : (
                         <>
-                          {sales.length < 31 && <p style={{ fontSize: '0.75rem', color: 'var(--accent)', margin: 0, fontWeight: 600 }}>Próximo: ULTRA ({(31 - sales.length)} ventas restantes)</p>}
-                          {sales.length >= 31 && <p style={{ fontSize: '0.75rem', color: 'var(--success)', margin: 0, fontWeight: 700 }}>Nivel de Élite Alcanzado</p>}
+                          {sales.length < 50 && <p style={{ fontSize: '0.75rem', color: 'var(--accent)', margin: 0, fontWeight: 600 }}>Próximo: ULTRA ({(50 - sales.length)} ventas restantes)</p>}
+                          {sales.length >= 50 && <p style={{ fontSize: '0.75rem', color: 'var(--success)', margin: 0, fontWeight: 700 }}>Nivel de Élite Alcanzado</p>}
                         </>
                       )}
                     </>
                   ) : (
                     <>
-                      {metrics.level === 'DISTRIBUIDOR 1' && <p style={{ fontSize: '0.75rem', color: 'var(--accent)', margin: 0, fontWeight: 600 }}>D2: Objetivo 101 ventas de equipo (Faltan {Math.max(0, 101 - sales.length)})</p>}
-                      {metrics.level === 'DISTRIBUIDOR 2' && <p style={{ fontSize: '0.75rem', color: 'var(--accent)', margin: 0, fontWeight: 600 }}>D3: Objetivo 201 ventas de equipo (Faltan {Math.max(0, 201 - sales.length)})</p>}
+                      {metrics.level === 'DISTRIBUIDOR 1' && <p style={{ fontSize: '0.75rem', color: 'var(--accent)', margin: 0, fontWeight: 600 }}>D2: Objetivo 200 ventas de equipo (Faltan {Math.max(0, 200 - sales.length)})</p>}
+                      {metrics.level === 'DISTRIBUIDOR 2' && <p style={{ fontSize: '0.75rem', color: 'var(--accent)', margin: 0, fontWeight: 600 }}>D3: Objetivo 300 ventas de equipo (Faltan {Math.max(0, 300 - sales.length)})</p>}
                       {metrics.level === 'DISTRIBUIDOR 3' && (
-                        sales.length < 300 
+                        sales.length < 300
                           ? <p style={{ fontSize: '0.75rem', color: 'var(--accent)', margin: 0, fontWeight: 600 }}>Objetivo Máximo: 300 ventas (Faltan {Math.max(0, 300 - sales.length)})</p>
                           : <p style={{ fontSize: '0.75rem', color: 'var(--success)', margin: 0, fontWeight: 700 }}>Máxima Jerarquía y Meta Completada</p>
                       )}
@@ -873,7 +873,7 @@ function App() {
                    )}
                 </div>
                 <p style={{ position: 'absolute', bottom: '6px', left: '12px', fontSize: '0.5rem', color: metrics.baseUnlocked ? 'var(--success)' : 'var(--accent)', margin: 0, fontWeight: 600 }}>
-                  Req: {Math.min(metrics.annualSalesCount || 0, metrics.annualSalesGoal || 7)}/{metrics.annualSalesGoal || 7} Anuales
+                  Req: {Math.min(metrics.annualSalesCount || 0, metrics.annualSalesGoal || 8)}/{metrics.annualSalesGoal || 8} Anuales
                 </p>
               </div>
               <div className="card glass" style={{ borderLeft: `3px solid ${metrics.rate > 0 ? 'var(--accent)' : 'rgba(255,255,255,0.3)'}`, position: 'relative' }}>
@@ -1357,7 +1357,7 @@ function App() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 <button 
                   onClick={async () => {
-                    const confirmSeed = confirm("¿Deseas crear el ESCENARIO COMPLETO de prueba?\n\n• Vendedor 1 (PRO) — 7 planes anuales (meta exacta)\n• Vendedor 2 (ULTRA) — 10 planes anuales + 31 ventas totales\n• Distribuidor 1 — 3 vendedores, 27 anuales equipo (meta: 25)\n• Distribuidor 2 — 5 vendedores, 55 anuales equipo (meta: 50)\n• Distribuidor 3 — 10 vendedores, 100 anuales equipo (meta: 100)\n\nTodos con sueldo base ACTIVADO.");
+                    const confirmSeed = confirm("¿Deseas crear el ESCENARIO COMPLETO de prueba?\n\n• Vendedor 1 (PRO) — 8 planes anuales (meta exacta)\n• Vendedor 2 (ULTRA) — 13 planes anuales (meta exacta)\n• Distribuidor 1 — 3 vendedores, 27 anuales equipo (meta: 25)\n• Distribuidor 2 — 5 vendedores, 55 anuales equipo (meta: 50)\n• Distribuidor 3 — 10 vendedores, 100 anuales equipo (meta: 75)\n\nTodos con sueldo base ACTIVADO.");
                     if (confirmSeed) {
                       setIsLoading(true);
                       try {
