@@ -1473,7 +1473,7 @@ function App() {
                       try {
                         const result = await dataService.seedCompleteScenario(user.id || user.uid);
                         addNotification("¡Escenario completo sembrado con éxito!", "SUCCESS");
-                        alert(`✅ ESCENARIO COMPLETO CREADO:\n\n• ${result.vendedor1.full_name} → 7 anuales\n• ${result.vendedor2.full_name} → 10 anuales + 31 total\n• ${result.distribuidor1.full_name} → 3 vendedores, 27 anuales\n• ${result.distribuidor2.full_name} → 5 vendedores, 55 anuales\n• ${result.distribuidor3.full_name} → 10 vendedores, 100 anuales\n\nContraseña universal: connexo123`);
+                        alert(`✅ ESCENARIO COMPLETO CREADO:\n\n• ${result.vendedor1.full_name} → 14 planes del mes (8 anuales)\n• ${result.vendedor2.full_name} → 53 planes del mes (13 anuales)\n• ${result.distribuidor1.full_name} → 3 vendedores, 102 planes de equipo (27 anuales)\n• ${result.distribuidor2.full_name} → 5 vendedores, 210 planes de equipo (55 anuales)\n• ${result.distribuidor3.full_name} → 10 vendedores, 310 planes de equipo (100 anuales)\n\nTodos con sueldo base ACTIVADO + historial de los 2 meses anteriores.\n\nContraseña universal: connexo123`);
                         window.location.reload();
                       } catch (err) {
                         alert("Error al sembrar escenario: " + err.message);
