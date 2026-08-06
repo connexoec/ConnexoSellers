@@ -173,6 +173,39 @@ en vez del día 1.
 
 ## 7. Registro de cambios (changelog)
 
+### 2026-08-06 (5) — Rendimiento y rediseño neón de las insignias
+- **🐢 "Cada vez más lenta": era coste cuadrático en `dataService`.** Ambas
+  funciones del historial fusionaban las ventas de la nube con la caché local
+  así: `cache.forEach(l => nube.some(s => s.id === l.id))`. Con ~1.400 ventas a
+  cada lado son **~2 millones de comparaciones en CADA carga**, y crece con el
+  cuadrado de los datos: por eso empeoraba con el uso. Encima ordenaba con
+  `new Date()` dentro del comparador (~30.000 objetos Date por carga).
+  - `fusionarPorId` usa un `Set` (O(n+m)) y `ordenarPorFechaDesc` parsea cada
+    fecha **una sola vez**. Medido: **13 ms → 0,9 ms (15×)**, verificando que el
+    resultado y el orden son idénticos.
+  - `teamIds.includes()` por venta → `Set`.
+- **No recargar el historial al registrar una venta.** `refreshData` acepta
+  `{ recargarVentas: false }`. La venta ya se añade al estado de forma
+  optimista, así que volver a descargar ~1.400 filas (632 KB, **~900 ms**) era
+  puro desperdicio. Es el ahorro más grande de todos.
+- **Derivados memoizados en `App.jsx`** (`useMemo`): `salesThisMonth`,
+  `mesesDisponibles`, `rolPorVendedor` y el par `filteredSales` +
+  `resumenHistorial`. Antes el filtro del historial recorría las 1.400 ventas
+  **en cada render** —o sea, en cada tecla del buscador— y el filtro por rol
+  hacía un `team.find()` por venta (~34.000 comparaciones). El resumen se
+  calcula ahora en un solo recorrido en vez de cuatro.
+  - ⚠️ `filteredSales` **no** puede vivir dentro del IIFE de
+    `renderHistoryContent`: ahí se recalcula siempre. Va memoizado arriba.
+- **Insignias rediseñadas (feedback: "están muy IA").** Fuera los degradados
+  metálicos y el brillo blanco, que era lo que las hacía parecer genéricas.
+  Ahora: cara de cristal casi negra, **filo de luz de color** y halo — el color
+  solo aparece en el contorno y el resplandor, que es lo que da el aire de neón.
+  El icono lleva su propio `drop-shadow` de color.
+  - **4 por fila** (`repeat(4, 1fr)` + hexágono fluido con `aspectRatio`).
+  - **Barra de progreso eliminada**; queda solo el contador discreto "N / 14".
+  - La etiqueta "AUTO" pasó a ser un punto verde tenue, menos ruidoso.
+  - El modal sigue la misma línea y explica cómo se consigue cada insignia.
+
 ### 2026-08-06 (4) — Insignias automáticas, banderas y ajustes de la campana
 - **🔴 Las insignias automáticas NO funcionaban.** Comprobado en la base:
   **0 de 24 perfiles tenía una sola insignia**, con gente de cientos de ventas y
