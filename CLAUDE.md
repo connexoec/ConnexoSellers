@@ -173,6 +173,38 @@ en vez del día 1.
 
 ## 7. Registro de cambios (changelog)
 
+### 2026-08-06 (3) — Inventario en la base + bug de avisos multicuenta
+- **Catálogo de inventario sembrado en Supabase**
+  (`20260806180000_seed_inventory.sql`). Los 16 productos vivían **solo en el
+  fallback de localStorage** de `getInventory`: se generaban en el navegador de
+  cada persona y nunca llegaban a la base, así que **el almacén no era
+  compartido** (cada dispositivo veía su propia copia) y un pedido de stock
+  apuntaba a productos que el Super Admin no tenía. Ahora son 17 filas reales:
+  9 en Ecuador y 8 en Venezuela. La siembra es **idempotente** (compara por
+  `name` + `sede_id`) y no toca lo cargado a mano.
+  - ⚠️ Los ids ya no son `inv-ec-plan` etc. sino uuid generados por Postgres.
+    El fallback de localStorage sigue usando los antiguos; solo importa si se
+    trabaja sin conexión.
+  - 🔎 Queda una fila anterior de prueba: `Tarjeta NFC Negra` (descripción
+    "Hola", $0.27, 200 u, sede-ec-1). Se dejó a propósito, no es del catálogo.
+- **Bug: no se podían activar los avisos con una segunda cuenta en el mismo
+  navegador.** `push_subscriptions` se creó con `endpoint text not null unique`
+  (heredado de ConnexoClients), pero el cliente hace upsert sobre
+  `(user_id, endpoint)`. Con la restricción suelta, un endpoint solo puede
+  pertenecer a UNA fila de toda la tabla → la segunda cuenta chocaba con
+  `23505 duplicate key ... push_subscriptions_endpoint_key`.
+  Arreglado en `20260806170000_fix_push_endpoint_unique.sql`: se elimina la
+  restricción suelta y manda la compuesta, que es la regla real —
+  **una suscripción por (cuenta, dispositivo)**.
+  - ⚠️ **ConnexoClients tiene el mismo fallo latente** en su
+    `setup_notifications.sql`; su comentario promete multicuenta pero la
+    restricción lo impide. Conviene aplicarle el mismo arreglo.
+- **Mensaje de error corregido.** Ante *cualquier* fallo de base, el panel decía
+  "falta preparar la base de datos, ejecuta …setup_notifications.sql" — que era
+  falso y mandaba a ejecutar un SQL ya aplicado. Ahora solo lo dice si el error
+  es realmente de tabla inexistente (`does not exist`); el resto muestra la
+  causa y sugiere el botón "¿No llegan?".
+
 ### 2026-08-06 (2) — Sistema de alertas y notificaciones
 > Guía completa: **`NOTIFICACIONES_SETUP.md`**. Portado de ConnexoClients.
 > **DESPLEGADO Y VERIFICADO** en `aisjtkezgumawgjmwckb`: migraciones aplicadas,
