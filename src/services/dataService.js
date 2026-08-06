@@ -1,11 +1,21 @@
 import { supabase } from '../lib/supabase';
 import { DEFAULT_PROFILE_TYPE } from '../constants/customerProfiles';
+import { safeSetItem } from '../lib/storage';
 
 export const PLANS = {
   PRO:   { id: 'PRO',   price: 97.00,  label: 'Plan PRO' },
   ULTRA: { id: 'ULTRA', price: 197.00, label: 'Plan ULTRA' },
   CONNECTA: { id: 'CONNECTA', price: 0.00, label: 'Plan Connecta' }
 };
+
+// Columnas para los LISTADOS de perfiles (equipo / todos).
+// Se excluye `avatar_url` a propósito: una foto en base64 pesa decenas de KB
+// (y las viejas, megabytes) y ningún listado la usa, así que traerla multiplica
+// el peso de cada carga. Para el perfil individual sí se pide con select('*').
+// `password` tampoco se expone en listados (getTeam ya lo descartaba).
+const PROFILE_LIST_COLUMNS =
+  'id, created_at, full_name, email, role, tier, tier_start_date, is_certified, ' +
+  'wallet_balance, parent_id, sede_asignada, badges';
 
 export const ROLES = {
   SUPER_ADMIN: 'SUPER_ADMIN',
@@ -394,7 +404,7 @@ export const dataService = {
       const sales = JSON.parse(cached);
       if (!sales.some(s => s.id === completeSale.id)) {
         sales.push(completeSale);
-        localStorage.setItem('connexo_sales', JSON.stringify(sales));
+        safeSetItem('connexo_sales', JSON.stringify(sales));
       }
 
       // Actualizar billetera del SELLER localmente y en db
@@ -470,7 +480,7 @@ export const dataService = {
         const pIdx = team.findIndex(t => t.id === parentId);
         if (pIdx !== -1) {
            team[pIdx].wallet_balance = Number(team[pIdx].wallet_balance || 0) + parentOverride;
-           localStorage.setItem('connexo_team', JSON.stringify(team));
+           safeSetItem('connexo_team', JSON.stringify(team));
         }
       }
 
@@ -486,7 +496,7 @@ export const dataService = {
         created_at: new Date().toISOString()
       };
       sales.push(newLocalSale);
-      localStorage.setItem('connexo_sales', JSON.stringify(sales));
+      safeSetItem('connexo_sales', JSON.stringify(sales));
       
       if (commission > 0) {
         if (_currentUser && _currentUser.id === userId) {
@@ -497,7 +507,7 @@ export const dataService = {
         const idx = team.findIndex(t => t.id === userId);
         if (idx !== -1) {
           team[idx].wallet_balance = Number(team[idx].wallet_balance || 0) + commission;
-          localStorage.setItem('connexo_team', JSON.stringify(team));
+          safeSetItem('connexo_team', JSON.stringify(team));
         }
       }
       
@@ -605,7 +615,7 @@ export const dataService = {
         const idx = sales.findIndex(s => s.id === saleId);
         if (idx !== -1) {
            sales[idx] = { ...sales[idx], ...updates };
-           localStorage.setItem('connexo_sales', JSON.stringify(sales));
+           safeSetItem('connexo_sales', JSON.stringify(sales));
         }
       }
       return data;
@@ -617,7 +627,7 @@ export const dataService = {
           const idx = sales.findIndex(s => s.id === saleId);
           if (idx !== -1) {
              sales[idx] = { ...sales[idx], ...updates };
-             localStorage.setItem('connexo_sales', JSON.stringify(sales));
+             safeSetItem('connexo_sales', JSON.stringify(sales));
              return sales[idx];
           }
        }
@@ -653,7 +663,7 @@ export const dataService = {
       const cached = localStorage.getItem('connexo_sales');
       if (cached) {
          const sales = JSON.parse(cached).filter(s => s.id !== saleId);
-         localStorage.setItem('connexo_sales', JSON.stringify(sales));
+         safeSetItem('connexo_sales', JSON.stringify(sales));
       }
       
       _metricsCache.clear();
@@ -664,7 +674,7 @@ export const dataService = {
        if (cached) {
           const sales = JSON.parse(cached);
           const filtered = sales.filter(s => s.id !== saleId);
-          localStorage.setItem('connexo_sales', JSON.stringify(filtered));
+          safeSetItem('connexo_sales', JSON.stringify(filtered));
           _metricsCache.clear();
           return true;
        }
@@ -677,7 +687,7 @@ export const dataService = {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('*')
+        .select(PROFILE_LIST_COLUMNS)
         .eq('parent_id', parentId)
         .order('created_at', { ascending: true });
         
@@ -697,7 +707,7 @@ export const dataService = {
          if (typeof l.id === 'string' && l.id.startsWith('profile-')) return true; // keep pure offline
          return supabaseData.some(su => su.id === l.id) || l.parent_id !== parentId; // keep if found in cloud OR not belonging to this specific team query
       });
-      if (updatedLocalTeam.length !== allLocalTeam.length) localStorage.setItem('connexo_team', JSON.stringify(updatedLocalTeam));
+      if (updatedLocalTeam.length !== allLocalTeam.length) safeSetItem('connexo_team', JSON.stringify(updatedLocalTeam));
 
       supabaseData = supabaseData.map(su => {
         const localMatch = localTeam.find(l => l.id === su.id || l.email === su.email);
@@ -769,7 +779,7 @@ export const dataService = {
       const team = JSON.parse(cached);
       if (!team.some(t => t.email === completeProfile.email)) {
         team.push(completeProfile);
-        localStorage.setItem('connexo_team', JSON.stringify(team));
+        safeSetItem('connexo_team', JSON.stringify(team));
       }
       return completeProfile;
     } catch (err) {
@@ -793,7 +803,7 @@ export const dataService = {
       }
       
       team.push(newLocalProfile);
-      localStorage.setItem('connexo_team', JSON.stringify(team));
+      safeSetItem('connexo_team', JSON.stringify(team));
       
       const { password, ...safeProfile } = newLocalProfile;
       return safeProfile;
@@ -828,7 +838,7 @@ export const dataService = {
       if (cached) {
         let team = JSON.parse(cached);
         team = team.filter(t => t.id !== userId && t.parent_id !== userId);
-        localStorage.setItem('connexo_team', JSON.stringify(team));
+        safeSetItem('connexo_team', JSON.stringify(team));
       }
       return true;
     } catch (err) {
@@ -866,7 +876,7 @@ export const dataService = {
       const idx = team.findIndex(t => t.id === userId || t.uid === userId);
       if (idx !== -1) {
         team[idx].is_certified = true;
-        localStorage.setItem('connexo_team', JSON.stringify(team));
+        safeSetItem('connexo_team', JSON.stringify(team));
       } else {
         throw new Error('Usuario no encontrado en caché local al certificar');
       }
@@ -884,7 +894,7 @@ export const dataService = {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('*')
+        .select(PROFILE_LIST_COLUMNS)
         .order('created_at', { ascending: false });
       if (error) throw new Error(error.message);
       supabaseData = data || [];
@@ -901,7 +911,7 @@ export const dataService = {
          if (typeof l.id === 'string' && l.id.startsWith('profile-')) return true; // keep pure offline
          return supabaseData.some(su => su.id === l.id); // keep if still in cloud
       });
-      if (updatedLocalTeam.length !== localTeam.length) localStorage.setItem('connexo_team', JSON.stringify(updatedLocalTeam));
+      if (updatedLocalTeam.length !== localTeam.length) safeSetItem('connexo_team', JSON.stringify(updatedLocalTeam));
 
       supabaseData = supabaseData.map(su => {
         const localMatch = localTeam.find(l => l.id === su.id || l.email === su.email);
@@ -928,21 +938,36 @@ export const dataService = {
         .eq('id', userId)
         .select()
         .single();
-      if (error) throw new Error(error.message);
+      if (error) {
+        // Un error de DATOS (correo duplicado, columna inexistente…) no se
+        // arregla escribiendo en la caché local: hay que reportarlo tal cual
+        // para que se pueda corregir. Al fallback solo se cae si falla la RED.
+        const fallo = new Error(
+          error.code === '23505'
+            ? 'Ese correo ya está registrado por otro usuario.'
+            : error.message
+        );
+        fallo.esDeDatos = true;
+        throw fallo;
+      }
       _metricsCache.clear(); // ⚡ Invalidad cache de métricas en tiempo real
       return data;
     } catch (err) {
+      if (err.esDeDatos) throw err;
       console.warn("⚠️ Usando LocalStorage para updateProfile:", err.message);
       const cached = localStorage.getItem('connexo_team') || '[]';
       let team = JSON.parse(cached);
       const idx = team.findIndex(t => t.id === userId || t.uid === userId);
       if (idx !== -1) {
         team[idx] = { ...team[idx], ...updates };
-        localStorage.setItem('connexo_team', JSON.stringify(team));
+        safeSetItem('connexo_team', JSON.stringify(team));
         _metricsCache.clear();
         return team[idx];
       }
-      throw new Error('Usuario no encontrado en caché local');
+      // Uno edita su PROPIO perfil sin estar en la caché de equipo (un vendedor
+      // nunca se cachea a sí mismo): el cambio vale igual, lo persiste la sesión.
+      _metricsCache.clear();
+      return { id: userId, ...updates };
     }
   },
 
@@ -985,7 +1010,7 @@ export const dataService = {
           { id: 'inv-ve-caja', name: 'Caja / Empaque (VE)', description: 'Caja de presentación Kraft Premium para productos Connexo.', category: 'PACKAGING', stock_quantity: 50, unit_type: 'UNIDAD', detail_packaging: 'Caja rígida premium', price: 3.00, sede_id: 'sede-ve-1' },
           { id: 'inv-ve-impresion', name: 'Servicio de Impresión (VE)', description: 'Personalización y grabado de imagen corporativa sobre tarjeta NFC.', category: 'MERCH', stock_quantity: 100, unit_type: 'UNIDAD', detail_packaging: 'Acabado mate/brillante', price: 4.00, sede_id: 'sede-ve-1' }
         ];
-        localStorage.setItem('connexo_inventory', JSON.stringify(defaultInventory));
+        safeSetItem('connexo_inventory', JSON.stringify(defaultInventory));
         items = defaultInventory;
       }
 
@@ -1034,7 +1059,7 @@ export const dataService = {
         sede_id: itemData.sede_id || 'sede-ec-1'
       };
       allItems.push(newItem);
-      localStorage.setItem('connexo_inventory', JSON.stringify(allItems));
+      safeSetItem('connexo_inventory', JSON.stringify(allItems));
       return newItem;
     }
   },
@@ -1056,7 +1081,7 @@ export const dataService = {
       const idx = items.findIndex(i => i.id === itemId);
       if (idx !== -1) {
         items[idx] = { ...items[idx], ...updates };
-        localStorage.setItem('connexo_inventory', JSON.stringify(items));
+        safeSetItem('connexo_inventory', JSON.stringify(items));
         return items[idx];
       }
       throw new Error('Producto no encontrado en caché local');
@@ -1076,7 +1101,7 @@ export const dataService = {
       console.warn("⚠️ Usando LocalStorage para eliminar ítem:", err.message);
       const items = await this.getInventory();
       const filtered = items.filter(i => i.id !== itemId);
-      localStorage.setItem('connexo_inventory', JSON.stringify(filtered));
+      safeSetItem('connexo_inventory', JSON.stringify(filtered));
       return true;
     }
   },
@@ -1117,7 +1142,7 @@ export const dataService = {
           newStock -= Number(quantity);
         }
         items[idx].stock_quantity = newStock;
-        localStorage.setItem('connexo_inventory', JSON.stringify(items));
+        safeSetItem('connexo_inventory', JSON.stringify(items));
         return items[idx];
       }
       throw new Error('Producto no encontrado en caché local');
@@ -1811,7 +1836,7 @@ export const dataService = {
         sede_asignada: adminData.sede_asignada
       };
       team.push(newAdmin);
-      localStorage.setItem('connexo_team', JSON.stringify(team));
+      safeSetItem('connexo_team', JSON.stringify(team));
       return newAdmin;
     }
   }

@@ -14,8 +14,8 @@ import { dataService, PLANS } from './services/dataService';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import BadgeGrid from './components/badges/BadgeGrid';
-
-const SESSION_KEY = 'connexo_session';
+import { SESSION_KEY, saveSession, loadSession, clearSession, safeSetItem, avatarKey } from './lib/storage';
+import { compressImage } from './lib/image';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -106,7 +106,8 @@ function App() {
       const saved = localStorage.getItem(SESSION_KEY);
       if (saved) {
         try {
-          const savedUser = JSON.parse(saved);
+          // loadSession vuelve a unir la foto (guardada en su propia clave).
+          const savedUser = loadSession();
           if (savedUser) {
             // LOGIN OPTIMISTA INSTANTÁNEO: Autenticar inmediatamente usando caché local
             setUser(savedUser);
@@ -119,18 +120,18 @@ function App() {
                 m.supabase.from('profiles').select('*').eq('id', savedUser.id || savedUser.uid).single()
               );
               if (!error && freshProfile) {
-                const localAvatar = localStorage.getItem(`connexo_avatar_${savedUser.id || savedUser.uid}`);
+                const localAvatar = localStorage.getItem(avatarKey(savedUser.id || savedUser.uid));
                 const updatedUser = {
                   ...savedUser,
                   ...freshProfile,
                   avatar_url: freshProfile.avatar_url || localAvatar || savedUser.avatar_url
                 };
                 setUser(updatedUser);
-                localStorage.setItem(SESSION_KEY, JSON.stringify(updatedUser));
+                saveSession(updatedUser);
                 refreshData(updatedUser);
               } else if (error && error.code === 'PGRST116') {
                 console.warn("User session is invalid (deleted from Supabase). Forcing logout.");
-                localStorage.removeItem(SESSION_KEY);
+                clearSession();
                 localStorage.removeItem('connexo_active_tab');
                 setUser(null);
                 setIsAuthenticated(false);
@@ -144,7 +145,7 @@ function App() {
           }
         } catch (parseError) {
           console.error("Critical error parsing session cache:", parseError);
-          localStorage.removeItem(SESSION_KEY);
+          clearSession();
         }
       }
       setIsLoading(false);
@@ -224,7 +225,7 @@ function App() {
     setIsLoading(true);
     try {
       const userData = await dataService.login(email, password, selectedRole);
-      localStorage.setItem(SESSION_KEY, JSON.stringify(userData));
+      saveSession(userData);
       setUser(userData);
       setIsAuthenticated(true);
       setShowOnboarding(true);
@@ -238,7 +239,7 @@ function App() {
   };
 
   const handleAdminBypass = (adminUser) => {
-    localStorage.setItem(SESSION_KEY, JSON.stringify(adminUser)); // 💾 Guardar sesión admin
+    saveSession(adminUser); // 💾 Guardar sesión admin
     setUser(adminUser);
     setIsAuthenticated(true);
     setShowOnboarding(true);
@@ -246,7 +247,7 @@ function App() {
 
   const handleLogout = async () => {
     await dataService.logout();
-    localStorage.removeItem(SESSION_KEY); // 🗑️ Limpiar sesión guardada
+    clearSession(); // 🗑️ Limpiar sesión guardada
     localStorage.removeItem('connexo_active_tab'); // 🗑️ Limpiar pestaña guardada
     setIsAuthenticated(false);
     setUser(null);
@@ -282,7 +283,7 @@ function App() {
       const earned = newSale.commission_earned || 0;
       let updatedUser = { ...user, wallet_balance: (user.wallet_balance || 0) + earned };
       setUser(updatedUser);
-      localStorage.setItem(SESSION_KEY, JSON.stringify(updatedUser));
+      saveSession(updatedUser);
       setSelectedPlan(null);
       addNotification(`Venta de ${customerData.name} registrada — +$${earned.toFixed(2)}`);
       // Recalcular métricas e historial completo de inmediato para refrescar la interfaz en tiempo real
@@ -903,11 +904,12 @@ function App() {
                       <p style={{ fontSize: '0.65rem', color: 'var(--accent)', fontWeight: 600 }}>{planesMes} / {target} ({percent}%)</p>
                     </div>
                     <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '10px', overflow: 'hidden' }}>
-                      <motion.div 
+                      <motion.div
+                        className="progress-fill"
                         initial={{ width: 0 }}
                         animate={{ width: `${percent}%` }}
                         transition={{ duration: 1, ease: "easeOut" }}
-                        style={{ height: '100%', background: 'linear-gradient(90deg, var(--accent-dark), var(--accent))', boxShadow: '0 0 10px var(--accent-glow)' }} 
+                        style={{ height: '100%' }}
                       />
                     </div>
                   </div>
@@ -1111,7 +1113,7 @@ function App() {
               // Actualizar estado local Y localStorage para que persista al recargar
               const updatedUser = { ...user, is_certified: true };
               setUser(updatedUser);
-              localStorage.setItem(SESSION_KEY, JSON.stringify(updatedUser));
+              saveSession(updatedUser);
               addNotification('¡Certificación completada! Comisiones desbloqueadas.', 'SUCCESS');
               // Recalcular métricas en background
               dataService.getMetrics(updatedUser).then(m => setMetrics(m));
@@ -1179,28 +1181,25 @@ function App() {
               style={{ display: 'none' }}
               onChange={async (e) => {
                 const file = e.target.files?.[0];
-                if (file) {
-                  const reader = new FileReader();
-                  reader.onloadend = async () => {
-                    const base64data = reader.result;
-                    const uid = user.id || user.uid;
-                    // Guardar de inmediato en almacenamiento local persistente
-                    localStorage.setItem(`connexo_avatar_${uid}`, base64data);
-                    try {
-                      await dataService.updateProfile(uid, { avatar_url: base64data });
-                      const updatedUser = { ...user, avatar_url: base64data };
-                      setUser(updatedUser);
-                      localStorage.setItem(SESSION_KEY, JSON.stringify(updatedUser));
-                      addNotification("Foto de perfil actualizada", "SUCCESS");
-                    } catch (err) {
-                      // Fallback local
-                      const updatedUser = { ...user, avatar_url: base64data };
-                      setUser(updatedUser);
-                      localStorage.setItem(SESSION_KEY, JSON.stringify(updatedUser));
-                      addNotification("Foto de perfil guardada localmente", "SUCCESS");
-                    }
-                  };
-                  reader.readAsDataURL(file);
+                e.target.value = ''; // permite volver a elegir la misma foto
+                if (!file) return;
+                try {
+                  // La foto del celular pesa varios MB: se redimensiona y
+                  // recomprime antes de guardarla (queda en ~30-60 KB).
+                  const base64data = await compressImage(file);
+                  const uid = user.id || user.uid;
+                  // Se muestra al instante, sin esperar a la nube.
+                  const updatedUser = { ...user, avatar_url: base64data };
+                  setUser(updatedUser);
+                  saveSession(updatedUser);
+                  try {
+                    await dataService.updateProfile(uid, { avatar_url: base64data });
+                    addNotification("Foto de perfil actualizada", "SUCCESS");
+                  } catch {
+                    addNotification("Foto de perfil guardada localmente", "SUCCESS");
+                  }
+                } catch (err) {
+                  alert("No se pudo procesar la imagen: " + err.message);
                 }
               }}
             />
@@ -1236,7 +1235,7 @@ function App() {
                         await dataService.updateProfile(uid, { full_name: editedName, email: editedEmail });
                         const updatedUser = { ...user, full_name: editedName, email: editedEmail };
                         setUser(updatedUser);
-                        localStorage.setItem(SESSION_KEY, JSON.stringify(updatedUser));
+                        saveSession(updatedUser);
                         setIsEditingProfile(false);
                         addNotification("Perfil actualizado con éxito", "SUCCESS");
                       } catch (err) {
@@ -1301,8 +1300,8 @@ function App() {
               </>
             )}
           </div>
-          <div style={{ display: 'inline-block', padding: '4px 16px', background: 'rgba(255,102,0,0.1)', borderRadius: '100px', border: '1px solid var(--accent-glow)', marginTop: '8px', marginBottom: '12px' }}>
-            <p style={{ color: 'var(--accent)', fontWeight: 700, margin: 0, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px' }}>{metrics.level}</p>
+          <div className="pulse-glow" style={{ display: 'inline-block', padding: '4px 16px', background: 'rgba(255,122,26,0.12)', borderRadius: '100px', border: '1px solid var(--accent-glow)', marginTop: '8px', marginBottom: '12px' }}>
+            <p style={{ color: 'var(--accent-light)', fontWeight: 700, margin: 0, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px' }}>{metrics.level}</p>
           </div>
 
           {/* Panel de Configuración Oculto (Tuerca Dorada) */}
@@ -1346,14 +1345,14 @@ function App() {
                         await dataService.updateProfile(user.id || user.uid, { password: newPassword });
                         const updatedUser = { ...user, password: newPassword };
                         setUser(updatedUser);
-                        localStorage.setItem(SESSION_KEY, JSON.stringify(updatedUser));
+                        saveSession(updatedUser);
                         addNotification("Contraseña actualizada con éxito", "SUCCESS");
                         alert("Contraseña actualizada con éxito.");
                       } catch (err) {
                         // Fallback local
                         const updatedUser = { ...user, password: newPassword };
                         setUser(updatedUser);
-                        localStorage.setItem(SESSION_KEY, JSON.stringify(updatedUser));
+                        saveSession(updatedUser);
                         addNotification("Contraseña guardada localmente", "SUCCESS");
                         alert("Contraseña actualizada con éxito.");
                       }
