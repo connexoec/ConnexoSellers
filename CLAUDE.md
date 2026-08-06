@@ -173,6 +173,51 @@ en vez del día 1.
 
 ## 7. Registro de cambios (changelog)
 
+### 2026-08-06 (4) — Insignias automáticas, banderas y ajustes de la campana
+- **🔴 Las insignias automáticas NO funcionaban.** Comprobado en la base:
+  **0 de 24 perfiles tenía una sola insignia**, con gente de cientos de ventas y
+  certificada. Causa: solo 2 de las 14 tenían lógica, y vivía **dentro de
+  `handleRegisterSale`** — o sea, se evaluaban únicamente en el instante exacto
+  de registrar una venta y en esa pestaña. Si la venta entraba por otra vía, si
+  la app se recargaba, o si el estado `userBadges` venía pisado por el
+  `refreshData` que corre justo antes, no se otorgaba nada.
+  - **Arreglo:** los criterios se mudaron a **`src/lib/badges.js`** (lógica
+    pura, sin React, comprobable fuera del navegador) y se evalúan en un
+    `useEffect` **contra los datos reales en cada carga**. Se reparan solas para
+    quien ya cumplía el requisito. **Solo suman**: jamás quitan una insignia
+    puesta a mano por el Super Admin.
+  - **Automáticas (5):** `FIRST_BLOOD` (1ª venta), `SAAS_STARTER` (1ª venta de
+    plan de pago — CONNECTA no cuenta, es gratis), `ACADEMY_LV1` (certificarse),
+    `MONTHLY_CHAMP` (30+ planes de pago en el mes), `BASE_SALARY_UNLOCKED`
+    (`metrics.baseUnlocked`). Las otras 9 siguen siendo manuales.
+  - Cada desbloqueo genera una notificación de tipo `badge` (con push) y un
+    toast, con `dedupeKey` para no repetirse.
+  - ⚠️ El efecto NO puede depender de `salesThisMonth`: se recalcula en cada
+    render (es un `.filter` del cuerpo del componente), así que lo haría correr
+    sin parar. El filtro del mes se hace dentro del efecto.
+  - **Verificado** con la función real contra los datos de Supabase: Vendedor 2
+    (53 de pago en el mes) saca las 5; Vendedor 1 (14) saca 4 y NO el Campeón
+    Mensual; 29 planes no lo dan y 30 sí; sin datos no sale ninguna.
+- **Las banderas no se veían en PC.** `🇪🇨` y `🇻🇪` son *regional indicators*, y
+  **Windows no trae esos glifos**: salen como dos letras sueltas o un cuadrito.
+  En Android/iPhone se ven, por eso el fallo parecía solo de escritorio. Ahora
+  se dibujan en SVG (`src/components/layout/Flag.jsx`) y se ven igual en todo.
+- **El panel de la campana se desfasaba en el teléfono.** Estaba anclado al
+  botón con `position: absolute`, pero la campana no está pegada al borde
+  derecho (a su lado van el rango y el ✓CERT), así que un panel de `88vw`
+  anclado a ella se salía por la izquierda. Ahora se pinta en un **portal con
+  posición fija calculada** desde el rectángulo del botón y **acotada a la
+  pantalla**, recalculando al redimensionar y al hacer scroll. De paso cierra
+  con Escape.
+- **Vitrina de insignias rediseñada:** hexágonos con marco metálico, degradado,
+  halo y brillo esmaltado; nombre bajo cada una; barra de progreso "N / 14"; las
+  conseguidas se ordenan primero; etiqueta **AUTO** en las que se ganan solas; y
+  el modal ahora explica **cómo se consigue** cada insignia y si ya la tienes.
+- **Limpieza:** el estado `notifications` de `App.jsx` quedó huérfano al
+  reemplazar la campana vieja (nadie lo leía). Eliminado; `addNotification`
+  ahora solo dispara el toast, y el recordatorio de pedidos pendientes del Super
+  Admin se muestra una vez por sesión con un `useRef`.
+
 ### 2026-08-06 (3) — Inventario en la base + bug de avisos multicuenta
 - **Catálogo de inventario sembrado en Supabase**
   (`20260806180000_seed_inventory.sql`). Los 16 productos vivían **solo en el

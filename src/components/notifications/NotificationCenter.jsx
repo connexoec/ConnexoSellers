@@ -17,7 +17,8 @@ const TIPOS = {
   team:         { icon: '👥', color: 'var(--tier-pro)' },
   certified:    { icon: '🎓', color: 'var(--tier-ultra)' },
   level:        { icon: '🚀', color: 'var(--tier-ultra)' },
-  base:         { icon: '💵', color: 'var(--success)' }
+  base:         { icon: '💵', color: 'var(--success)' },
+  badge:        { icon: '🏅', color: 'var(--tier-ultra)' }
 };
 const tipoDe = (t) => TIPOS[t] || { icon: '🔔', color: 'var(--accent)' };
 
@@ -47,8 +48,43 @@ export default function NotificationCenter({ userId, onNavigate }) {
   const [activo, setActivo]     = useState(false);   // suscripción viva en ESTE dispositivo
   const [trabajando, setTrabajando] = useState(false);
   const [detalle, setDetalle]   = useState(null);    // texto de error del push, si lo hay
+  const [caja, setCaja]         = useState(null);    // posición calculada del panel
   const raizRef  = useRef(null);
+  const botonRef = useRef(null);
   const toastRef = useRef(null);
+
+  // ── Posición del panel ────────────────────────────────────────────────────
+  // Se calcula y se pinta en un portal con posición FIJA en vez de colgarlo del
+  // botón. Anclado al botón se desfasaba en el teléfono: la campana no está
+  // pegada al borde derecho (a su lado van el rango y el ✓CERT), así que un
+  // panel ancho anclado a ella se salía de la pantalla por la izquierda.
+  const recalcular = useCallback(() => {
+    const b = botonRef.current?.getBoundingClientRect();
+    if (!b) return;
+    const margen = 10;
+    const ancho = Math.min(360, window.innerWidth - margen * 2);
+    // Alinea el borde derecho del panel con el del botón y lo mete en pantalla.
+    let izq = b.right - ancho;
+    izq = Math.max(margen, Math.min(izq, window.innerWidth - ancho - margen));
+    const arriba = b.bottom + 8;
+    setCaja({
+      left: izq,
+      top: arriba,
+      width: ancho,
+      maxHeight: Math.max(220, window.innerHeight - arriba - margen)
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    recalcular();
+    window.addEventListener('resize', recalcular);
+    window.addEventListener('scroll', recalcular, true);
+    return () => {
+      window.removeEventListener('resize', recalcular);
+      window.removeEventListener('scroll', recalcular, true);
+    };
+  }, [open, recalcular]);
 
   // ── Carga inicial + tiempo real ──────────────────────────────────────────
   useEffect(() => {
@@ -105,12 +141,22 @@ export default function NotificationCenter({ userId, onNavigate }) {
     return () => { cancelado = true; };
   }, [userId]);
 
-  // Cerrar al hacer clic fuera
+  // Cerrar al hacer clic fuera (el panel vive en un portal, así que se
+  // comprueba también contra él) y con la tecla Escape.
   useEffect(() => {
     if (!open) return;
-    const fuera = (e) => { if (!raizRef.current?.contains(e.target)) setOpen(false); };
+    const fuera = (e) => {
+      if (raizRef.current?.contains(e.target)) return;
+      if (e.target.closest?.('[data-panel-avisos]')) return;
+      setOpen(false);
+    };
+    const escape = (e) => { if (e.key === 'Escape') setOpen(false); };
     document.addEventListener('mousedown', fuera);
-    return () => document.removeEventListener('mousedown', fuera);
+    document.addEventListener('keydown', escape);
+    return () => {
+      document.removeEventListener('mousedown', fuera);
+      document.removeEventListener('keydown', escape);
+    };
   }, [open]);
 
   const marcarLeidas = useCallback(async () => {
@@ -223,6 +269,7 @@ export default function NotificationCenter({ userId, onNavigate }) {
     <>
       <div style={{ position: 'relative' }} ref={raizRef}>
         <button
+          ref={botonRef}
           onClick={alternarPanel}
           aria-label={`Ver notificaciones${unread ? ` (${unread} sin leer)` : ''}`}
           style={{
@@ -254,18 +301,23 @@ export default function NotificationCenter({ userId, onNavigate }) {
           )}
         </button>
 
+      </div>
+
+      {createPortal(
         <AnimatePresence>
-          {open && (
+          {open && caja && (
             <motion.div
+              data-panel-avisos
               initial={{ opacity: 0, y: -8, scale: 0.97 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -8, scale: 0.97 }}
               transition={{ duration: 0.18 }}
               className="glass"
               style={{
-                position: 'absolute', top: 40, right: 0, width: 'min(340px, 88vw)',
-                maxHeight: '72vh', display: 'flex', flexDirection: 'column',
-                borderRadius: 16, overflow: 'hidden', zIndex: 2000,
+                position: 'fixed',
+                left: caja.left, top: caja.top, width: caja.width, maxHeight: caja.maxHeight,
+                display: 'flex', flexDirection: 'column',
+                borderRadius: 16, overflow: 'hidden', zIndex: 4500,
                 border: '1px solid var(--accent-glow)',
                 boxShadow: '0 18px 50px rgba(0,0,0,0.65), 0 0 30px -12px var(--accent-glow)'
               }}
@@ -454,8 +506,9 @@ export default function NotificationCenter({ userId, onNavigate }) {
               )}
             </motion.div>
           )}
-        </AnimatePresence>
-      </div>
+        </AnimatePresence>,
+        document.body
+      )}
 
       {/* Toast cuando llega un aviso con la app abierta */}
       {createPortal(
