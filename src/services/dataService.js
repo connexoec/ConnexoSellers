@@ -547,14 +547,22 @@ export const dataService = {
         if (team?.length) teamIds = [userId, ...team.map(m => m.id)];
       }
 
-      let query = supabase.from('sales').select('*').order('created_at', { ascending: false });
-      if (role !== ROLES.SUPER_ADMIN) {
-        query = query.in('seller_id', teamIds);
+      // PostgREST devuelve como máximo 1000 filas por request: hay que paginar
+      // o el historial de meses viejos aparece incompleto (ver Lección #7).
+      const PAGE = 1000;
+      for (let desde = 0; ; desde += PAGE) {
+        let query = supabase.from('sales').select('*')
+          .order('created_at', { ascending: false })
+          .range(desde, desde + PAGE - 1);
+        if (role !== ROLES.SUPER_ADMIN) {
+          query = query.in('seller_id', teamIds);
+        }
+
+        const { data, error } = await query;
+        if (error) throw new Error(error.message);
+        supabaseData.push(...(data || []));
+        if (!data || data.length < PAGE) break;
       }
-      
-      const { data, error } = await query;
-      if (error) throw new Error(error.message);
-      supabaseData = data || [];
     } catch (err) {
       console.warn("⚠️ Error en Supabase para getSalesForTeam, usando LocalStorage:", err.message);
       if (role !== ROLES.SUPER_ADMIN) {
