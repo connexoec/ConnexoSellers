@@ -51,6 +51,26 @@ function App() {
   const [newSedePais, setNewSedePais] = useState('Ecuador');
   const [selectedDistributorId, setSelectedDistributorId] = useState('');
   const [parentDistributorName, setParentDistributorName] = useState('');
+  // Historial: filtro por mes ('ALL' o 'YYYY-MM') y por rol (solo SUPER ADMIN)
+  const [selectedMonth,   setSelectedMonth]   = useState('ALL');
+  const [roleFilter,      setRoleFilter]      = useState('ALL');
+
+  // ── Helpers de mes ────────────────────────────────────────────────────
+  // El nivel se reinicia cada mes calendario, así que el progreso se mide
+  // sobre las ventas del mes en curso (no sobre el histórico completo).
+  const monthKey = (date) => {
+    const d = new Date(date);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  };
+  const monthLabel = (key) => {
+    const [y, m] = key.split('-');
+    const nombre = new Date(Number(y), Number(m) - 1, 1).toLocaleDateString('es', { month: 'long' });
+    return `${nombre.charAt(0).toUpperCase()}${nombre.slice(1)} ${y}`;
+  };
+  const currentMonthKey = monthKey(new Date());
+  // Ventas del mes en curso. Para un distribuidor `sales` ya incluye las de
+  // sus vendedores (getSalesForTeam), así que suman a su total.
+  const salesThisMonth = sales.filter(s => s.created_at && monthKey(s.created_at) === currentMonthKey);
   // Guardar contexto activo de sede en localStorage
   useEffect(() => {
     localStorage.setItem('connexo_selected_sede_context', selectedSedeContext);
@@ -452,6 +472,49 @@ function App() {
               </button>
             ))}
           </div>
+
+          {/* Filtro por MES — el nivel se reinicia cada mes, así que el historial
+              se puede revisar mes a mes desde cualquier rol */}
+          <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '6px', whiteSpace: 'nowrap' }}>
+            {['ALL', ...[...new Set(sales.map(s => s.created_at && monthKey(s.created_at)).filter(Boolean))].sort().reverse()].map((mk) => (
+              <button
+                key={mk}
+                onClick={() => { setSelectedMonth(mk); setCurrentPage(1); }}
+                style={{
+                  padding: '6px 12px', borderRadius: '100px', fontSize: '0.7rem', fontWeight: 600,
+                  border: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer', transition: 'all 0.2s',
+                  background: selectedMonth === mk ? 'var(--accent)' : 'rgba(255,255,255,0.03)',
+                  color: selectedMonth === mk ? 'var(--bg-primary)' : 'rgba(255,255,255,0.6)'
+                }}
+              >
+                {mk === 'ALL' ? '🗓️ Histórico' : `${monthLabel(mk)}${mk === currentMonthKey ? ' •' : ''}`}
+              </button>
+            ))}
+          </div>
+
+          {/* Filtro por ROL del vendedor — solo Super Admin */}
+          {user?.role === 'SUPER_ADMIN' && (
+            <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '6px', whiteSpace: 'nowrap' }}>
+              {[
+                { id: 'ALL',         label: '👥 Toda la red' },
+                { id: 'SELLER',      label: '🎯 Vendedores' },
+                { id: 'DISTRIBUTOR', label: '🏢 Distribuidores' }
+              ].map((r) => (
+                <button
+                  key={r.id}
+                  onClick={() => { setRoleFilter(r.id); setCurrentPage(1); }}
+                  style={{
+                    padding: '6px 12px', borderRadius: '100px', fontSize: '0.7rem', fontWeight: 600,
+                    border: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer', transition: 'all 0.2s',
+                    background: roleFilter === r.id ? 'var(--accent)' : 'rgba(255,255,255,0.03)',
+                    color: roleFilter === r.id ? 'var(--bg-primary)' : 'rgba(255,255,255,0.6)'
+                  }}
+                >
+                  {r.label}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -466,23 +529,56 @@ function App() {
                 (s.customer_phone && s.customer_phone.includes(searchQuery))
               );
               const matchesPlan = planFilter === 'ALL' ? true : (s.plan_type?.toUpperCase().includes(planFilter.toUpperCase()));
-              return matchesSede && matchesSearch && matchesPlan;
+              const matchesMonth = selectedMonth === 'ALL' ? true : (s.created_at && monthKey(s.created_at) === selectedMonth);
+              // Rol del vendedor que hizo la venta (el Super Admin tiene todos los perfiles en `team`)
+              const matchesRole = roleFilter === 'ALL' ? true : (
+                team.find(m => m.id === s.seller_id)?.role === roleFilter
+              );
+              return matchesSede && matchesSearch && matchesPlan && matchesMonth && matchesRole;
             });
 
             const ITEMS_PER_PAGE = 10;
             const totalPages = Math.ceil(filteredSales.length / ITEMS_PER_PAGE);
             const paginatedSales = filteredSales.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
+            // Resumen de lo que se está viendo (mes/rol/plan seleccionados)
+            const resumen = {
+              total:      filteredSales.length,
+              anuales:    filteredSales.filter(s => s.plan_type?.toUpperCase().includes('ANUAL')).length,
+              facturado:  filteredSales.reduce((a, s) => a + (s.amount || 0), 0),
+              comisiones: filteredSales.reduce((a, s) => a + (s.commission_earned || 0), 0)
+            };
+
+            const resumenCard = (
+              <div className="card glass" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', marginBottom: '4px', borderLeft: '3px solid var(--accent)' }}>
+                {[
+                  { l: 'PLANES',     v: resumen.total },
+                  { l: 'ANUALES',    v: resumen.anuales },
+                  { l: 'FACTURADO',  v: `$${resumen.facturado.toFixed(0)}` },
+                  { l: 'COMISIONES', v: `$${resumen.comisiones.toFixed(0)}` }
+                ].map(item => (
+                  <div key={item.l} style={{ textAlign: 'center' }}>
+                    <p style={{ fontSize: '0.45rem', opacity: 0.5, letterSpacing: '1px', margin: 0 }}>{item.l}</p>
+                    <p style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--accent)', margin: '2px 0 0' }}>{item.v}</p>
+                  </div>
+                ))}
+              </div>
+            );
+
             if (filteredSales.length === 0) {
               return (
-                <div style={{ textAlign: 'center', padding: '2rem 1rem', opacity: 0.5 }}>
-                  <p style={{ fontSize: '0.8rem', margin: 0 }}>No hay registros encontrados.</p>
-                </div>
+                <>
+                  {resumenCard}
+                  <div style={{ textAlign: 'center', padding: '2rem 1rem', opacity: 0.5 }}>
+                    <p style={{ fontSize: '0.8rem', margin: 0 }}>No hay registros encontrados.</p>
+                  </div>
+                </>
               );
             }
 
             return (
               <>
+                {resumenCard}
                 {paginatedSales.map(s => {
                   const sellerMember = user?.role !== 'SELLER' && team.find(m => m.id === s.seller_id);
                   const isExpanded = expandedSaleId === s.id;
@@ -786,13 +882,14 @@ function App() {
                 } else if (metrics.level === 'DISTRIBUIDOR 3') {
                   target = 300;
                 }
-                const percent = Math.min((sales.length / target) * 100, 100).toFixed(0);
+                const hechas = salesThisMonth.length;
+                const percent = Math.min((hechas / target) * 100, 100).toFixed(0);
 
                 return (
                   <div style={{ margin: '20px 0' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                      <p style={{ fontSize: '0.65rem', opacity: 0.8 }}>Progreso de Nivel</p>
-                      <p style={{ fontSize: '0.65rem', color: 'var(--accent)', fontWeight: 600 }}>{sales.length} / {target} ({percent}%)</p>
+                      <p style={{ fontSize: '0.65rem', opacity: 0.8 }}>Progreso de Nivel (este mes)</p>
+                      <p style={{ fontSize: '0.65rem', color: 'var(--accent)', fontWeight: 600 }}>{hechas} / {target} ({percent}%)</p>
                     </div>
                     <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '10px', overflow: 'hidden' }}>
                       <motion.div 
@@ -815,28 +912,28 @@ function App() {
 
               {/* Next tier hint / Objetivo de Rango */}
               <div style={{ marginTop: '1.2rem', paddingTop: '1.2rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                  <p style={{ fontSize: '0.6rem', opacity: 0.7, marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '1px' }}>Objetivo de Rango:</p>
+                  <p style={{ fontSize: '0.6rem', opacity: 0.7, marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '1px' }}>Objetivo de Rango (este mes):</p>
                   {user?.role === 'SELLER' ? (
                     <>
                       {user?.tier === 'ULTRA' ? (
                         <>
-                          {sales.length < 50 && <p style={{ fontSize: '0.75rem', color: 'var(--accent)', margin: 0, fontWeight: 600 }}>Objetivo Máximo: 50 ventas (Faltan {Math.max(0, 50 - sales.length)})</p>}
-                          {sales.length >= 50 && <p style={{ fontSize: '0.75rem', color: 'var(--success)', margin: 0, fontWeight: 700 }}>Nivel de Élite Alcanzado</p>}
+                          {salesThisMonth.length < 50 && <p style={{ fontSize: '0.75rem', color: 'var(--accent)', margin: 0, fontWeight: 600 }}>Objetivo Máximo: 50 ventas (Faltan {Math.max(0, 50 - salesThisMonth.length)})</p>}
+                          {salesThisMonth.length >= 50 && <p style={{ fontSize: '0.75rem', color: 'var(--success)', margin: 0, fontWeight: 700 }}>Nivel de Élite Alcanzado</p>}
                         </>
                       ) : (
                         <>
-                          {sales.length < 50 && <p style={{ fontSize: '0.75rem', color: 'var(--accent)', margin: 0, fontWeight: 600 }}>Próximo: ULTRA ({(50 - sales.length)} ventas restantes)</p>}
-                          {sales.length >= 50 && <p style={{ fontSize: '0.75rem', color: 'var(--success)', margin: 0, fontWeight: 700 }}>Nivel de Élite Alcanzado</p>}
+                          {salesThisMonth.length < 50 && <p style={{ fontSize: '0.75rem', color: 'var(--accent)', margin: 0, fontWeight: 600 }}>Próximo: ULTRA ({(50 - salesThisMonth.length)} ventas restantes)</p>}
+                          {salesThisMonth.length >= 50 && <p style={{ fontSize: '0.75rem', color: 'var(--success)', margin: 0, fontWeight: 700 }}>Nivel de Élite Alcanzado</p>}
                         </>
                       )}
                     </>
                   ) : (
                     <>
-                      {metrics.level === 'DISTRIBUIDOR 1' && <p style={{ fontSize: '0.75rem', color: 'var(--accent)', margin: 0, fontWeight: 600 }}>D2: Objetivo 200 ventas de equipo (Faltan {Math.max(0, 200 - sales.length)})</p>}
-                      {metrics.level === 'DISTRIBUIDOR 2' && <p style={{ fontSize: '0.75rem', color: 'var(--accent)', margin: 0, fontWeight: 600 }}>D3: Objetivo 300 ventas de equipo (Faltan {Math.max(0, 300 - sales.length)})</p>}
+                      {metrics.level === 'DISTRIBUIDOR 1' && <p style={{ fontSize: '0.75rem', color: 'var(--accent)', margin: 0, fontWeight: 600 }}>D2: Objetivo 200 ventas de equipo (Faltan {Math.max(0, 200 - salesThisMonth.length)})</p>}
+                      {metrics.level === 'DISTRIBUIDOR 2' && <p style={{ fontSize: '0.75rem', color: 'var(--accent)', margin: 0, fontWeight: 600 }}>D3: Objetivo 300 ventas de equipo (Faltan {Math.max(0, 300 - salesThisMonth.length)})</p>}
                       {metrics.level === 'DISTRIBUIDOR 3' && (
-                        sales.length < 300
-                          ? <p style={{ fontSize: '0.75rem', color: 'var(--accent)', margin: 0, fontWeight: 600 }}>Objetivo Máximo: 300 ventas (Faltan {Math.max(0, 300 - sales.length)})</p>
+                        salesThisMonth.length < 300
+                          ? <p style={{ fontSize: '0.75rem', color: 'var(--accent)', margin: 0, fontWeight: 600 }}>Objetivo Máximo: 300 ventas (Faltan {Math.max(0, 300 - salesThisMonth.length)})</p>
                           : <p style={{ fontSize: '0.75rem', color: 'var(--success)', margin: 0, fontWeight: 700 }}>Máxima Jerarquía y Meta Completada</p>
                       )}
                     </>
@@ -1357,7 +1454,7 @@ function App() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 <button 
                   onClick={async () => {
-                    const confirmSeed = confirm("¿Deseas crear el ESCENARIO COMPLETO de prueba?\n\n• Vendedor 1 (PRO) — 8 planes anuales (meta exacta)\n• Vendedor 2 (ULTRA) — 13 planes anuales (meta exacta)\n• Distribuidor 1 — 3 vendedores, 27 anuales equipo (meta: 25)\n• Distribuidor 2 — 5 vendedores, 55 anuales equipo (meta: 50)\n• Distribuidor 3 — 10 vendedores, 100 anuales equipo (meta: 75)\n\nTodos con sueldo base ACTIVADO.");
+                    const confirmSeed = confirm("¿Deseas crear el ESCENARIO COMPLETO de prueba?\n\nCada rol cumple su meta de anuales (sueldo base ACTIVADO) y suma planes mensuales extra:\n\n• Vendedor 1 (PRO) — 8 anuales + 6 mensuales = 14 planes\n• Vendedor 2 (ULTRA) — 13 anuales + 40 mensuales = 53 planes\n• Distribuidor 1 — 3 vendedores, 102 planes de equipo (27 anuales)\n• Distribuidor 2 — 5 vendedores, 210 planes de equipo (55 anuales)\n• Distribuidor 3 — 10 vendedores, 310 planes de equipo (100 anuales)\n\nAdemás se siembran los 2 MESES ANTERIORES al ~50% para poder revisar el historial mes a mes.\n\nOJO: purga todos los datos actuales y puede tardar un minuto.");
                     if (confirmSeed) {
                       setIsLoading(true);
                       try {
