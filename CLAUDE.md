@@ -115,6 +115,30 @@ tres puntos (no romperlos):
 Cuenta solo planes con "ANUAL" del **mes calendario actual**. Desbloquea el
 "base" del nivel. Umbrales: PRO 8 · ULTRA 13 · DIST.1 25 · DIST.2 50 · DIST.3 75.
 
+### Qué número muestra cada tarjeta del dashboard (¡no mezclar mes e histórico!)
+Como el nivel, la comisión y el sueldo base se calculan **por mes**, el dashboard
+muestra el mes; lo acumulado va siempre etiquetado como "Histórico".
+
+| Elemento | Qué muestra |
+|----------|-------------|
+| Barra "Progreso de Nivel" | planes del mes / **objetivo del siguiente rango** (o su cuota si ya es el máximo) |
+| "Objetivo de Rango" | el **mismo** objetivo que la barra, en texto |
+| Tarjeta MIS VENTAS / VENTAS RED | planes del mes / **cuota del nivel actual**, con "Histórico: N" debajo |
+| Tarjeta SUELDO BASE | "Req: anuales del mes / meta del nivel" |
+| Tarjeta COMISIÓN | `metrics.rate` del nivel del mes |
+| Tarjeta BILLETERA | acumulada de siempre (etiquetada "Comisiones acumuladas") |
+| Super Admin "Ventas del mes" | del mes, con "Histórico: N" debajo |
+
+**Fuente única: la constante `NIVELES` en `App.jsx`** (`cuota`, `siguiente`,
+`objetivo`) más `planesMes`. La barra, el objetivo de rango y la tarjeta de ventas
+salen los tres de ahí, para que no puedan volver a divergir. Se resuelve por
+`metrics.level` (nivel real calculado), **nunca** por `user.tier` (rango manual):
+un vendedor en AUTO que ya llegó a ULTRA debe ver los datos de ULTRA.
+
+⚠️ Ojo: la cuota y el objetivo son números distintos a propósito. Un VENDEDOR PRO
+ve "14 / 31" en la tarjeta (su cuota) y "14 / 50" en la barra (lo que necesita para
+ser ULTRA). No es un error.
+
 ### Historial por mes y por rol (Super Admin)
 En la pestaña **Movimientos** hay tres filas de filtros: plan, **mes** y **rol**
 (este último solo para el Super Admin). El selector de mes se arma solo con los
@@ -193,6 +217,27 @@ en vez del día 1.
   navegador (runtime de Vite + `ssrLoadModule`), no una copia de la lógica.
 - **Bug encontrado al verificar y corregido:** `getSalesForTeam` no paginaba y el
   Super Admin solo recibía 1000 de las 1405 ventas → ver **Lección #7**.
+- **Dashboard coherente mes vs. histórico** (reporte: "MIS VENTAS 28 pero la barra
+  14/31"). Se mezclaban ambos criterios en la misma pantalla:
+  - La tarjeta MIS VENTAS / VENTAS RED mostraba `sales.length` (histórico) mientras
+    la barra ya contaba el mes. Ahora muestra los planes del mes sobre la cuota del
+    nivel, con el histórico como dato secundario.
+  - La barra usaba `user.tier` (rango manual) en vez de `metrics.level`, así que un
+    vendedor en AUTO que llegaba a ULTRA seguía viendo el objetivo de PRO.
+  - La barra medía contra la **cuota** (31) y el objetivo de rango contra el
+    **umbral del siguiente nivel** (50): dos cifras distintas para lo mismo. Ahora
+    ambos salen de `NIVELES` (ver §4) y siempre coinciden.
+  - También: BILLETERA etiquetada "Comisiones acumuladas", "TOTAL FACTURADO" →
+    "FACTURADO HISTÓRICO" (la lista de abajo sí está filtrada) y la tarjeta de
+    ventas del Super Admin pasa a mes + histórico.
+  - **Verificado** con un script que simula el render de los **23 perfiles** y
+    contrasta nivel/tasa/base/meta/anuales/barra/tarjeta contra la base y contra
+    las reglas de negocio, en 4 corridas seguidas: sin incoherencias.
+- **⚠️ Incidente:** a mitad del trabajo la base pasó de 24 perfiles/1405 ventas a
+  16/901. Faltaban exactamente los vendedores D3-3 a D3-10 y sus 504 ventas, es
+  decir, los que se crean **después** del último creado: una siembra lanzada desde
+  la app y cortada en `Vendedor D3-2` (Lección #5, que sigue vigente). Se resembró
+  y se volvió a verificar. **No lanzar la siembra desde la app y dejarla a medias.**
 
 ### 2026-06-29
 - Migración a un **nuevo proyecto Supabase** (`aisjtkezgumawgjmwckb`) porque el
