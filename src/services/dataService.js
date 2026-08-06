@@ -65,11 +65,18 @@ async function calcMetrics(user) {
 
   if (!user.is_certified) return cache({ rate: 0, base: 0, level: 'BLOQUEADO', annualSalesCount: 0, baseUnlocked: false });
 
-  // Fecha de inicio del conteo (cuando el admin asigna categoría)
-  const startDate = user.tier_start_date || null;
+  // Fecha de inicio del conteo del NIVEL: el mes calendario en curso.
+  // El conteo se REINICIA el día 1 de cada mes. Si el admin asignó categoría
+  // dentro de este mismo mes, se cuenta desde esa fecha (tier_start_date).
+  const startDate = (() => {
+    const hoy = new Date();
+    const inicioMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+    const asignacion = user.tier_start_date ? new Date(user.tier_start_date) : null;
+    return (asignacion && asignacion > inicioMes ? asignacion : inicioMes).toISOString();
+  })();
 
-  // Helper para contar ventas (filtra por fecha si hay tier_start_date)
-  const countSales = (query) => startDate ? query.gte('created_at', startDate) : query;
+  // Helper para contar ventas del mes en curso
+  const countSales = (query) => query.gte('created_at', startDate);
 
   let annualSalesCount = 0;
 
@@ -1595,7 +1602,9 @@ export const dataService = {
     const now = new Date();
     const thisMonthISO = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
 
-    const makeSale = (sellerId, planKey, isAnnual = true, sedeId = 'sede-ec-1') => {
+    // monthOffset: 0 = mes en curso, 1 = mes pasado, 2 = hace dos meses.
+    // Permite que el Super Admin revise el historial mes a mes.
+    const makeSale = (sellerId, planKey, isAnnual = true, sedeId = 'sede-ec-1', monthOffset = 0) => {
       const annual = isAnnual;
       const basePrice = planKey === 'PRO' ? (annual ? 97.00 : 9.00) : (annual ? 197.00 : 17.00);
       const rate = 0.07;
@@ -1612,7 +1621,15 @@ export const dataService = {
         customer_notes: 'Escenario prueba completo.',
         status: 'COMPLETED',
         sede_id: sedeId,
-        created_at: new Date(now.getFullYear(), now.getMonth(), Math.floor(Math.random() * 28) + 1).toISOString()
+        // En el mes en curso las ventas no pueden ser futuras: se reparten
+        // entre el día 1 y hoy. En meses pasados, cualquier día del 1 al 28.
+        created_at: new Date(
+          now.getFullYear(),
+          now.getMonth() - monthOffset,
+          monthOffset === 0
+            ? Math.floor(Math.random() * now.getDate()) + 1
+            : Math.floor(Math.random() * 28) + 1
+        ).toISOString()
       };
     };
 
@@ -1635,10 +1652,17 @@ export const dataService = {
       const { data: userData, error: userErr } = await supabase.from('profiles').insert([profile]).select().single();
       if (userErr) throw new Error(`Error creando vendedor ${name}: ` + userErr.message);
 
-      // Generate sales
+      // Generate sales — mes en curso
       const sales = [];
       for (let i = 0; i < numMensual; i++) sales.push(makeSale(userData.id, 'PRO', false));
       for (let i = 0; i < numAnual; i++) sales.push(makeSale(userData.id, i % 2 === 0 ? 'PRO' : 'ULTRA', true));
+
+      // HISTORIAL: los 2 meses anteriores al ~50% del volumen, para que el
+      // Super Admin pueda comparar meses y ver el reinicio mensual de nivel
+      for (let mes = 1; mes <= 2; mes++) {
+        for (let i = 0; i < Math.ceil(numMensual / 2); i++) sales.push(makeSale(userData.id, 'PRO', false, 'sede-ec-1', mes));
+        for (let i = 0; i < Math.ceil(numAnual / 2); i++) sales.push(makeSale(userData.id, i % 2 === 0 ? 'PRO' : 'ULTRA', true, 'sede-ec-1', mes));
+      }
 
       // Insertar las ventas de ESTE vendedor de inmediato (no en bulk al final):
       // si el proceso se interrumpe, los vendedores ya creados conservan sus ventas
@@ -1653,15 +1677,17 @@ export const dataService = {
       return { userData, sales };
     };
 
-    // ── 1. VENDEDOR 1 — VENDEDOR PRO (8 anuales) ────────────────────
-    const { userData: v1 } = await processSeller('Vendedor 1 — PRO', 'vendedor1.pro@connexo.ec', adminId || null, 0, 8);
+    // ── 1. VENDEDOR 1 — VENDEDOR PRO (8 anuales = meta + 6 mensuales = 14) ──
+    const { userData: v1 } = await processSeller('Vendedor 1 — PRO', 'vendedor1.pro@connexo.ec', adminId || null, 6, 8);
 
-    // ── 2. VENDEDOR 2 — VENDEDOR ULTRA (0 mensuales + 13 anuales = 13 total) ─
-    const { userData: v2 } = await processSeller('Vendedor 2 — ULTRA', 'vendedor2.ultra@connexo.ec', adminId || null, 0, 13);
+    // ── 2. VENDEDOR 2 — VENDEDOR ULTRA (13 anuales = meta + 40 mensuales = 53,
+    //      supera los 50 planes del mes, así que el nivel ULTRA es real) ──────
+    const { userData: v2 } = await processSeller('Vendedor 2 — ULTRA', 'vendedor2.ultra@connexo.ec', adminId || null, 40, 13);
     // V2 is ULTRA, update tier
     await supabase.from('profiles').update({ tier: 'ULTRA' }).eq('id', v2.id);
 
-    // ── 3. DISTRIBUIDOR 1 — D1 (3 vendedores, 9 anuales c/u) ─────────
+    // ── 3. DISTRIBUIDOR 1 — D1 (3 vendedores × 34 planes = 102 de equipo:
+    //      27 anuales (meta 25) y supera su cuota de 100, sin llegar a D2) ────
     const d1Profile = {
       full_name: 'Distribuidor 1',
       email: 'distribuidor1@connexo.ec',
@@ -1679,12 +1705,13 @@ export const dataService = {
 
     let d1WalletTotal = 0;
     for (let sv = 1; sv <= 3; sv++) {
-      const { sales } = await processSeller(`Vendedor D1-${sv}`, `vendedor.d1.${sv}@connexo.ec`, d1.id, 0, 9);
+      const { sales } = await processSeller(`Vendedor D1-${sv}`, `vendedor.d1.${sv}@connexo.ec`, d1.id, 25, 9);
       d1WalletTotal += sales.reduce((a, s) => a + s.amount * 0.12, 0);
     }
     await supabase.from('profiles').update({ wallet_balance: d1WalletTotal }).eq('id', d1.id);
 
-    // ── 4. DISTRIBUIDOR 2 — D2 (5 vendedores, 10 mensuales + 11 anuales c/u) ─
+    // ── 4. DISTRIBUIDOR 2 — D2 (5 vendedores × 42 planes = 210 de equipo:
+    //      55 anuales (meta 50) y supera los 200 que exige el nivel D2) ───────
     const d2Profile = {
       full_name: 'Distribuidor 2',
       email: 'distribuidor2@connexo.ec',
@@ -1702,12 +1729,13 @@ export const dataService = {
 
     let d2WalletTotal = 0;
     for (let sv = 1; sv <= 5; sv++) {
-      const { sales } = await processSeller(`Vendedor D2-${sv}`, `vendedor.d2.${sv}@connexo.ec`, d2.id, 10, 11);
+      const { sales } = await processSeller(`Vendedor D2-${sv}`, `vendedor.d2.${sv}@connexo.ec`, d2.id, 31, 11);
       d2WalletTotal += sales.reduce((a, s) => a + s.amount * 0.15, 0);
     }
     await supabase.from('profiles').update({ wallet_balance: d2WalletTotal }).eq('id', d2.id);
 
-    // ── 5. DISTRIBUIDOR 3 — D3 (10 vendedores, 11 mensuales + 10 anuales c/u) ─
+    // ── 5. DISTRIBUIDOR 3 — D3 (10 vendedores × 31 planes = 310 de equipo:
+    //      100 anuales (meta 75) y supera los 300 que exige el nivel D3) ──────
     const d3Profile = {
       full_name: 'Distribuidor 3',
       email: 'distribuidor3@connexo.ec',
@@ -1725,7 +1753,7 @@ export const dataService = {
 
     let d3WalletTotal = 0;
     for (let sv = 1; sv <= 10; sv++) {
-      const { sales } = await processSeller(`Vendedor D3-${sv}`, `vendedor.d3.${sv}@connexo.ec`, d3.id, 11, 10);
+      const { sales } = await processSeller(`Vendedor D3-${sv}`, `vendedor.d3.${sv}@connexo.ec`, d3.id, 21, 10);
       d3WalletTotal += sales.reduce((a, s) => a + s.amount * 0.18, 0);
     }
     await supabase.from('profiles').update({ wallet_balance: d3WalletTotal }).eq('id', d3.id);

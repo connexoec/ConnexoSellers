@@ -86,24 +86,52 @@ ocultar problemas de conexión: la app "parece" andar aunque la base esté caíd
 | DISTRIBUIDOR 2 | 200 | 15% | 50 | $700 |
 | DISTRIBUIDOR 3 | 300 | 18% | 75 | $850 |
 
+> ⚠️ **TODO SE CUENTA POR MES CALENDARIO Y SE REINICIA EL DÍA 1.** Tanto los
+> planes para el nivel como las anuales para el sueldo base. Un mes flojo puede
+> hacer *bajar* de ULTRA/D2/D3; PRO y D1 son niveles base y no se pierden.
+
 **Vendedor** (sobre el precio del plan):
-- VENDEDOR PRO → 7% (nivel base; su cuota son 31 ventas).
-- VENDEDOR ULTRA → 9% (a partir de 50 ventas acumuladas desde `tier_start_date`).
+- VENDEDOR PRO → 7% (nivel base; su cuota son 31 planes en el mes).
+- VENDEDOR ULTRA → 9% (a partir de 50 planes **en el mes**).
 
 **Distribuidor** (sobre el volumen de su red = él + sus vendedores):
 - DISTRIBUIDOR 1 → 12% (base, cuota 100) · DISTRIBUIDOR 2 → 15% (≥200) ·
-  DISTRIBUIDOR 3 → 18% (≥300).
+  DISTRIBUIDOR 3 → 18% (≥300), todo **en el mes**.
 
 **Comisión por venta** = `precio × tasa` (solo si el vendedor está certificado;
 si no, 0). El distribuidor padre recibe además un **override** = `precio × tasa_del_padre`.
+
+### Regla clave: las ventas del vendedor suman a su distribuidor
+Cuando un vendedor **hijo** de un distribuidor vende un plan, esa venta cuenta
+**dos veces**: para el vendedor y para el total de su distribuidor. Implementado en
+tres puntos (no romperlos):
+1. `calcMetrics` (rama DISTRIBUTOR): `teamIds = [uid, ...hijos]` y cuenta las
+   ventas de todos ellos → así sube de nivel por volumen de red.
+2. `registerSale`: calcula el **override** del padre (`precio × tasa_del_padre`)
+   y se lo abona a su `wallet_balance`.
+3. `getSalesForTeam`: el historial del distribuidor incluye las ventas de sus hijos.
 
 ### Meta mensual de ventas anuales (`annualSalesGoal`)
 Cuenta solo planes con "ANUAL" del **mes calendario actual**. Desbloquea el
 "base" del nivel. Umbrales: PRO 8 · ULTRA 13 · DIST.1 25 · DIST.2 50 · DIST.3 75.
 
+### Historial por mes y por rol (Super Admin)
+En la pestaña **Movimientos** hay tres filas de filtros: plan, **mes** y **rol**
+(este último solo para el Super Admin). El selector de mes se arma solo con los
+meses que existan en los datos (`monthKey`/`monthLabel` en `App.jsx`); "🗓️ Histórico"
+muestra todo y el mes en curso lleva un punto •. Arriba de la lista hay un resumen
+de lo filtrado: planes, anuales, facturado y comisiones.
+El Super Admin ya recibía TODAS las ventas (`getSalesForTeam` no filtra por fecha),
+así que el filtrado es en cliente: no hace falta tocar Supabase.
+
 ### Tier manual vs. AUTO
 El Super Admin puede fijar el rango (tier) manualmente o dejarlo en AUTO
-(se calcula por número de ventas desde `tier_start_date`).
+(se calcula por número de ventas del mes en curso). **Esto no se toca:** el
+selector vive en `TeamManager.jsx` (dropdown "🤖 CÁLCULO AUTO" + los `TIERS` del
+rol) y escribe `profiles.tier`. Con tier manual, `calcMetrics` respeta el rango
+asignado pero igual sube solo si el vendedor supera el umbral del siguiente nivel.
+Si `tier_start_date` cae dentro del mes en curso, el conteo arranca en esa fecha
+en vez del día 1.
 
 ## 5. Cómo crear usuarios
 - **Super Admin:** automático al primer login con las credenciales hardcodeadas.
@@ -135,6 +163,27 @@ El Super Admin puede fijar el rango (tier) manualmente o dejarlo en AUTO
     umbrales de `calcMetrics`, cantidades del seed), `App.jsx` (objetivos del
     dashboard + texto del confirm de siembra), `BadgeGrid.jsx` (descripción de
     la insignia de sueldo).
+  - Sin cambios de esquema en Supabase (no hace falta DDL).
+- **Reinicio MENSUAL del nivel + historial por mes/rol + escenario realista:**
+  - `calcMetrics`: el conteo de planes para el nivel ya no es acumulado desde
+    `tier_start_date`, sino del **mes calendario en curso** (`startDate` = día 1
+    del mes, o `tier_start_date` si es posterior). Se reinicia solo cada mes.
+  - `App.jsx`: helpers `monthKey()` / `monthLabel()` / `salesThisMonth`. El
+    "Progreso de Nivel" y el "Objetivo de Rango" del dashboard pasan a contar
+    `salesThisMonth` en vez de `sales.length` (que era el histórico completo y
+    ya no correspondía con un umbral mensual).
+  - **Movimientos:** nuevos filtros por mes (todos los roles) y por rol del
+    vendedor (solo Super Admin), más una tarjeta de resumen (planes, anuales,
+    facturado, comisiones) de lo que se está viendo. Estados `selectedMonth` y
+    `roleFilter`; el filtro de rol resuelve el rol vía `team.find(...)`, que para
+    el Super Admin son todos los perfiles (`getAllProfiles`).
+  - **`seedCompleteScenario` realista:** cada rol cumple su meta de anuales
+    (sueldo base activo) y suma mensuales extra → V1 8a+6m=14 · V2 13a+40m=53
+    (supera los 50 ⇒ ULTRA real) · D1 3×34=102 de equipo · D2 5×42=210 (⇒ D2 real)
+    · D3 10×31=310 (⇒ D3 real). `makeSale` acepta `monthOffset` y `processSeller`
+    siembra además los **2 meses anteriores al ~50%** para poder comparar meses.
+    Las ventas del mes en curso ya no caen en días futuros (se reparten del 1 a hoy).
+    Son ~1.400 filas: la siembra tarda más que antes.
   - Sin cambios de esquema en Supabase (no hace falta DDL).
 
 ### 2026-06-29
