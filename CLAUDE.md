@@ -173,6 +173,42 @@ en vez del día 1.
 
 ## 7. Registro de cambios (changelog)
 
+### 2026-08-06 (6) — Carga del historial en dos fases
+- **Al entrar solo se piden las ventas del MES en curso**; el histórico completo
+  llega después, en segundo plano, sin bloquear la pantalla. Medido en el Super
+  Admin: la primera carga baja de **908 ms / 632 KB** a **380 ms / 310 KB**.
+  - Lo importante no es el número de hoy sino que **deja de crecer**: el mes en
+    curso es más o menos constante, mientras que el histórico se acumula sin
+    límite. Antes, cada mes nuevo hacía el arranque más lento para siempre.
+- `getSales` y `getSalesForTeam` aceptan `{ desde }` (filtro `gte` sobre
+  `created_at`). Nuevas `countSales` / `countSalesForTeam`: **COUNT sin traer
+  filas**, para el dato "Histórico: N" del dashboard, que ya no puede salir de
+  `sales.length` porque el array solo tiene el mes.
+- **El corte usa la medianoche LOCAL del día 1**, no UTC, para que coincida
+  exactamente con `monthKey()` (que también trabaja en hora local). Con UTC, en
+  Ecuador (-05:00) se habrían colado en agosto las ventas del 31 de julio por la
+  tarde. Verificado: el mes filtrado en servidor da las mismas 689 ventas que
+  filtrar el histórico completo en cliente, con los mismos ids.
+- **Cuándo se completa el histórico** (`cargarHistorial` en `App.jsx`):
+  · al instante si se abre **Movimientos** o **Red**;
+  · al instante para un **DISTRIBUIDOR**, porque su dashboard lleva el historial
+    embebido (`renderHistoryContent(false)`);
+  · a los 1,2 s en el resto de casos, para no competir con el primer pintado.
+- Mientras falta, Movimientos muestra un aviso ("mostrando el mes en curso,
+  cargando meses anteriores"). Sin él parecería que faltan ventas. El selector
+  de mes solo lista el mes actual hasta que termina la carga.
+- El "Histórico" del Super Admin está filtrado por sede, así que mientras no
+  esté el histórico completo muestra el total global (si el contexto es GLOBAL)
+  o `…` si hay una sede seleccionada: es preferible a enseñar un número falso.
+- **Verificado**: el COUNT coincide con el histórico real en los tres roles
+  (1405 super admin · 107 vendedor · 630 distribuidor), la primera carga trae
+  solo el mes y no pierde ni una venta, y la segunda fase sigue devolviendo los
+  3 meses ordenados y sin duplicados.
+- 🔎 Al verificar se vio que **`Vendedor 1 — PRO` ahora se llama
+  `Andres Ramirez`**: alguien lo renombró desde la app, lo que confirma que el
+  arreglo de "Editar Perfil" (Lección #8) funciona en producción. Sus métricas
+  siguen correctas (VENDEDOR PRO · 7% · $250).
+
 ### 2026-08-06 (5) — Rendimiento y rediseño neón de las insignias
 - **🐢 "Cada vez más lenta": era coste cuadrático en `dataService`.** Ambas
   funciones del historial fusionaban las ventas de la nube con la caché local

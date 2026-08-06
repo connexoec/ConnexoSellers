@@ -546,32 +546,55 @@ export const dataService = {
   },
 
   // Sales solo propias (vendedor)
-  async getSales(userId) {
+  // `desde` (ISO) limita la consulta a partir de esa fecha. La app arranca
+  // pidiendo solo el mes en curso —que es lo único que necesita el dashboard—
+  // y trae el resto del histórico después, sin bloquear la pantalla.
+  async getSales(userId, { desde = null } = {}) {
     let supabaseData = [];
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('sales')
         .select('*')
         .eq('seller_id', userId)
         .order('created_at', { ascending: false });
+      if (desde) query = query.gte('created_at', desde);
+      const { data, error } = await query;
       if (error) throw new Error(error.message);
       supabaseData = data || [];
     } catch (err) {
       console.warn("⚠️ Error en Supabase para getSales, usando LocalStorage:", err.message);
     }
-    
+
     const cached = localStorage.getItem('connexo_sales');
     if (cached) {
-      fusionarPorId(supabaseData, JSON.parse(cached).filter(s => s.seller_id === userId));
+      const locales = JSON.parse(cached).filter(s =>
+        s.seller_id === userId && (!desde || (s.created_at && s.created_at >= desde))
+      );
+      fusionarPorId(supabaseData, locales);
     }
     return ordenarPorFechaDesc(supabaseData);
   },
 
+  /** Cuántas ventas tiene en total, sin traer ni una fila. */
+  async countSales(userId) {
+    try {
+      const { count, error } = await supabase
+        .from('sales')
+        .select('*', { count: 'exact', head: true })
+        .eq('seller_id', userId);
+      if (error) throw error;
+      return count || 0;
+    } catch (err) {
+      console.warn('⚠️ No se pudo contar las ventas:', err.message);
+      return 0;
+    }
+  },
+
   // Sales de todo el equipo (distribuidor / super admin)
-  async getSalesForTeam(userId, role) {
+  async getSalesForTeam(userId, role, { desde = null } = {}) {
     let supabaseData = [];
     let teamIds = [userId];
-    
+
     try {
       if (role !== ROLES.SUPER_ADMIN) {
         const { data: team } = await supabase
@@ -584,13 +607,14 @@ export const dataService = {
       // PostgREST devuelve como máximo 1000 filas por request: hay que paginar
       // o el historial de meses viejos aparece incompleto (ver Lección #7).
       const PAGE = 1000;
-      for (let desde = 0; ; desde += PAGE) {
+      for (let inicio = 0; ; inicio += PAGE) {
         let query = supabase.from('sales').select('*')
           .order('created_at', { ascending: false })
-          .range(desde, desde + PAGE - 1);
+          .range(inicio, inicio + PAGE - 1);
         if (role !== ROLES.SUPER_ADMIN) {
           query = query.in('seller_id', teamIds);
         }
+        if (desde) query = query.gte('created_at', desde);
 
         const { data, error } = await query;
         if (error) throw new Error(error.message);
@@ -610,12 +634,31 @@ export const dataService = {
     if (cached) {
       const localSales = JSON.parse(cached);
       const equipo = new Set(teamIds);            // antes: teamIds.includes() por venta
-      const filteredLocal = role === ROLES.SUPER_ADMIN
-        ? localSales
-        : localSales.filter(s => equipo.has(s.seller_id));
+      const filteredLocal = localSales.filter(s =>
+        (role === ROLES.SUPER_ADMIN || equipo.has(s.seller_id)) &&
+        (!desde || (s.created_at && s.created_at >= desde))
+      );
       fusionarPorId(supabaseData, filteredLocal);
     }
     return ordenarPorFechaDesc(supabaseData);
+  },
+
+  /** Total de ventas del equipo sin traer filas (para el dato "Histórico: N"). */
+  async countSalesForTeam(userId, role) {
+    try {
+      let query = supabase.from('sales').select('*', { count: 'exact', head: true });
+      if (role !== ROLES.SUPER_ADMIN) {
+        const { data: team } = await supabase.from('profiles').select('id').eq('parent_id', userId);
+        const ids = team?.length ? [userId, ...team.map(m => m.id)] : [userId];
+        query = query.in('seller_id', ids);
+      }
+      const { count, error } = await query;
+      if (error) throw error;
+      return count || 0;
+    } catch (err) {
+      console.warn('⚠️ No se pudo contar las ventas del equipo:', err.message);
+      return 0;
+    }
   },
 
   async updateSale(saleId, updates) {
