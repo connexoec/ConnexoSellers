@@ -13,6 +13,35 @@ export const PLANS = {
 // (y las viejas, megabytes) y ningún listado la usa, así que traerla multiplica
 // el peso de cada carga. Para el perfil individual sí se pide con select('*').
 // `password` tampoco se expone en listados (getTeam ya lo descartaba).
+// ─── Utilidades de rendimiento para el historial ────────────────────────────
+// Con el escenario completo son ~1.400 ventas, y estas dos operaciones corrían
+// en CADA carga con coste cuadrático. Era la razón de que la app se sintiera
+// más lenta cuantos más datos había.
+
+/** Ordena por fecha descendente parseando cada fecha UNA sola vez. */
+function ordenarPorFechaDesc(filas) {
+  return filas
+    .map(f => [Date.parse(f?.created_at) || 0, f])   // n parseos…
+    .sort((a, b) => b[0] - a[0])                     // …en vez de 2 por comparación
+    .map(p => p[1]);
+}
+
+/**
+ * Añade a `base` las filas de `extra` que no estén ya (por id).
+ * Antes era `extra.forEach(e => base.some(b => b.id === e.id))`: O(n×m), o sea
+ * ~2 millones de comparaciones con 1.400 ventas a cada lado.
+ */
+function fusionarPorId(base, extra) {
+  const vistos = new Set(base.map(b => b.id));
+  for (const fila of extra) {
+    if (!vistos.has(fila.id)) {
+      vistos.add(fila.id);
+      base.push(fila);
+    }
+  }
+  return base;
+}
+
 const PROFILE_LIST_COLUMNS =
   'id, created_at, full_name, email, role, tier, tier_start_date, is_certified, ' +
   'wallet_balance, parent_id, sede_asignada, badges';
@@ -533,14 +562,9 @@ export const dataService = {
     
     const cached = localStorage.getItem('connexo_sales');
     if (cached) {
-      const localSales = JSON.parse(cached).filter(s => s.seller_id === userId);
-      localSales.forEach(localSale => {
-        if (!supabaseData.some(su => su.id === localSale.id)) {
-          supabaseData.push(localSale);
-        }
-      });
+      fusionarPorId(supabaseData, JSON.parse(cached).filter(s => s.seller_id === userId));
     }
-    return supabaseData.sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
+    return ordenarPorFechaDesc(supabaseData);
   },
 
   // Sales de todo el equipo (distribuidor / super admin)
@@ -585,17 +609,13 @@ export const dataService = {
     const cached = localStorage.getItem('connexo_sales');
     if (cached) {
       const localSales = JSON.parse(cached);
-      const filteredLocal = role === ROLES.SUPER_ADMIN 
-        ? localSales 
-        : localSales.filter(s => teamIds.includes(s.seller_id));
-        
-      filteredLocal.forEach(localSale => {
-        if (!supabaseData.some(su => su.id === localSale.id)) {
-          supabaseData.push(localSale);
-        }
-      });
+      const equipo = new Set(teamIds);            // antes: teamIds.includes() por venta
+      const filteredLocal = role === ROLES.SUPER_ADMIN
+        ? localSales
+        : localSales.filter(s => equipo.has(s.seller_id));
+      fusionarPorId(supabaseData, filteredLocal);
     }
-    return supabaseData.sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
+    return ordenarPorFechaDesc(supabaseData);
   },
 
   async updateSale(saleId, updates) {

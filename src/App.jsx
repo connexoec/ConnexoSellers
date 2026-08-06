@@ -79,9 +79,68 @@ function App() {
     return `${nombre.charAt(0).toUpperCase()}${nombre.slice(1)} ${y}`;
   };
   const currentMonthKey = monthKey(new Date());
+
+  // ── Derivados memoizados ──────────────────────────────────────────────────
+  // Con el escenario completo `sales` trae ~1.400 filas. Sin memoizar, cada
+  // render recorría el array varias veces (y creaba un Date por venta), así que
+  // escribir en el buscador recalculaba todo en cada tecla.
+
   // Ventas del mes en curso. Para un distribuidor `sales` ya incluye las de
   // sus vendedores (getSalesForTeam), así que suman a su total.
-  const salesThisMonth = sales.filter(s => s.created_at && monthKey(s.created_at) === currentMonthKey);
+  const salesThisMonth = React.useMemo(
+    () => sales.filter(s => s.created_at && monthKey(s.created_at) === currentMonthKey),
+    [sales, currentMonthKey]
+  );
+
+  // Meses presentes en los datos, para las pastillas del filtro.
+  const mesesDisponibles = React.useMemo(
+    () => [...new Set(sales.map(s => s.created_at && monthKey(s.created_at)).filter(Boolean))].sort().reverse(),
+    [sales]
+  );
+
+  // Rol de cada vendedor en un Map. Antes el filtro por rol hacía un
+  // `team.find()` POR VENTA: con 1.400 ventas y 24 perfiles eran ~34.000
+  // comparaciones en cada render.
+  const rolPorVendedor = React.useMemo(
+    () => new Map(team.map(m => [m.id, m.role])),
+    [team]
+  );
+
+  // Historial ya filtrado + su resumen. Es lo más caro de la pantalla, así que
+  // solo se recalcula cuando cambia algo de lo que depende.
+  const { filteredSales, resumenHistorial } = React.useMemo(() => {
+    const sedeEsperada = selectedSedeContext === 'Venezuela' ? 'sede-ve-1' : 'sede-ec-1';
+    const busqueda = searchQuery.toLowerCase();
+    const plan = planFilter.toUpperCase();
+
+    const lista = sales.filter(s => {
+      if (selectedSedeContext !== 'GLOBAL' && s.sede_id !== sedeEsperada) return false;
+      if (busqueda) {
+        const coincide =
+          s.customer_name?.toLowerCase().includes(busqueda) ||
+          s.customer_email?.toLowerCase().includes(busqueda) ||
+          s.customer_phone?.includes(searchQuery);
+        if (!coincide) return false;
+      }
+      if (planFilter !== 'ALL' && !s.plan_type?.toUpperCase().includes(plan)) return false;
+      if (selectedMonth !== 'ALL' && (!s.created_at || monthKey(s.created_at) !== selectedMonth)) return false;
+      if (roleFilter !== 'ALL' && rolPorVendedor.get(s.seller_id) !== roleFilter) return false;
+      return true;
+    });
+
+    // Un solo recorrido para las cuatro cifras del resumen.
+    let anuales = 0, facturado = 0, comisiones = 0;
+    for (const s of lista) {
+      if (s.plan_type?.toUpperCase().includes('ANUAL')) anuales++;
+      facturado += s.amount || 0;
+      comisiones += s.commission_earned || 0;
+    }
+
+    return {
+      filteredSales: lista,
+      resumenHistorial: { total: lista.length, anuales, facturado, comisiones }
+    };
+  }, [sales, selectedSedeContext, searchQuery, planFilter, selectedMonth, roleFilter, rolPorVendedor]);
 
   // ── Nivel: cuota del mes y objetivo del siguiente rango ───────────────
   // FUENTE ÚNICA para la barra de progreso, el objetivo de rango y la
@@ -164,7 +223,11 @@ function App() {
     restoreSession();
   }, []);
 
-  const refreshData = async (currentUser = user) => {
+  // `recargarVentas: false` salta la descarga del historial completo. Para el
+  // Super Admin eso son ~1.400 filas y ~630 KB, casi un segundo: no tiene
+  // sentido volver a pedirlas justo después de registrar una venta, cuando ya
+  // la añadimos al estado de forma optimista.
+  const refreshData = async (currentUser = user, { recargarVentas = true } = {}) => {
     if (!currentUser) return;
     const uid = currentUser.uid || currentUser.id;
     const role = currentUser.role;
@@ -183,9 +246,11 @@ function App() {
           console.warn("Profiles/Team error:", e);
           return [];
         }),
-        (role === 'SELLER'
-          ? dataService.getSales(uid)
-          : dataService.getSalesForTeam(uid, role)
+        (!recargarVentas
+          ? Promise.resolve(null)
+          : role === 'SELLER'
+            ? dataService.getSales(uid)
+            : dataService.getSalesForTeam(uid, role)
         ).catch(e => {
           console.warn("Sales error:", e);
           return [];
@@ -197,7 +262,8 @@ function App() {
       ]);
       setMetrics(newMetrics);
       setTeam(teamData || []);
-      setSales(salesData || []);
+      // null = no se pidieron; se conserva lo que ya hay en pantalla.
+      if (salesData !== null) setSales(salesData);
       setUserBadges(badges || []);
       
       // Cargar Sedes para contexto multisede
@@ -295,8 +361,9 @@ function App() {
       saveSession(updatedUser);
       setSelectedPlan(null);
       addNotification(`Venta de ${customerData.name} registrada — +$${earned.toFixed(2)}`);
-      // Recalcular métricas e historial completo de inmediato para refrescar la interfaz en tiempo real
-      refreshData(updatedUser);
+      // La venta ya se añadió al estado justo arriba, así que NO se vuelve a
+      // descargar el historial: solo se recalculan nivel, comisión y equipo.
+      refreshData(updatedUser, { recargarVentas: false });
 
       // Las insignias automáticas ya NO se calculan aquí: lo hace el efecto
       // `useEffect` de más arriba, que las evalúa contra los datos reales en
@@ -593,7 +660,7 @@ function App() {
           {/* Filtro por MES — el nivel se reinicia cada mes, así que el historial
               se puede revisar mes a mes desde cualquier rol */}
           <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '6px', whiteSpace: 'nowrap' }}>
-            {['ALL', ...[...new Set(sales.map(s => s.created_at && monthKey(s.created_at)).filter(Boolean))].sort().reverse()].map((mk) => (
+            {['ALL', ...mesesDisponibles].map((mk) => (
               <button
                 key={mk}
                 onClick={() => { setSelectedMonth(mk); setCurrentPage(1); }}
@@ -636,35 +703,13 @@ function App() {
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {(() => {
-            const filteredSales = sales.filter(s => {
-              const matchesSede = selectedSedeContext === 'GLOBAL' ? true : (
-                s.sede_id === (selectedSedeContext === 'Venezuela' ? 'sede-ve-1' : 'sede-ec-1')
-              );
-              const matchesSearch = !searchQuery ? true : (
-                (s.customer_name && s.customer_name.toLowerCase().includes(searchQuery.toLowerCase())) ||
-                (s.customer_email && s.customer_email.toLowerCase().includes(searchQuery.toLowerCase())) ||
-                (s.customer_phone && s.customer_phone.includes(searchQuery))
-              );
-              const matchesPlan = planFilter === 'ALL' ? true : (s.plan_type?.toUpperCase().includes(planFilter.toUpperCase()));
-              const matchesMonth = selectedMonth === 'ALL' ? true : (s.created_at && monthKey(s.created_at) === selectedMonth);
-              // Rol del vendedor que hizo la venta (el Super Admin tiene todos los perfiles en `team`)
-              const matchesRole = roleFilter === 'ALL' ? true : (
-                team.find(m => m.id === s.seller_id)?.role === roleFilter
-              );
-              return matchesSede && matchesSearch && matchesPlan && matchesMonth && matchesRole;
-            });
-
+            // `filteredSales` y `resumen` se calculan memoizados arriba: recorrer
+            // 1.400 ventas en cada render hacía que escribir en el buscador se
+            // sintiera lento.
             const ITEMS_PER_PAGE = 10;
             const totalPages = Math.ceil(filteredSales.length / ITEMS_PER_PAGE);
             const paginatedSales = filteredSales.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
-
-            // Resumen de lo que se está viendo (mes/rol/plan seleccionados)
-            const resumen = {
-              total:      filteredSales.length,
-              anuales:    filteredSales.filter(s => s.plan_type?.toUpperCase().includes('ANUAL')).length,
-              facturado:  filteredSales.reduce((a, s) => a + (s.amount || 0), 0),
-              comisiones: filteredSales.reduce((a, s) => a + (s.commission_earned || 0), 0)
-            };
+            const resumen = resumenHistorial;
 
             const resumenCard = (
               <div className="card glass" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', marginBottom: '4px', borderLeft: '3px solid var(--accent)' }}>
