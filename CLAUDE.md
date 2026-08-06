@@ -185,6 +185,14 @@ en vez del día 1.
     Las ventas del mes en curso ya no caen en días futuros (se reparten del 1 a hoy).
     Son ~1.400 filas: la siembra tarda más que antes.
   - Sin cambios de esquema en Supabase (no hace falta DDL).
+- **Escenario sembrado y verificado en Supabase (`aisjtkezgumawgjmwckb`).**
+  24 perfiles (21 de prueba + super admin) y **1.405 ventas**: 689 en agosto,
+  358 en julio y 358 en junio. Los 5 roles clave dan el nivel, la tasa, el sueldo
+  base y la meta de anuales esperados, todos con sueldo base ACTIVO, y ninguna
+  venta cae en fecha futura. Verificado ejecutando el `dataService` real fuera del
+  navegador (runtime de Vite + `ssrLoadModule`), no una copia de la lógica.
+- **Bug encontrado al verificar y corregido:** `getSalesForTeam` no paginaba y el
+  Super Admin solo recibía 1000 de las 1405 ventas → ver **Lección #7**.
 
 ### 2026-06-29
 - Migración a un **nuevo proyecto Supabase** (`aisjtkezgumawgjmwckb`) porque el
@@ -236,6 +244,19 @@ en vez del día 1.
   (`CLAUDE.md`, `DOCUMENTACION_TECNICA.md`). Verificado en Supabase
   (`aisjtkezgumawgjmwckb`): no existe ninguna fila con ese email en `profiles`.
   **Único super admin: `thony.karter@gmail.com`.**
+
+### Lección #7 — PostgREST devuelve máximo 1000 filas: hay que paginar
+- **Síntoma:** con la base grande (el escenario completo son ~1.400 ventas) el
+  Super Admin veía solo 1000 registros y los meses viejos salían incompletos en
+  Movimientos. Ningún error en consola: PostgREST simplemente trunca.
+- **Causa:** `supabase.from('sales').select('*')` sin `.range()` trae como mucho
+  1000 filas (límite por defecto del servidor).
+- **Solución aplicada (2026-08-05):** `getSalesForTeam` pagina en bloques de 1000
+  con `.range(desde, desde + 999)` hasta que una página vuelve incompleta.
+- **Prevención:** cualquier consulta que pueda superar las 1000 filas debe paginar.
+  Los conteos de `calcMetrics` NO se ven afectados porque usan
+  `select('*', { count: 'exact', head: true })`, que devuelve el número real.
+  Ojo también al verificar por `curl`/scripts: ahí aplica el mismo tope.
 
 ### Lección #6 — Cambiar el esquema requiere DDL manual en Supabase
 - La app solo tiene la `anon key`, que **no puede correr DDL** (`alter table`).
