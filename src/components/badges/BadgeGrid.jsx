@@ -2,6 +2,10 @@ import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 
+// Los criterios de las insignias automáticas viven en src/lib/badges.js (lógica
+// pura, sin React, para poder probarla fuera del navegador).
+import { CRITERIOS_AUTO } from '../../lib/badges';
+
 export const BADGES_INFO = {
   // --- BÁSICAS / INICIO (Bordes plateados, colores suaves) ---
   FIRST_BLOOD: {
@@ -134,8 +138,12 @@ export const BADGES_INFO = {
   }
 };
 
-const BadgeModal = ({ badge, onClose }) => {
+const HEX = 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)';
+const esElite = (b) => b.borderColor === '#FFD700';
+
+const BadgeModal = ({ badge, desbloqueada, onClose }) => {
   if (!badge) return null;
+  const auto = CRITERIOS_AUTO[badge.id];
   return createPortal(
     <motion.div
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
@@ -178,9 +186,37 @@ const BadgeModal = ({ badge, onClose }) => {
           "{badge.description}"
         </p>
         
-        <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '1rem', textAlign: 'center' }}>
-          <p style={{ margin: 0, fontSize: '0.65rem', color: '#888', textTransform: 'uppercase', letterSpacing: '1px' }}>
-            Otorgada oficialmente por el Comité Connexo
+        {/* Cómo se consigue */}
+        <div style={{
+          borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '1rem',
+          display: 'flex', gap: 10, alignItems: 'flex-start'
+        }}>
+          <span style={{ fontSize: '1rem', flexShrink: 0 }}>{auto ? '⚙️' : '🎖️'}</span>
+          <div style={{ flex: 1 }}>
+            <p style={{
+              margin: 0, fontSize: '0.6rem', letterSpacing: '1.5px', fontWeight: 800,
+              textTransform: 'uppercase', color: auto ? 'var(--success)' : badge.borderColor
+            }}>
+              {auto ? 'Automática' : 'Otorgada por el Comité Connexo'}
+            </p>
+            <p style={{ margin: '3px 0 0', fontSize: '0.72rem', color: '#bbb', lineHeight: 1.45 }}>
+              {auto
+                ? auto.texto
+                : 'La asigna un Super Admin desde el panel de red cuando reconoce el mérito.'}
+            </p>
+          </div>
+        </div>
+
+        <div style={{
+          marginTop: '1rem', padding: '7px 12px', borderRadius: 100, textAlign: 'center',
+          background: desbloqueada ? 'rgba(30,224,160,0.12)' : 'rgba(255,255,255,0.04)',
+          border: `1px solid ${desbloqueada ? 'var(--success)' : 'rgba(255,255,255,0.12)'}`
+        }}>
+          <p style={{
+            margin: 0, fontSize: '0.65rem', fontWeight: 800, letterSpacing: '1px',
+            textTransform: 'uppercase', color: desbloqueada ? 'var(--success)' : 'rgba(255,255,255,0.45)'
+          }}>
+            {desbloqueada ? '✓ Desbloqueada' : '🔒 Todavía bloqueada'}
           </p>
         </div>
       </motion.div>
@@ -189,76 +225,169 @@ const BadgeModal = ({ badge, onClose }) => {
   );
 };
 
+const Hexagono = ({ badge, isUnlocked, atenuado }) => {
+  const elite = esElite(badge);
+  const apagada = !isUnlocked && !atenuado;
+  return (
+    <div style={{ position: 'relative', width: 76, height: 86 }}>
+      {/* Halo detrás: solo en las desbloqueadas */}
+      {isUnlocked && (
+        <div style={{
+          position: 'absolute', inset: -7, clipPath: HEX, filter: 'blur(9px)',
+          background: elite ? badge.borderColor : badge.color, opacity: 0.45
+        }} />
+      )}
+      {/* Marco (el borde real: un hexágono debajo, ligeramente mayor) */}
+      <div style={{
+        position: 'absolute', inset: 0, clipPath: HEX,
+        background: apagada
+          ? 'rgba(255,255,255,0.12)'
+          : `linear-gradient(160deg, ${badge.borderColor}, ${badge.borderColor}55 55%, ${badge.borderColor})`
+      }} />
+      {/* Cara */}
+      <div style={{
+        position: 'absolute', inset: 2.5, clipPath: HEX,
+        background: apagada
+          ? 'linear-gradient(160deg, #241a14, #14100d)'
+          : `linear-gradient(155deg, ${badge.color}ee, ${badge.color}88 45%, #05030200 46%), linear-gradient(160deg, ${badge.color}, #120a06)`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: '1.75rem', lineHeight: 1,
+        filter: apagada ? 'grayscale(100%)' : 'none'
+      }}>
+        <span style={{
+          opacity: apagada ? 0.35 : 1,
+          filter: apagada ? 'none' : 'drop-shadow(0 2px 3px rgba(0,0,0,0.55))'
+        }}>
+          {apagada ? '🔒' : badge.icon}
+        </span>
+      </div>
+      {/* Brillo superior: da sensación de metal esmaltado */}
+      {!apagada && (
+        <div style={{
+          position: 'absolute', inset: 2.5, clipPath: HEX, pointerEvents: 'none',
+          background: 'linear-gradient(200deg, rgba(255,255,255,0.34) 0%, rgba(255,255,255,0.07) 32%, transparent 52%)'
+        }} />
+      )}
+    </div>
+  );
+};
+
 const BadgeGrid = ({ activeBadges = [], isAdminMode = false, onToggleBadge }) => {
   const [selectedBadge, setSelectedBadge] = useState(null);
 
   const handleBadgeClick = (badgeKey) => {
-    if (isAdminMode && onToggleBadge) {
-      onToggleBadge(badgeKey);
-    } else {
-      setSelectedBadge(BADGES_INFO[badgeKey]);
-    }
+    if (isAdminMode && onToggleBadge) onToggleBadge(badgeKey);
+    else setSelectedBadge(BADGES_INFO[badgeKey]);
   };
+
+  const claves = Object.keys(BADGES_INFO);
+  const conseguidas = claves.filter((k) => activeBadges.includes(k)).length;
+  const porcentaje = Math.round((conseguidas / claves.length) * 100);
+
+  // Primero las conseguidas: la vitrina se ve como un logro, no como una lista
+  // de candados.
+  const ordenadas = [...claves].sort((a, b) => {
+    const da = activeBadges.includes(a) ? 0 : 1;
+    const db = activeBadges.includes(b) ? 0 : 1;
+    return da - db || claves.indexOf(a) - claves.indexOf(b);
+  });
 
   return (
     <>
+      {!isAdminMode && (
+        <div style={{ margin: '4px 0 6px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 7 }}>
+            <p style={{ margin: 0, fontSize: '0.62rem', letterSpacing: '1.5px', textTransform: 'uppercase', opacity: 0.55 }}>
+              Vitrina de insignias
+            </p>
+            <p style={{ margin: 0, fontSize: '0.68rem', fontWeight: 800, color: 'var(--accent-light)' }}>
+              {conseguidas} <span style={{ opacity: 0.45, fontWeight: 600 }}>/ {claves.length}</span>
+            </p>
+          </div>
+          <div style={{ height: 5, borderRadius: 10, background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
+            <motion.div
+              className="progress-fill"
+              initial={{ width: 0 }}
+              animate={{ width: `${porcentaje}%` }}
+              transition={{ duration: 0.9, ease: 'easeOut' }}
+              style={{ height: '100%' }}
+            />
+          </div>
+        </div>
+      )}
+
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(80px, 1fr))',
-        gap: '15px',
-        padding: '20px 0',
+        gridTemplateColumns: 'repeat(auto-fill, minmax(86px, 1fr))',
+        gap: '14px 8px',
+        padding: '18px 0',
         justifyItems: 'center'
       }}>
-        {Object.keys(BADGES_INFO).map((key) => {
+        {ordenadas.map((key) => {
           const badge = BADGES_INFO[key];
           const isUnlocked = activeBadges.includes(key);
+          const auto = !!CRITERIOS_AUTO[key];
 
           return (
-            <div
+            <motion.div
               key={key}
               onClick={() => handleBadgeClick(key)}
+              whileHover={{ y: -5, scale: 1.06 }}
+              whileTap={{ scale: 0.94 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 22 }}
+              title={badge.title.replace('\n', ' ')}
               style={{
-                width: '75px', height: '85px',
                 position: 'relative', cursor: 'pointer',
-                transition: 'all 0.3s ease',
-                transform: isAdminMode ? 'scale(1)' : (isUnlocked ? 'scale(1)' : 'scale(0.95)')
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, width: 86
               }}
             >
-              {/* Contenedor del Hexágono */}
-              <div style={{
-                width: '100%', height: '100%',
-                background: isUnlocked || isAdminMode ? badge.color : '#333',
-                clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: '2rem',
-                border: isUnlocked || isAdminMode ? `2px solid ${badge.borderColor}` : '2px solid #555',
-                filter: (!isUnlocked && !isAdminMode) ? 'grayscale(100%) opacity(0.4)' : 'none',
-                boxShadow: isUnlocked ? `0 0 15px ${badge.color}88` : 'none',
-                transition: 'all 0.3s ease'
-              }}>
-                {(!isUnlocked && !isAdminMode) ? '🔒' : badge.icon}
-              </div>
+              <Hexagono badge={badge} isUnlocked={isUnlocked} atenuado={isAdminMode} />
 
-              {/* Toggle indicator for Admin Mode */}
+              <p style={{
+                margin: 0, fontSize: '0.53rem', lineHeight: 1.15, textAlign: 'center',
+                whiteSpace: 'pre-line', fontWeight: 700, letterSpacing: '0.3px',
+                textTransform: 'uppercase',
+                color: isUnlocked ? 'var(--text-primary)' : 'rgba(255,255,255,0.32)'
+              }}>
+                {badge.title}
+              </p>
+
+              {/* Marca de "se gana sola", solo en las que aún faltan */}
+              {auto && !isUnlocked && !isAdminMode && (
+                <span style={{
+                  position: 'absolute', top: -2, right: 4, fontSize: '0.42rem', fontWeight: 800,
+                  letterSpacing: '0.5px', padding: '1px 4px', borderRadius: 100,
+                  background: 'rgba(30,224,160,0.15)', color: 'var(--success)',
+                  border: '1px solid rgba(30,224,160,0.4)'
+                }}>
+                  AUTO
+                </span>
+              )}
+
               {isAdminMode && (
                 <div style={{
-                  position: 'absolute', bottom: '-5px', right: '-5px',
+                  position: 'absolute', top: 60, right: 6,
                   background: isUnlocked ? 'var(--success)' : '#555',
-                  borderRadius: '50%', width: '20px', height: '20px',
+                  borderRadius: '50%', width: 20, height: 20,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  border: '2px solid #111', fontSize: '10px', color: 'white',
-                  zIndex: 10
+                  border: '2px solid var(--bg-primary)', fontSize: 10, color: 'white', zIndex: 10
                 }}>
                   {isUnlocked ? '✓' : '✕'}
                 </div>
               )}
-            </div>
+            </motion.div>
           );
         })}
       </div>
 
       <AnimatePresence>
-        {selectedBadge && <BadgeModal badge={selectedBadge} onClose={() => setSelectedBadge(null)} />}
+        {selectedBadge && (
+          <BadgeModal
+            badge={selectedBadge}
+            desbloqueada={activeBadges.includes(selectedBadge.id)}
+            onClose={() => setSelectedBadge(null)}
+          />
+        )}
       </AnimatePresence>
     </>
   );

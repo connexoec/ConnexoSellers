@@ -317,7 +317,7 @@ export const dataService = {
     } catch (e) {
       // Ignore if column doesn't exist
     }
-    localStorage.setItem(`connexo_badges_${userId}`, JSON.stringify(badges));
+    safeSetItem(`connexo_badges_${userId}`, JSON.stringify(badges));
   },
 
   async registerSale(userId, planKey, customerData, currentRate, isCertified, billingCycle = 'annually', sedeId = null) {

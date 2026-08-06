@@ -13,7 +13,8 @@ import InventoryManager from './components/inventory/InventoryManager';
 import { dataService, PLANS } from './services/dataService';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import BadgeGrid from './components/badges/BadgeGrid';
+import BadgeGrid, { BADGES_INFO } from './components/badges/BadgeGrid';
+import { evaluarInsigniasAutomaticas } from './lib/badges';
 import { SESSION_KEY, saveSession, loadSession, clearSession, safeSetItem, avatarKey } from './lib/storage';
 import { compressImage } from './lib/image';
 
@@ -38,9 +39,6 @@ function App() {
   const [showOnboarding,  setShowOnboarding]  = useState(false);
   const [selectedPlan,    setSelectedPlan]    = useState(null);
   const [metrics,         setMetrics]         = useState({ rate: 0, base: 0, level: 'CARGANDO...' });
-  const [notifications,   setNotifications]   = useState([
-    { id: 1, message: 'Ecosistema Connexo v2.2 iniciado', type: 'INFO', read: false }
-  ]);
   const [highContrast,    setHighContrast]    = useState(false);
   const [userBadges,      setUserBadges]      = useState([]);
   const [searchQuery,     setSearchQuery]     = useState('');
@@ -66,6 +64,7 @@ function App() {
   // Toast efímero del feedback propio (ver addNotification)
   const [localToast,      setLocalToast]      = useState(null);
   const localToastTimer                       = useRef(null);
+  const avisoPedidosMostrado                  = useRef(false);
 
   // ── Helpers de mes ────────────────────────────────────────────────────
   // El nivel se reinicia cada mes calendario, así que el progreso se mide
@@ -213,18 +212,16 @@ function App() {
         }).catch(console.error);
       }
       
-      // Si es SUPER ADMIN, buscar pedidos pendientes y generar notificación
-      if (role === 'SUPER_ADMIN') {
+      // Resumen de pedidos pendientes para el Super Admin. Los pedidos NUEVOS
+      // ya avisan solos (trigger + push); esto es el recordatorio de lo que
+      // sigue sin atender. Una sola vez por sesión, para no repetirlo en cada
+      // refresco de datos.
+      if (role === 'SUPER_ADMIN' && !avisoPedidosMostrado.current) {
         const reqs = await dataService.getInventoryRequests(null);
-        const pendingCount = reqs.filter(r => r.status === 'PENDING').length;
-        if (pendingCount > 0) {
-          setNotifications(prev => {
-            const hasPendingNotif = prev.some(n => n.message.includes('pedidos pendientes'));
-            if (!hasPendingNotif) {
-              return [{ id: Date.now(), message: `Tienes ${pendingCount} pedidos pendientes de revisión en Inventario.`, type: 'INFO', read: false }, ...prev];
-            }
-            return prev;
-          });
+        const pendientes = reqs.filter(r => r.status === 'PENDING').length;
+        if (pendientes > 0) {
+          avisoPedidosMostrado.current = true;
+          addNotification(`Tienes ${pendientes} pedido${pendientes > 1 ? 's' : ''} de stock sin revisar en Almacén.`, 'INFO');
         }
       }
     } catch (err) {
@@ -301,44 +298,11 @@ function App() {
       // Recalcular métricas e historial completo de inmediato para refrescar la interfaz en tiempo real
       refreshData(updatedUser);
 
-      // ─── Desbloquear Primera Insignia (FIRST_BLOOD) ─────────────────────────
-      const hasFirstBlood = userBadges.includes('FIRST_BLOOD');
-      let currentBadgesList = [...userBadges];
-      if (!hasFirstBlood) {
-        currentBadgesList.push('FIRST_BLOOD');
-        setUserBadges(currentBadgesList);
-        await dataService.saveUserBadges(user.uid || user.id, currentBadgesList);
-        setTimeout(() => {
-          alert("¡FELICIDADES! ¡Has concretado tu primera venta y desbloqueado tu primera insignia oficial: 'Primer Impacto'!");
-        }, 800);
-        addNotification("¡Has obtenido tu primera insignia oficial: Primer Impacto!", "SUCCESS");
-      }
-
-      // ─── Desbloquear Insignia de Sueldo Base Activado (Según meta asignada) ───
-      const now = new Date();
-      const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-      
-      const currentMonthAnnualSales = [newSale, ...sales].filter(s => {
-         const isAnnual = s.plan_type?.toUpperCase().includes('ANUAL');
-         // Si no tiene created_at (recién creada sin refresh) asumimos es de hoy (por ende de este mes)
-         const saleDate = s.created_at ? new Date(s.created_at) : new Date();
-         return isAnnual && saleDate >= currentMonthStart;
-      });
-      const annualCount = currentMonthAnnualSales.length;
-      const goal = metrics.annualSalesGoal || 8;
-
-      if (annualCount >= goal && !currentBadgesList.includes('BASE_SALARY_UNLOCKED')) {
-        const finalBadges = [...currentBadgesList, 'BASE_SALARY_UNLOCKED'];
-        setUserBadges(finalBadges);
-        await dataService.saveUserBadges(user.uid || user.id, finalBadges);
-        
-        if (user?.role === 'SELLER') {
-          setTimeout(() => {
-            alert(`🎉 ¡ESPECTACULAR FELICITACIONES! 🎉\nHas alcanzado tu meta de ${goal} ventas anuales del mes y oficialmente has ACTIVADO tu Sueldo Base garantizado.\n¡Sigue rompiendo tus marcas!`);
-          }, 1200);
-          addNotification(`¡Desbloqueaste la insignia Sueldo Activado! Meta de ${goal} anuales alcanzada.`, "SUCCESS");
-        }
-      }
+      // Las insignias automáticas ya NO se calculan aquí: lo hace el efecto
+      // `useEffect` de más arriba, que las evalúa contra los datos reales en
+      // cada carga. Antes vivían en este punto y solo se otorgaban en el
+      // instante exacto de vender y en esa pestaña, así que en la práctica casi
+      // nunca llegaban a concederse.
     } catch (err) {
       alert('Error al registrar venta: ' + err.message);
     } finally {
@@ -391,7 +355,6 @@ function App() {
   // actualizada"…). No se guarda en la base: eso es el NotificationCenter, que
   // trae los avisos de lo que hacen los demás.
   const addNotification = (message, type = 'SUCCESS') => {
-    setNotifications(prev => [{ id: Date.now(), message, type, read: false }, ...prev]);
     setLocalToast({ id: Date.now(), message, type });
     if (localToastTimer.current) clearTimeout(localToastTimer.current);
     localToastTimer.current = setTimeout(() => setLocalToast(null), 4200);
@@ -444,6 +407,47 @@ function App() {
       }
     }
   }, [metrics, user, currentMonthKey]);
+
+  // ── Insignias automáticas ─────────────────────────────────────────────────
+  // Se evalúan contra los datos REALES en cada carga, no solo al vender. Así
+  // se reparan solas para quien ya cumplía el requisito de antes. Solo suman:
+  // jamás quitan una insignia otorgada a mano por el Super Admin.
+  useEffect(() => {
+    const uid = user?.id || user?.uid;
+    if (!uid || user?.role === 'SUPER_ADMIN') return;
+    if (!metrics?.level || metrics.level === 'CARGANDO...') return;
+
+    // El filtro del mes se hace AQUÍ dentro a propósito: `salesThisMonth` se
+    // recalcula en cada render (es un .filter del cuerpo del componente), así
+    // que ponerlo en las dependencias haría correr este efecto continuamente.
+    const delMes = sales.filter(s => s.created_at && monthKey(s.created_at) === currentMonthKey);
+
+    const ganadas = evaluarInsigniasAutomaticas({
+      ventas: sales,
+      ventasMes: delMes,
+      usuario: user,
+      metricas: metrics
+    });
+    const nuevas = ganadas.filter(k => !userBadges.includes(k));
+    if (nuevas.length === 0) return;
+
+    const lista = [...userBadges, ...nuevas];
+    setUserBadges(lista);
+    dataService.saveUserBadges(uid, lista);
+
+    nuevas.forEach((k) => {
+      const info = BADGES_INFO[k];
+      const nombre = info?.title?.replace('\n', ' ') || k;
+      addNotification(`🏅 ¡Insignia desbloqueada: ${nombre}!`, 'SUCCESS');
+      dataService.notify(uid, {
+        type: 'badge',
+        title: `🏅 Insignia desbloqueada: ${nombre}`,
+        body: info?.subtitle || 'Nuevo logro en tu vitrina.',
+        url: '?tab=profile',
+        dedupeKey: `badge:${k}`
+      });
+    });
+  }, [sales, metrics, user, userBadges, currentMonthKey]);
 
   // Alta de un miembro nuevo: avisa a su distribuidor y a los super admins.
   const notificarAltaDeRed = async (newUser, nombre) => {

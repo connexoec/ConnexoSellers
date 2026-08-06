@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import NotificationCenter from '../notifications/NotificationCenter';
+import Flag from './Flag';
 
 const Header = ({ user, activeTab, onBack, selectedSedeContext = 'GLOBAL', onChangeContext, onNavigate }) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -47,7 +48,7 @@ const Header = ({ user, activeTab, onBack, selectedSedeContext = 'GLOBAL', onCha
                 transition: 'all 0.2s'
               }}
             >
-              {selectedSedeContext === 'GLOBAL' ? '🌎' : selectedSedeContext === 'Ecuador' ? '🇪🇨' : '🇻🇪'}
+              <Flag pais={selectedSedeContext} size={20} />
             </button>
 
             {isDropdownOpen && (
@@ -69,9 +70,9 @@ const Header = ({ user, activeTab, onBack, selectedSedeContext = 'GLOBAL', onCha
                 }}
               >
                 {[
-                  { value: 'GLOBAL', emoji: '🌎', label: 'Global' },
-                  { value: 'Ecuador', emoji: '🇪🇨', label: 'Ecuador' },
-                  { value: 'Venezuela', emoji: '🇻🇪', label: 'Venezuela' }
+                  { value: 'GLOBAL', label: 'Global' },
+                  { value: 'Ecuador', label: 'Ecuador' },
+                  { value: 'Venezuela', label: 'Venezuela' }
                 ].map(item => (
                   <button
                     key={item.value}
@@ -96,7 +97,7 @@ const Header = ({ user, activeTab, onBack, selectedSedeContext = 'GLOBAL', onCha
                       width: '100%'
                     }}
                   >
-                    <span>{item.emoji}</span>
+                    <Flag pais={item.value} size={18} />
                     <span style={{ fontSize: '0.7rem' }}>{item.label}</span>
                   </button>
                 ))}
