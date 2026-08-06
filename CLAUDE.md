@@ -173,6 +173,66 @@ en vez del día 1.
 
 ## 7. Registro de cambios (changelog)
 
+### 2026-08-06
+- **Causa raíz de "las imágenes no cargan" y "editar perfil falla": la cuota de
+  localStorage.** La foto de perfil se guardaba **sin comprimir**: el JPEG
+  original del celular (2088×3712) daba **4,03 MB de base64**. El navegador solo
+  concede ~5 MB por origen y cuenta cada carácter como 2 bytes, así que ese solo
+  valor ya no cabía. `localStorage.setItem` lanzaba `QuotaExceededError` y, como
+  estaba **dentro del `try` del flujo de negocio**, se llevaba por delante la
+  operación entera aunque Supabase ya hubiera guardado bien. Ver **Lección #8**.
+  - Subir foto: el `setItem` era la **primera** línea, fuera del `try` → reventaba
+    antes de intentar nada. La foto no se guardaba en ningún lado y no salía ni
+    un aviso: fallo totalmente silencioso.
+  - Editar perfil: `updateProfile` actualizaba la base, y acto seguido el
+    `setItem` de la sesión lanzaba → saltaba al `catch` → alert de error y el
+    formulario se quedaba abierto. Parecía que no guardaba, pero **sí guardaba**.
+  - Login: mismo `setItem` en `handleLogin` → alert de error y no se entraba.
+- **Arreglos aplicados:**
+  - `src/lib/image.js` (nuevo): `compressImage` redimensiona en canvas a 512 px
+    de lado mayor y recomprime a JPEG 0.82 → **4 MB pasan a ~32 KB (129×)**.
+    Pinta fondo opaco antes de dibujar para que los PNG con transparencia no
+    salgan negros al pasar a JPEG.
+  - `src/lib/storage.js` (nuevo): `safeSetItem` (nunca propaga un fallo de
+    cuota), `saveSession`/`loadSession`/`clearSession`. **La sesión ya no lleva
+    la foto dentro**: el avatar vive en `connexo_avatar_<uid>` y `loadSession`
+    lo vuelve a unir al recargar. Así una foto grande no puede impedir guardar
+    la sesión. Sustituye los 10 `setItem(SESSION_KEY, …)` de `App.jsx` y las 20
+    escrituras de caché grandes de `dataService.js` (`connexo_team`,
+    `connexo_sales`, `connexo_inventory`).
+  - `updateProfile`: un error de **datos** (correo duplicado → `23505`) ya no cae
+    al fallback local disfrazado de "Usuario no encontrado en caché local"; se
+    reporta tal cual ("Ese correo ya está registrado por otro usuario"). Al
+    fallback solo se cae si falla la **red**. Y editar el perfil propio estando
+    sin conexión ya no falla por no estar uno en la caché de equipo.
+  - Subir foto: aplica optimista (se ve al instante) y luego sincroniza; se
+    limpia el `input.value` para poder reelegir la misma foto.
+- **Consultas de lista sin `avatar_url`** (`PROFILE_LIST_COLUMNS` en
+  `dataService.js`): `getAllProfiles` y `getTeam` usaban `select('*')` y traían
+  la foto en cada carga. **El listado pasó de 4.130 KB a 8,9 KB.** Ningún
+  componente usa `avatar_url` en listados; el perfil individual lo sigue
+  pidiendo con `select('*')`. De paso deja de exponer `password` (`getTeam` ya
+  lo descartaba a mano; `getAllProfiles` no).
+- **Dato ya guardado corregido en Supabase:** la fila de `thony.karter@gmail.com`
+  tenía los 4,03 MB. Recomprimida in situ a 31,9 KB respetando la orientación
+  EXIF; la foto se ve igual.
+- **Rediseño visual (solo color y presentación, cero lógica):** paleta más
+  saturada en `index.css` — naranja `#f97316 → #ff7a1a` con `--accent-light` y
+  `--accent-gradient`, `--accent-glow` de alpha 0.15 → 0.28 (los bordes y halos
+  por fin se ven), verde `#10b981 → #1ee0a0`, rojo `#ef4444 → #ff4d5e`, tiers más
+  vivos. Fondo en capas (brasa naranja + rebotes violeta/verde, `fixed`), h1 con
+  texto en degradado, `.card` con filo de luz superior, `.card.glass` con lavado
+  cálido, `.btn-primary` en degradado con barrido de brillo, barra inferior con
+  hilo de luz y activo con halo, scrollbar a tono, `::selection`, `:focus-visible`.
+  Nuevas clases `.progress-fill` (barra de nivel con brillo que corre) y
+  `.pulse-glow` (chip de nivel del perfil), más `prefers-reduced-motion`.
+  Solo se tocaron 2 líneas de JSX (añadir esas clases): nada de estructura.
+- **Verificado** con el `dataService` real fuera del navegador (Vite +
+  `ssrLoadModule`): 24 perfiles, nivel/tasa/sueldo base correctos en los 5 roles
+  clave, `getSalesForTeam` sigue paginando (1.405 ventas) y los listados ya no
+  traen foto ni contraseña. Más un test de `localStorage` con cuota simulada de
+  5 MB que reproduce el fallo viejo y comprueba el nuevo comportamiento.
+
 ### 2026-08-05
 - **Actualización de CIFRAS de niveles/comisiones** (ver §4). Solo números: la
   lógica de `calcMetrics`, el tier manual del Super Admin y la UI quedan igual.
@@ -289,6 +349,32 @@ en vez del día 1.
   (`CLAUDE.md`, `DOCUMENTACION_TECNICA.md`). Verificado en Supabase
   (`aisjtkezgumawgjmwckb`): no existe ninguna fila con ese email en `profiles`.
   **Único super admin: `thony.karter@gmail.com`.**
+
+### Lección #8 — Nada de base64 sin comprimir, y la caché nunca tumba el flujo
+- **Síntoma:** subir la foto de perfil no hacía absolutamente nada (ni error), y
+  guardar el perfil daba error aunque el cambio **sí** llegaba a la base.
+- **Causa:** una foto de celular pesa 3-5 MB; en base64 crece otro ~33%. El
+  navegador da ~5 MB por origen **contando 2 bytes por carácter**, así que un
+  solo avatar ya no cabía y `localStorage.setItem` lanzaba `QuotaExceededError`.
+  El `setItem` estaba dentro del `try` de la operación de negocio (o antes de
+  él), así que un fallo de **caché** hacía fracasar la operación **completa**.
+- **Reglas para no repetirlo:**
+  1. **Toda imagen que entre por un `<input type="file">` se comprime primero**
+     (`compressImage` en `src/lib/image.js`). Nunca guardar `reader.result` crudo.
+  2. **Escribir en localStorage con `safeSetItem`** (`src/lib/storage.js`). La
+     caché es un extra: si falla, se avisa por consola y el flujo sigue. Un
+     `localStorage.setItem` pelado dentro de un `try/catch` de negocio es un bug.
+  3. **La sesión no lleva la foto dentro** (`saveSession`/`loadSession`): el
+     avatar va en su propia clave y se vuelve a unir al restaurar.
+  4. **Los listados no piden `avatar_url`** (`PROFILE_LIST_COLUMNS`). `select('*')`
+     sobre `profiles` arrastra todas las fotos: eran 4 MB por carga.
+- **Cómo detectarlo:** si algo "falla" pero la base **sí** quedó actualizada,
+  sospechar de un `setItem` posterior. En la consola sale
+  `Failed to execute 'setItem' on 'Storage': ... exceeded the quota`.
+- **Ojo con el patrón "Supabase con fallback a LocalStorage" (§2):** hace que un
+  error de datos (correo duplicado, columna inexistente) se disfrace de problema
+  de conexión y termine en un mensaje sin sentido. `updateProfile` ya distingue
+  ambos casos (`err.esDeDatos`); replicarlo si se toca otra función de escritura.
 
 ### Lección #7 — PostgREST devuelve máximo 1000 filas: hay que paginar
 - **Síntoma:** con la base grande (el escenario completo son ~1.400 ventas) el
