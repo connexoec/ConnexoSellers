@@ -152,11 +152,19 @@ export default function NotificationCenter({ userId, onNavigate }) {
         'En iPhone/iPad: Compartir → "Añadir a pantalla de inicio", abre la app ' +
         'desde ese ícono y activa los avisos ahí (requiere iOS 16.4 o superior).'
       );
-    } else if (motivo && motivo.startsWith('db:')) {
+    } else if (motivo && motivo.includes('does not exist')) {
+      // Solo esto significa de verdad "falta el SQL".
       alert(
-        'El permiso está bien, pero falta preparar la base de datos.\n' +
+        'El permiso está bien, pero faltan las tablas de notificaciones.\n' +
         'Ejecuta supabase/migrations/20260806120000_setup_notifications.sql en Supabase.\n\n' +
         'Detalle: ' + motivo
+      );
+    } else if (motivo && motivo.startsWith('db:')) {
+      // Cualquier otro error de base: NO mandar a ejecutar SQL a ciegas.
+      alert(
+        'El permiso está bien, pero no se pudo guardar la suscripción de este ' +
+        'dispositivo.\n\nSi el problema sigue, prueba el botón "¿No llegan?" ' +
+        'para renovarla.\n\nDetalle: ' + motivo
       );
     } else {
       alert('No se pudo completar.\nDetalle: ' + (motivo || 'error desconocido'));
