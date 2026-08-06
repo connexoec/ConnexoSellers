@@ -71,6 +71,25 @@ function App() {
   // Ventas del mes en curso. Para un distribuidor `sales` ya incluye las de
   // sus vendedores (getSalesForTeam), así que suman a su total.
   const salesThisMonth = sales.filter(s => s.created_at && monthKey(s.created_at) === currentMonthKey);
+
+  // ── Nivel: cuota del mes y objetivo del siguiente rango ───────────────
+  // FUENTE ÚNICA para la barra de progreso, el objetivo de rango y la
+  // tarjeta de ventas: así los tres números no pueden divergir.
+  //   cuota    = planes que exige el nivel actual (tabla de niveles)
+  //   objetivo = planes para ascender al siguiente nivel (o la propia cuota
+  //              si ya está en el máximo)
+  const NIVELES = {
+    'VENDEDOR PRO':   { cuota: 31,  siguiente: 'ULTRA',          objetivo: 50  },
+    'VENDEDOR ULTRA': { cuota: 50,  siguiente: null,             objetivo: 50  },
+    'DISTRIBUIDOR 1': { cuota: 100, siguiente: 'DISTRIBUIDOR 2', objetivo: 200 },
+    'DISTRIBUIDOR 2': { cuota: 200, siguiente: 'DISTRIBUIDOR 3', objetivo: 300 },
+    'DISTRIBUIDOR 3': { cuota: 300, siguiente: null,             objetivo: 300 }
+  };
+  // Se resuelve por el nivel REAL calculado (metrics.level), no por el tier
+  // manual: un vendedor en AUTO que ya llegó a ULTRA debe ver los datos de ULTRA.
+  const nivelInfo = NIVELES[metrics.level]
+    || NIVELES[user?.role === 'DISTRIBUTOR' ? 'DISTRIBUIDOR 1' : 'VENDEDOR PRO'];
+  const planesMes = salesThisMonth.length;
   // Guardar contexto activo de sede en localStorage
   useEffect(() => {
     localStorage.setItem('connexo_selected_sede_context', selectedSedeContext);
@@ -443,7 +462,7 @@ function App() {
             </button>
           ) : (
             <div style={{ textAlign: 'right' }}>
-               <p style={{ fontSize: '0.55rem', opacity: 0.5, textTransform: 'uppercase', margin: 0 }}>TOTAL FACTURADO</p>
+               <p style={{ fontSize: '0.55rem', opacity: 0.5, textTransform: 'uppercase', margin: 0 }}>FACTURADO HISTÓRICO</p>
                <p style={{ fontSize: '0.9rem', color: 'var(--accent)', fontWeight: 700, margin: 0 }}>${sales.reduce((a, s) => a + (s.amount || 0), 0).toFixed(2)}</p>
             </div>
           )}
@@ -732,9 +751,12 @@ function App() {
                   </p>
                 </div>
                 <div style={{ flex: 1 }}>
-                  <p style={{ fontSize: '0.65rem', opacity: 0.8, margin: 0, textTransform: 'uppercase' }}>Ventas ({selectedSedeContext})</p>
+                  <p style={{ fontSize: '0.65rem', opacity: 0.8, margin: 0, textTransform: 'uppercase' }}>Ventas del mes ({selectedSedeContext})</p>
                   <p style={{ fontSize: '1.8rem', fontWeight: 'bold', color: 'var(--accent)', margin: '4px 0 0' }}>
-                    {getFilteredSales().length}
+                    {getFilteredSales().filter(s => s.created_at && monthKey(s.created_at) === currentMonthKey).length}
+                  </p>
+                  <p style={{ fontSize: '0.55rem', opacity: 0.5, margin: '2px 0 0' }}>
+                    Histórico: {getFilteredSales().length}
                   </p>
                 </div>
               </div>
@@ -866,30 +888,19 @@ function App() {
               <p style={{ fontSize: '0.6rem', opacity: 0.6, textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '8px' }}>Estatus de Agente</p>
               <h2 style={{ color: 'var(--accent)', margin: '0', fontSize: '1.4rem', textShadow: '0 0 10px var(--accent-glow)' }}>{metrics.level}</h2>
               
-              {/* Progreso de Nivel (Dinámico) */}
+              {/* Progreso de Nivel (Dinámico) — mide contra el objetivo del
+                  siguiente rango; si ya es el máximo, contra su propia cuota */}
               {(() => {
-                let target = 100;
-                if (user?.role === 'SELLER') {
-                  if (user?.tier === 'ULTRA') {
-                    target = 50;
-                  } else {
-                    target = 31;
-                  }
-                } else if (metrics.level === 'DISTRIBUIDOR 1') {
-                  target = 100;
-                } else if (metrics.level === 'DISTRIBUIDOR 2') {
-                  target = 200;
-                } else if (metrics.level === 'DISTRIBUIDOR 3') {
-                  target = 300;
-                }
-                const hechas = salesThisMonth.length;
-                const percent = Math.min((hechas / target) * 100, 100).toFixed(0);
+                const target = nivelInfo.objetivo;
+                const percent = Math.min((planesMes / target) * 100, 100).toFixed(0);
 
                 return (
                   <div style={{ margin: '20px 0' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                      <p style={{ fontSize: '0.65rem', opacity: 0.8 }}>Progreso de Nivel (este mes)</p>
-                      <p style={{ fontSize: '0.65rem', color: 'var(--accent)', fontWeight: 600 }}>{hechas} / {target} ({percent}%)</p>
+                      <p style={{ fontSize: '0.65rem', opacity: 0.8 }}>
+                        {nivelInfo.siguiente ? `Progreso a ${nivelInfo.siguiente} (este mes)` : 'Cuota del nivel (este mes)'}
+                      </p>
+                      <p style={{ fontSize: '0.65rem', color: 'var(--accent)', fontWeight: 600 }}>{planesMes} / {target} ({percent}%)</p>
                     </div>
                     <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '10px', overflow: 'hidden' }}>
                       <motion.div 
@@ -913,31 +924,22 @@ function App() {
               {/* Next tier hint / Objetivo de Rango */}
               <div style={{ marginTop: '1.2rem', paddingTop: '1.2rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
                   <p style={{ fontSize: '0.6rem', opacity: 0.7, marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '1px' }}>Objetivo de Rango (este mes):</p>
-                  {user?.role === 'SELLER' ? (
-                    <>
-                      {user?.tier === 'ULTRA' ? (
-                        <>
-                          {salesThisMonth.length < 50 && <p style={{ fontSize: '0.75rem', color: 'var(--accent)', margin: 0, fontWeight: 600 }}>Objetivo Máximo: 50 ventas (Faltan {Math.max(0, 50 - salesThisMonth.length)})</p>}
-                          {salesThisMonth.length >= 50 && <p style={{ fontSize: '0.75rem', color: 'var(--success)', margin: 0, fontWeight: 700 }}>Nivel de Élite Alcanzado</p>}
-                        </>
-                      ) : (
-                        <>
-                          {salesThisMonth.length < 50 && <p style={{ fontSize: '0.75rem', color: 'var(--accent)', margin: 0, fontWeight: 600 }}>Próximo: ULTRA ({(50 - salesThisMonth.length)} ventas restantes)</p>}
-                          {salesThisMonth.length >= 50 && <p style={{ fontSize: '0.75rem', color: 'var(--success)', margin: 0, fontWeight: 700 }}>Nivel de Élite Alcanzado</p>}
-                        </>
-                      )}
-                    </>
-                  ) : (
-                    <>
-                      {metrics.level === 'DISTRIBUIDOR 1' && <p style={{ fontSize: '0.75rem', color: 'var(--accent)', margin: 0, fontWeight: 600 }}>D2: Objetivo 200 ventas de equipo (Faltan {Math.max(0, 200 - salesThisMonth.length)})</p>}
-                      {metrics.level === 'DISTRIBUIDOR 2' && <p style={{ fontSize: '0.75rem', color: 'var(--accent)', margin: 0, fontWeight: 600 }}>D3: Objetivo 300 ventas de equipo (Faltan {Math.max(0, 300 - salesThisMonth.length)})</p>}
-                      {metrics.level === 'DISTRIBUIDOR 3' && (
-                        salesThisMonth.length < 300
-                          ? <p style={{ fontSize: '0.75rem', color: 'var(--accent)', margin: 0, fontWeight: 600 }}>Objetivo Máximo: 300 ventas (Faltan {Math.max(0, 300 - salesThisMonth.length)})</p>
-                          : <p style={{ fontSize: '0.75rem', color: 'var(--success)', margin: 0, fontWeight: 700 }}>Máxima Jerarquía y Meta Completada</p>
-                      )}
-                    </>
-                  )}
+                  {(() => {
+                    const faltan = Math.max(0, nivelInfo.objetivo - planesMes);
+                    const unidad = user?.role === 'DISTRIBUTOR' ? 'ventas de equipo' : 'ventas';
+
+                    // Todavía hay un rango por encima
+                    if (nivelInfo.siguiente) {
+                      return faltan > 0
+                        ? <p style={{ fontSize: '0.75rem', color: 'var(--accent)', margin: 0, fontWeight: 600 }}>Próximo: {nivelInfo.siguiente} — {nivelInfo.objetivo} {unidad} (Faltan {faltan})</p>
+                        : <p style={{ fontSize: '0.75rem', color: 'var(--success)', margin: 0, fontWeight: 700 }}>Objetivo cumplido: subes a {nivelInfo.siguiente}</p>;
+                    }
+
+                    // Rango máximo: se mide contra su propia cuota
+                    return faltan > 0
+                      ? <p style={{ fontSize: '0.75rem', color: 'var(--accent)', margin: 0, fontWeight: 600 }}>Cuota máxima: {nivelInfo.objetivo} {unidad} (Faltan {faltan})</p>
+                      : <p style={{ fontSize: '0.75rem', color: 'var(--success)', margin: 0, fontWeight: 700 }}>Máxima Jerarquía y Cuota Completada</p>;
+                  })()}
               </div>
             </div>
           )}
@@ -945,9 +947,12 @@ function App() {
           {/* Stats Grid — único, contextualizado por rol */}
           {user?.role !== 'SUPER_ADMIN' && (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: '2.5rem' }}>
-              <div className="card glass" style={{ borderLeft: '3px solid var(--accent)' }}>
+              <div className="card glass" style={{ borderLeft: '3px solid var(--accent)', position: 'relative' }}>
                 <p style={{ fontSize: '0.55rem', opacity: 0.5, letterSpacing: '1px' }}>BILLETERA</p>
                 <h3 style={{ margin: '4px 0', fontSize: '1.25rem', color: 'white' }}>${(user?.wallet_balance || 0).toFixed(2)}</h3>
+                <p style={{ position: 'absolute', bottom: '6px', left: '12px', fontSize: '0.5rem', color: 'var(--text-secondary)', margin: 0, fontWeight: 600 }}>
+                  Comisiones acumuladas
+                </p>
               </div>
               <div 
                 className="card glass" 
@@ -982,11 +987,19 @@ function App() {
                   </span>
                 )}
               </div>
-              <div className="card glass" style={{ borderLeft: '3px solid white' }}>
+              {/* Ventas del MES (es lo que define nivel, comisión y sueldo base).
+                  El histórico completo queda como dato secundario. */}
+              <div className="card glass" style={{ borderLeft: '3px solid white', position: 'relative' }}>
                 <p style={{ fontSize: '0.55rem', opacity: 0.5, letterSpacing: '1px' }}>
-                  {user?.role === 'SELLER' ? 'MIS VENTAS' : 'VENTAS RED'}
+                  {user?.role === 'SELLER' ? 'MIS VENTAS (MES)' : 'VENTAS RED (MES)'}
                 </p>
-                <h3 style={{ margin: '4px 0', fontSize: '1.25rem', color: 'white' }}>{sales.length}</h3>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
+                  <h3 style={{ margin: '4px 0', fontSize: '1.25rem', color: 'white' }}>{planesMes}</h3>
+                  <span style={{ fontSize: '0.7rem', opacity: 0.5 }}>/ {nivelInfo.cuota}</span>
+                </div>
+                <p style={{ position: 'absolute', bottom: '6px', left: '12px', fontSize: '0.5rem', color: 'var(--text-secondary)', margin: 0, fontWeight: 600 }}>
+                  Histórico: {sales.length}
+                </p>
               </div>
             </div>
           )}
