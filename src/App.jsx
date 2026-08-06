@@ -61,6 +61,16 @@ function App() {
   // Historial: filtro por mes ('ALL' o 'YYYY-MM') y por rol (solo SUPER ADMIN)
   const [selectedMonth,   setSelectedMonth]   = useState('ALL');
   const [roleFilter,      setRoleFilter]      = useState('ALL');
+  // ── Carga en dos fases del historial ──────────────────────────────────────
+  // Al entrar solo se piden las ventas del MES (lo único que necesita el
+  // dashboard: nivel, cuota, sueldo base). El histórico completo llega después
+  // sin bloquear la pantalla. Con ~1.400 ventas eso son ~600 ms y 632 KB que
+  // dejan de estar en el camino crítico.
+  //   'mes' = solo el mes en curso · 'todo' = histórico completo cargado
+  const [alcanceVentas,   setAlcanceVentas]   = useState('mes');
+  const [cargandoHistorial, setCargandoHistorial] = useState(false);
+  // Total real de ventas (viene de un COUNT, no de contar el array cargado).
+  const [totalVentas,     setTotalVentas]     = useState(0);
   // Toast efímero del feedback propio (ver addNotification)
   const [localToast,      setLocalToast]      = useState(null);
   const localToastTimer                       = useRef(null);
@@ -79,6 +89,12 @@ function App() {
     return `${nombre.charAt(0).toUpperCase()}${nombre.slice(1)} ${y}`;
   };
   const currentMonthKey = monthKey(new Date());
+  // Día 1 del mes en curso, en ISO: es el corte con el que se piden las ventas
+  // en la primera carga.
+  const inicioDelMes = React.useMemo(() => {
+    const h = new Date();
+    return new Date(h.getFullYear(), h.getMonth(), 1).toISOString();
+  }, [currentMonthKey]);
 
   // ── Derivados memoizados ──────────────────────────────────────────────────
   // Con el escenario completo `sales` trae ~1.400 filas. Sin memoizar, cada
@@ -246,11 +262,12 @@ function App() {
           console.warn("Profiles/Team error:", e);
           return [];
         }),
+        // Solo el mes en curso: el resto llega después (ver `cargarHistorial`).
         (!recargarVentas
           ? Promise.resolve(null)
           : role === 'SELLER'
-            ? dataService.getSales(uid)
-            : dataService.getSalesForTeam(uid, role)
+            ? dataService.getSales(uid, { desde: inicioDelMes })
+            : dataService.getSalesForTeam(uid, role, { desde: inicioDelMes })
         ).catch(e => {
           console.warn("Sales error:", e);
           return [];
@@ -263,8 +280,18 @@ function App() {
       setMetrics(newMetrics);
       setTeam(teamData || []);
       // null = no se pidieron; se conserva lo que ya hay en pantalla.
-      if (salesData !== null) setSales(salesData);
+      if (salesData !== null) {
+        setSales(salesData);
+        setAlcanceVentas('mes');
+      }
       setUserBadges(badges || []);
+
+      // El "Histórico: N" del dashboard sale de un COUNT, no de contar el
+      // array cargado (que ahora solo trae el mes en curso).
+      (role === 'SELLER'
+        ? dataService.countSales(uid)
+        : dataService.countSalesForTeam(uid, role)
+      ).then(setTotalVentas).catch(() => {});
       
       // Cargar Sedes para contexto multisede
       dataService.getSedes().then(data => setSedes(data)).catch(console.error);
@@ -294,6 +321,42 @@ function App() {
       console.error('Error al refrescar datos:', err);
     }
   };
+
+  // Trae el histórico completo (todos los meses). Se llama solo, en segundo
+  // plano, en cuanto el dashboard ya pintó; y se fuerza al abrir Movimientos o
+  // la Red, que son las pantallas que sí necesitan el histórico entero.
+  const cargarHistorial = React.useCallback(async (usuario = user) => {
+    if (!usuario) return;
+    const uid = usuario.uid || usuario.id;
+    const role = usuario.role;
+    setCargandoHistorial(true);
+    try {
+      const todas = role === 'SELLER'
+        ? await dataService.getSales(uid)
+        : await dataService.getSalesForTeam(uid, role);
+      setSales(todas);
+      setAlcanceVentas('todo');
+      if (todas.length > totalVentas) setTotalVentas(todas.length);
+    } catch (err) {
+      console.warn('No se pudo cargar el histórico completo:', err.message);
+    } finally {
+      setCargandoHistorial(false);
+    }
+  }, [user, totalVentas]);
+
+  // En cuanto hay sesión y el mes ya está en pantalla, se completa el resto sin
+  // que el usuario tenga que esperar. Si abre Movimientos antes de que termine,
+  // el efecto de abajo lo fuerza igual.
+  useEffect(() => {
+    if (!isAuthenticated || !user) return;
+    if (alcanceVentas === 'todo' || cargandoHistorial) return;
+    // El distribuidor lleva el historial embebido en su propio dashboard, así
+    // que para él tampoco hay espera.
+    const necesitaYa = activeTab === 'history' || activeTab === 'network'
+      || user.role === 'DISTRIBUTOR';
+    const t = setTimeout(() => cargarHistorial(user), necesitaYa ? 0 : 1200);
+    return () => clearTimeout(t);
+  }, [isAuthenticated, user, activeTab, alcanceVentas, cargandoHistorial, cargarHistorial]);
 
   // --- Handlers ---
   const handleLogin = async (email, password, selectedRole) => {
@@ -633,8 +696,26 @@ function App() {
           )}
         </div>
 
+        {/* Mientras llega el resto del histórico, se avisa: si no, parecería
+            que faltan ventas de meses anteriores. */}
+        {alcanceVentas === 'mes' && (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 8, marginBottom: '0.9rem',
+            padding: '8px 12px', borderRadius: 10,
+            background: 'rgba(255,122,26,0.07)', border: '1px solid var(--accent-glow)'
+          }}>
+            <span className="spin" style={{
+              width: 11, height: 11, borderRadius: '50%', flexShrink: 0,
+              border: '2px solid rgba(255,122,26,0.25)', borderTopColor: 'var(--accent)'
+            }} />
+            <p style={{ margin: 0, fontSize: '0.62rem', color: 'var(--text-secondary)' }}>
+              Mostrando el mes en curso · cargando meses anteriores…
+            </p>
+          </div>
+        )}
+
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '1.2rem' }}>
-          <input 
+          <input
             value={searchQuery}
             onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
             placeholder="🔍 Buscar por cliente, email..."
@@ -899,7 +980,11 @@ function App() {
                     {getFilteredSales().filter(s => s.created_at && monthKey(s.created_at) === currentMonthKey).length}
                   </p>
                   <p style={{ fontSize: '0.55rem', opacity: 0.5, margin: '2px 0 0' }}>
-                    Histórico: {getFilteredSales().length}
+                    {/* Con el histórico aún cargando solo se puede afirmar el
+                        total global; el desglose por sede necesita los datos. */}
+                    Histórico: {alcanceVentas === 'todo'
+                      ? getFilteredSales().length
+                      : (selectedSedeContext === 'GLOBAL' ? totalVentas : '…')}
                   </p>
                 </div>
               </div>
@@ -1142,7 +1227,8 @@ function App() {
                   <span style={{ fontSize: '0.7rem', opacity: 0.5 }}>/ {nivelInfo.cuota}</span>
                 </div>
                 <p style={{ position: 'absolute', bottom: '6px', left: '12px', fontSize: '0.5rem', color: 'var(--text-secondary)', margin: 0, fontWeight: 600 }}>
-                  Histórico: {sales.length}
+                  {/* Sale de un COUNT: es correcto aunque solo esté cargado el mes. */}
+                  Histórico: {Math.max(totalVentas, sales.length)}
                 </p>
               </div>
             </div>
