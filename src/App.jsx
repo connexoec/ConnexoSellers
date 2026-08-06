@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import BottomNav    from './components/layout/BottomNav';
@@ -21,6 +21,15 @@ function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading,       setIsLoading]       = useState(true);   // true al inicio para restaurar sesión
   const [activeTab,       setActiveTab]       = useState(() => {
+    // Al tocar una notificación del sistema, el service worker abre la app con
+    // ?tab=… — esa pestaña manda sobre la última guardada.
+    const TABS = ['dashboard', 'sales', 'history', 'academy', 'inventory', 'network', 'profile'];
+    const pedida = new URLSearchParams(window.location.search).get('tab');
+    if (pedida && TABS.includes(pedida)) {
+      // Se limpia la URL para que un refresco no vuelva a forzar la pestaña.
+      window.history.replaceState({}, '', window.location.pathname);
+      return pedida;
+    }
     return localStorage.getItem('connexo_active_tab') || 'dashboard';
   });
   const [user,            setUser]            = useState(null);
@@ -54,6 +63,9 @@ function App() {
   // Historial: filtro por mes ('ALL' o 'YYYY-MM') y por rol (solo SUPER ADMIN)
   const [selectedMonth,   setSelectedMonth]   = useState('ALL');
   const [roleFilter,      setRoleFilter]      = useState('ALL');
+  // Toast efímero del feedback propio (ver addNotification)
+  const [localToast,      setLocalToast]      = useState(null);
+  const localToastTimer                       = useRef(null);
 
   // ── Helpers de mes ────────────────────────────────────────────────────
   // El nivel se reinicia cada mes calendario, así que el progreso se mide
@@ -375,8 +387,89 @@ function App() {
     }
   };
 
+  // Feedback inmediato de TU propia acción ("venta registrada", "foto
+  // actualizada"…). No se guarda en la base: eso es el NotificationCenter, que
+  // trae los avisos de lo que hacen los demás.
   const addNotification = (message, type = 'SUCCESS') => {
     setNotifications(prev => [{ id: Date.now(), message, type, read: false }, ...prev]);
+    setLocalToast({ id: Date.now(), message, type });
+    if (localToastTimer.current) clearTimeout(localToastTimer.current);
+    localToastTimer.current = setTimeout(() => setLocalToast(null), 4200);
+  };
+
+  // ── Avisos que NO puede detectar la base de datos ──────────────────────────
+  // El nivel, la comisión y el sueldo base salen de `calcMetrics` (JavaScript),
+  // así que ningún trigger de Postgres puede verlos: se detectan aquí y se
+  // escriben en `notifications`, que es lo que dispara también la push.
+  const ORDEN_NIVELES = [
+    'VENDEDOR PRO', 'VENDEDOR ULTRA', 'DISTRIBUIDOR 1', 'DISTRIBUIDOR 2', 'DISTRIBUIDOR 3'
+  ];
+
+  useEffect(() => {
+    const uid = user?.id || user?.uid;
+    if (!uid || user?.role === 'SUPER_ADMIN') return;           // el admin no vende
+    if (!metrics?.level || metrics.level === 'CARGANDO...') return;
+
+    // ── Ascenso de nivel ──
+    const claveNivel = `connexo_nivel_visto_${uid}`;
+    const anterior = localStorage.getItem(claveNivel);
+    const subio = anterior
+      && anterior !== metrics.level
+      && ORDEN_NIVELES.indexOf(metrics.level) > ORDEN_NIVELES.indexOf(anterior);
+    if (subio) {
+      dataService.notify(uid, {
+        type: 'level',
+        title: `🚀 ¡Ascendiste a ${metrics.level}!`,
+        body: `Tu comisión sube al ${(metrics.rate * 100).toFixed(0)}% y tu sueldo base a $${metrics.base}.`,
+        url: '?tab=dashboard',
+        // El nivel se reinicia cada mes: la clave lleva el mes para que un
+        // ascenso del mes siguiente sí vuelva a avisar.
+        dedupeKey: `level:${metrics.level}:${currentMonthKey}`
+      });
+    }
+    safeSetItem(claveNivel, metrics.level);
+
+    // ── Sueldo base desbloqueado (una vez por mes) ──
+    if (metrics.baseUnlocked && metrics.base > 0) {
+      const claveBase = `connexo_base_${uid}_${currentMonthKey}`;
+      if (!localStorage.getItem(claveBase)) {
+        safeSetItem(claveBase, '1');
+        dataService.notify(uid, {
+          type: 'base',
+          title: '💵 Sueldo base desbloqueado',
+          body: `Cumpliste la meta de ventas anuales del mes: $${metrics.base} asegurados.`,
+          url: '?tab=dashboard',
+          dedupeKey: `base:${currentMonthKey}`
+        });
+      }
+    }
+  }, [metrics, user, currentMonthKey]);
+
+  // Alta de un miembro nuevo: avisa a su distribuidor y a los super admins.
+  const notificarAltaDeRed = async (newUser, nombre) => {
+    const uid = user?.id || user?.uid;
+    const payload = {
+      type: 'team',
+      title: '👥 Nuevo miembro en la red',
+      body: `${nombre} se unió como ${newUser.role === 'DISTRIBUTOR' ? 'distribuidor' : 'vendedor'}.`,
+      url: '?tab=network'
+    };
+    const padre = newUser.parent_id;
+    if (padre && padre !== uid) await dataService.notify(padre, payload);
+    await dataService.notifySuperAdmins(payload, uid);
+  };
+
+  // Certificación aprobada: avisa a su distribuidor y a los super admins.
+  const notificarCertificacion = async (perfil) => {
+    const uid = perfil?.id || perfil?.uid;
+    const payload = {
+      type: 'certified',
+      title: '🎓 Certificación aprobada',
+      body: `${perfil?.full_name || 'Un miembro del equipo'} aprobó el examen y ya cobra comisiones.`,
+      url: '?tab=network'
+    };
+    if (perfil?.parent_id) await dataService.notify(perfil.parent_id, payload);
+    await dataService.notifySuperAdmins(payload, uid);
   };
 
   if (isLoading && !isAuthenticated) {
@@ -1099,7 +1192,12 @@ function App() {
           selectedSedeContext={selectedSedeContext}
           onAddUser={(newUser) => {
             setTeam(prev => [...prev, newUser]);
-            addNotification(`${newUser.full_name || newUser.name} agregado al equipo`, 'SUCCESS');
+            const nombre = newUser.full_name || newUser.name;
+            addNotification(`${nombre} agregado al equipo`, 'SUCCESS');
+            // Aviso persistente. Va desde el cliente y no por trigger a
+            // propósito: `seedCompleteScenario` inserta perfiles directo en la
+            // tabla, así que un trigger dispararía 21 avisos en cada siembra.
+            notificarAltaDeRed(newUser, nombre);
           }}
         />
       );
@@ -1115,6 +1213,7 @@ function App() {
               setUser(updatedUser);
               saveSession(updatedUser);
               addNotification('¡Certificación completada! Comisiones desbloqueadas.', 'SUCCESS');
+              notificarCertificacion(updatedUser);
               // Recalcular métricas en background
               dataService.getMetrics(updatedUser).then(m => setMetrics(m));
             } catch (err) {
@@ -1512,11 +1611,7 @@ function App() {
         <motion.div key="app" initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
           <Header
             user={{ name: user?.full_name, ...user }}
-            notificationCount={notifications.filter(n => !n.read).length}
-            onShowNotifications={() => {
-              alert(notifications.map(n => n.message).join('\n'));
-              setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-            }}
+            onNavigate={(tab) => setActiveTab(tab)}
             activeTab={activeTab}
             onBack={() => setActiveTab('dashboard')}
             selectedSedeContext={selectedSedeContext}
@@ -1526,6 +1621,36 @@ function App() {
           <nav role="navigation">
             <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} role={user?.role} />
           </nav>
+
+          {/* Toast del feedback propio. Va ABAJO, sobre la barra de navegación,
+              para no chocar con el toast de notificaciones (que sale arriba). */}
+          <AnimatePresence>
+            {localToast && (
+              <motion.div
+                key={localToast.id}
+                initial={{ opacity: 0, y: 26, scale: 0.94 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 16, scale: 0.96 }}
+                transition={{ type: 'spring', stiffness: 340, damping: 26 }}
+                role="status"
+                className="glass"
+                style={{
+                  position: 'fixed', bottom: 'calc(var(--nav-height) + 14px)', left: '50%',
+                  transform: 'translateX(-50%)', width: 'min(420px, 90vw)', zIndex: 4000,
+                  borderRadius: 12, padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10,
+                  border: `1px solid ${localToast.type === 'ERROR' ? 'var(--danger)' : 'var(--success)'}55`,
+                  boxShadow: `0 10px 30px rgba(0,0,0,0.55), 0 0 22px -10px ${localToast.type === 'ERROR' ? 'var(--danger)' : 'var(--success)'}`
+                }}
+              >
+                <span style={{ fontSize: '0.9rem', flexShrink: 0 }}>
+                  {localToast.type === 'ERROR' ? '⚠️' : '✅'}
+                </span>
+                <p style={{ margin: 0, fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                  {localToast.message}
+                </p>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Sedes Management Modal with Focus Trap and ARIA Attributes */}
           {showSedesModal && createPortal(

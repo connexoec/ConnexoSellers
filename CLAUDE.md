@@ -173,6 +173,69 @@ en vez del día 1.
 
 ## 7. Registro de cambios (changelog)
 
+### 2026-08-06 (2) — Sistema de alertas y notificaciones
+> Guía de despliegue completa: **`NOTIFICACIONES_SETUP.md`**.
+> Portado de ConnexoClients y adaptado a este proyecto.
+
+- **Dos capas:** centro in-app (campana + panel + toast, por Supabase Realtime)
+  y **Web Push** al dispositivo (Android/PC/iOS) con interruptor de activar y
+  desactivar por dispositivo.
+- **Diferencia clave con ConnexoClients:** allí las tablas cuelgan de
+  `auth.users` con RLS y políticas `auth.uid()`. Aquí **no hay Supabase Auth**,
+  así que las FK apuntan a `public.profiles` y el **RLS va desactivado** en las
+  dos tablas nuevas, igual que en las otras 6 (Lección #1).
+- **Archivos nuevos:**
+  - `supabase/migrations/20260806120000_setup_notifications.sql` — tablas
+    `notifications` y `push_subscriptions`, triggers, publicación de Realtime y
+    autolimpieza (100 avisos por usuario como máximo).
+  - `supabase/functions/sendPush/index.ts` — Edge Function que reparte la push;
+    la dispara un Database Webhook sobre `notifications` (INSERT).
+  - `public/sw.js` — service worker (no existía). Muestra la push y hace la app
+    instalable, **requisito para que el push funcione en iOS**.
+  - `src/lib/push.js` — permiso, suscripción, reparación y baja por dispositivo.
+  - `src/components/notifications/NotificationCenter.jsx` — campana, panel,
+    interruptor y toast, con el lenguaje visual de la app (estilos en línea +
+    variables CSS + framer-motion, no Tailwind).
+- **Qué avisa y desde dónde** (la tabla completa está en la guía):
+  - **Triggers de Postgres:** nueva venta (al distribuidor padre + super admins)
+    y pedidos de stock (creación → super admins; aprobación/rechazo → al
+    distribuidor).
+  - **Desde la app:** ascenso de nivel, sueldo base desbloqueado, alta de un
+    miembro nuevo y certificación aprobada.
+- **⚠️ Por qué esos cuatro NO van por trigger:**
+  1. El nivel, la comisión y el sueldo base los calcula `calcMetrics` en
+     JavaScript: Postgres no puede verlos. Se detectan en `App.jsx` comparando
+     con el último nivel visto y se escriben con `dedupeKey` (que incluye el mes,
+     porque el nivel se reinicia el día 1).
+  2. `seedCompleteScenario` inserta los 21 perfiles directo en la tabla, así que
+     un trigger en `profiles` dispararía 21 avisos falsos en cada siembra.
+- **Guarda anti-siembra en el trigger de ventas:** solo notifica ventas creadas
+  en los últimos 5 minutos. Una venta real no fija `created_at` (se queda en el
+  `now()` por defecto); la siembra lo pone a medianoche de un día pasado. Sin
+  esto, sembrar generaría ~1.400 notificaciones y otras tantas push.
+- **Iconos del PWA regenerados.** Los cuatro PNG de `public/` eran **el mismo
+  wordmark de 543×301** mientras el manifest declaraba 192×192 y 512×512. Con
+  iconos no cuadrados el instalador los rechaza o los deforma, y **sin app
+  instalada no hay push en iOS**. Ahora: `icon-192.png`, `icon-512.png`
+  (cuadrados, con el logo dentro del área segura para *maskable*),
+  `apple-touch-icon.png` 180×180 y `connexo-badge.png` 96×96 **transparente**
+  (Android pinta el badge usando solo el canal alfa: una imagen opaca saldría
+  como un cuadrado blanco). El wordmark original se conservó en
+  `public/connexo-wordmark.png`.
+- **La campana vieja se reemplazó.** Antes hacía `alert(mensajes.join('\n'))`
+  sobre un array en memoria que se perdía al recargar. Ese `addNotification`
+  sigue existiendo para el feedback de **tu propia** acción ("venta registrada"),
+  pero ahora se ve como un toast abajo; el centro de notificaciones trae lo que
+  hacen **los demás** y sí se persiste.
+- **Auditoría de datos guardados (a petición):** las 1.405 ventas tienen los 12
+  campos completos y ninguna huérfana; `customer_company` sale 0% solo porque la
+  siembra no lo llena (el formulario sí lo pide y `registerSale` lo mapea).
+  `inventory_requests` acepta inserciones correctamente (probado con INSERT +
+  DELETE real); está en 0 filas porque nadie ha pedido stock todavía.
+  **Pendiente real:** `inventory` tiene 1 sola fila en Supabase — el catálogo de
+  16 productos por defecto solo existe en el fallback de localStorage y nunca se
+  sembró en la base.
+
 ### 2026-08-06
 - **Causa raíz de "las imágenes no cargan" y "editar perfil falla": la cuota de
   localStorage.** La foto de perfil se guardaba **sin comprimir**: el JPEG

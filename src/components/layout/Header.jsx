@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Bell, ArrowLeft } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
+import NotificationCenter from '../notifications/NotificationCenter';
 
-const Header = ({ user, notificationCount = 0, onShowNotifications, activeTab, onBack, selectedSedeContext = 'GLOBAL', onChangeContext }) => {
+const Header = ({ user, activeTab, onBack, selectedSedeContext = 'GLOBAL', onChangeContext, onNavigate }) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   return (
@@ -104,33 +105,7 @@ const Header = ({ user, notificationCount = 0, onShowNotifications, activeTab, o
           </div>
         )}
 
-        <button 
-          onClick={onShowNotifications}
-          style={{ position: 'relative', background: 'none', border: 'none', color: 'var(--text-primary)', cursor: 'pointer', padding: '5px' }}
-          aria-label={`Ver ${notificationCount} notificaciones`}
-        >
-          <Bell size={22} />
-          {notificationCount > 0 && (
-            <span style={{ 
-              position: 'absolute', 
-              top: 0, 
-              right: 0, 
-              background: 'var(--accent)', 
-              color: 'var(--bg-primary)', 
-              fontSize: '0.6rem', 
-              fontWeight: 900, 
-              width: '16px', 
-              height: '16px', 
-              borderRadius: '50%', 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'center',
-              border: '2px solid var(--bg-primary)'
-            }}>
-              {notificationCount}
-            </span>
-          )}
-        </button>
+        <NotificationCenter userId={user?.id || user?.uid} onNavigate={onNavigate} />
 
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
           <span className="tier-badge" style={{ background: 'var(--accent)', color: 'var(--bg-primary)', fontWeight: 900, fontSize: '0.6rem' }}>

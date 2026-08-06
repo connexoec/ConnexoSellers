@@ -971,6 +971,95 @@ export const dataService = {
     }
   },
 
+  // ─── NOTIFICACIONES ────────────────────────────────────────────────────────
+  // Toda escritura aquí acaba disparando el webhook de Supabase → sendPush, así
+  // que da igual si la notificación la crea un trigger de la base o la app.
+  //
+  // ⚠️ Degradan en silencio: mientras no se haya ejecutado
+  // `supabase/migrations/20260806120000_setup_notifications.sql`, las tablas no
+  // existen y estas funciones devuelven vacío en vez de romper la app.
+
+  async getNotifications(userId, limit = 40) {
+    if (!userId) return [];
+    try {
+      const { data, error } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(limit);
+      if (error) throw error;
+      return data || [];
+    } catch (err) {
+      console.warn('⚠️ No se pudieron leer las notificaciones:', err.message);
+      return [];
+    }
+  },
+
+  /** Crea una notificación. `dedupeKey` evita repetir el mismo aviso. */
+  async notify(userId, { type, title, body = null, url = null, data = {}, dedupeKey = null }) {
+    if (!userId || !title) return null;
+    try {
+      if (dedupeKey) {
+        const { data: previa } = await supabase
+          .from('notifications')
+          .select('id')
+          .eq('user_id', userId)
+          .eq('data->>dedupeKey', dedupeKey)
+          .limit(1);
+        if (previa && previa.length) return null; // ya se avisó
+      }
+      const fila = {
+        user_id: userId,
+        type,
+        title,
+        body,
+        url,
+        data: dedupeKey ? { ...data, dedupeKey } : data
+      };
+      const { data: creada, error } = await supabase
+        .from('notifications')
+        .insert([fila])
+        .select()
+        .single();
+      if (error) throw error;
+      return creada;
+    } catch (err) {
+      console.warn('⚠️ No se pudo crear la notificación:', err.message);
+      return null;
+    }
+  },
+
+  /** Igual que notify, pero a todos los super admins. */
+  async notifySuperAdmins(payload, exceptUserId = null) {
+    try {
+      const { data: admins, error } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('role', ROLES.SUPER_ADMIN);
+      if (error) throw error;
+      const destinos = (admins || []).filter(a => a.id !== exceptUserId);
+      await Promise.all(destinos.map(a => this.notify(a.id, payload)));
+      return destinos.length;
+    } catch (err) {
+      console.warn('⚠️ No se pudo notificar a los super admins:', err.message);
+      return 0;
+    }
+  },
+
+  async markNotificationsRead(userId) {
+    if (!userId) return;
+    try {
+      await supabase
+        .from('notifications')
+        .update({ read: true })
+        .eq('user_id', userId)
+        .eq('read', false);
+    } catch (err) {
+      console.warn('⚠️ No se pudieron marcar como leídas:', err.message);
+    }
+  },
+
   // ─── GESTIÓN DE INVENTARIO (Real + LocalStorage Fallback) ──────────────────
   async getInventory(sedeContext = 'GLOBAL') {
     try {
