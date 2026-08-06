@@ -174,8 +174,12 @@ en vez del día 1.
 ## 7. Registro de cambios (changelog)
 
 ### 2026-08-06 (2) — Sistema de alertas y notificaciones
-> Guía de despliegue completa: **`NOTIFICACIONES_SETUP.md`**.
-> Portado de ConnexoClients y adaptado a este proyecto.
+> Guía completa: **`NOTIFICACIONES_SETUP.md`**. Portado de ConnexoClients.
+> **DESPLEGADO Y VERIFICADO** en `aisjtkezgumawgjmwckb`: migraciones aplicadas,
+> secretos VAPID cargados, `sendPush` desplegada y el disparo de push conectado.
+> Solo falta que cada persona active los avisos en su dispositivo.
+> Diagnóstico en una línea: `select * from public.estado_notificaciones();`
+> (7 columnas, todas deben dar `true`).
 
 - **Dos capas:** centro in-app (campana + panel + toast, por Supabase Realtime)
   y **Web Push** al dispositivo (Android/PC/iOS) con interruptor de activar y
@@ -213,6 +217,26 @@ en vez del día 1.
   en los últimos 5 minutos. Una venta real no fija `created_at` (se queda en el
   `now()` por defecto); la siembra lo pone a medianoche de un día pasado. Sin
   esto, sembrar generaría ~1.400 notificaciones y otras tantas push.
+- **⚠️ El "Database Webhook" del panel NO se pudo usar.** Ese mecanismo es
+  `supabase_functions.http_request`, un esquema que **solo existe si alguna vez
+  se habilitó la integración de webhooks en el panel** — y en este proyecto
+  nunca se hizo. La migración `20260806140000` lo intenta dentro de una guarda
+  (`to_regproc(...) is null`), así que no falla: simplemente no crea nada.
+  El disparo real lo hace `20260806160000` con **`pg_net`** directamente
+  (`net.http_post` asíncrono desde un trigger). Ventaja: queda versionado en el
+  repo y no depende de que alguien entre al panel. El trigger atrapa cualquier
+  error, así que **un fallo de push nunca impide guardar la notificación**.
+- **Verificación de punta a punta** (sin necesitar un teléfono): se inserta una
+  suscripción falsa con claves P-256 **válidas**, se crea una notificación y se
+  comprueba que la suscripción **desaparece sola**. Eso solo puede pasar si
+  corrió la cadena entera: trigger → pg_net → `sendPush` → cifrado web-push →
+  POST al servidor de push → 404 → borrado de la suscripción caducada. Tardó 3 s.
+  Los triggers se probaron igual, con INSERT/DELETE reales y limpieza posterior.
+- **Trampa al probar por tiempo:** la primera prueba de la guarda anti-siembra
+  dio falso negativo porque filtraba las notificaciones por `created_at >= (hora
+  local)`, y **el reloj del servidor va ~2 s por delante del local**, así que
+  colaban avisos del paso anterior. Al filtrar por **contenido** en vez de por
+  marca de tiempo, las dos guardas (fecha antigua y nota de escenario) pasaron.
 - **Iconos del PWA regenerados.** Los cuatro PNG de `public/` eran **el mismo
   wordmark de 543×301** mientras el manifest declaraba 192×192 y 512×512. Con
   iconos no cuadrados el instalador los rechaza o los deforma, y **sin app

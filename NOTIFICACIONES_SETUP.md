@@ -1,4 +1,20 @@
-# 🔔 Notificaciones de Connexo Ventas — guía de despliegue
+# 🔔 Notificaciones de Connexo Ventas
+
+> ## ✅ YA ESTÁ DESPLEGADO (2026-08-06)
+> Los pasos 1, 2 y 3 **están hechos** en el proyecto `aisjtkezgumawgjmwckb`:
+> migración aplicada, secretos VAPID cargados, `sendPush` desplegado y el
+> disparo de push conectado. Verificado de punta a punta.
+>
+> **Lo único que falta es el Paso 4: que cada persona active los avisos en su
+> dispositivo.** El resto de esta guía queda como referencia y para diagnóstico.
+>
+> Comprobar el estado en cualquier momento:
+> ```sql
+> select * from public.estado_notificaciones();
+> ```
+> Las 7 columnas deben dar `true`. También responde por REST:
+> `POST /rest/v1/rpc/estado_notificaciones`.
+
 
 Dos capas:
 
@@ -89,17 +105,29 @@ contenido de `supabase/functions/sendPush/index.ts` → Deploy, y desactiva
 
 ---
 
-## Paso 3 — Database Webhook (es lo que dispara la push)
+## Paso 3 — Disparo de la push ✅ (hecho por SQL, sin panel)
 
-Supabase → **Database → Webhooks → Create a new hook**:
+Cada notificación nueva tiene que llamar a `sendPush`. Normalmente eso se hace
+con un **Database Webhook** del panel… pero ese mecanismo
+(`supabase_functions.http_request`) **no existe en este proyecto**, porque nunca
+se habilitó la integración de webhooks.
 
-- **Table:** `public.notifications`
-- **Events:** `INSERT`
-- **Type:** *Supabase Edge Functions* → `sendPush`
-- **Method:** `POST` (el resto por defecto)
+En vez de depender de eso, el disparo se hace con **`pg_net` directamente**
+(`supabase/migrations/20260806160000_notifications_push_hook.sql`): un trigger
+sobre `notifications` que encola un `net.http_post` a la Edge Function. Mismo
+efecto, sin tocar el panel, y versionado en el repositorio.
 
-Así, cada notificación nueva llama a `sendPush`, que la reparte a todos los
-dispositivos de esa persona.
+Detalles que importan:
+- `net.http_post` es **asíncrono**: insertar una notificación no espera a la
+  función, así que el aviso in-app aparece al instante igual.
+- El trigger atrapa cualquier error: **si la push falla, la notificación se
+  guarda igual**. Nunca se pierde el aviso in-app por un problema de red.
+- La Edge Function está desplegada con `--no-verify-jwt`, por eso no se manda
+  ninguna credencial en la cabecera.
+
+> Si algún día prefieres el webhook del panel, primero habilítalo una vez
+> (Database → Webhooks) y luego la migración `20260806140000` lo creará sola.
+> No hace falta: el mecanismo actual ya funciona.
 
 ---
 
@@ -142,9 +170,13 @@ instrucciones sola en vez de fallar sin explicación.
 
 ## Diagnóstico
 
+**Lo primero, siempre:** `select * from public.estado_notificaciones();`
+Devuelve de un vistazo si están las tablas, los 3 triggers, el disparo de push
+y el Realtime, más cuántos dispositivos hay suscritos.
+
 | Síntoma | Dónde mirar |
 |---|---|
-| La campana no se actualiza sola | Que `notifications` esté en la publicación `supabase_realtime` (el SQL lo hace) |
+| La campana no se actualiza sola | `realtime_activo` en `estado_notificaciones()` |
 | El panel dice "Push sin registrar (db: …)" | Falta el Paso 1: las tablas no existen |
 | No llega nada al teléfono | Edge Functions → `sendPush` → **Logs**. `sent: 0` = no hay suscripciones en ese dispositivo (repetir Paso 4) |
 | "Están verdes pero no llegan" | Botón **"¿No llegan?"** del panel: la suscripción quedó atada a una llave VAPID anterior y hay que renovarla. Es la causa nº1 de "en la PC sí y en el teléfono no" |
