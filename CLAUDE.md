@@ -173,6 +173,49 @@ en vez del día 1.
 
 ## 7. Registro de cambios (changelog)
 
+### 2026-08-07 — "Credenciales inválidas" al entrar con un vendedor recién creado
+- **Reporte:** "creo un vendedor desde el super admin y no me deja entrar, dice
+  credenciales inválidas". **La creación no fallaba**: el perfil estaba en la
+  base con la clave correcta y la consulta de login devolvía la fila. Fallaba el
+  **login**, y el mensaje no permitía saber por qué.
+- **Causa raíz — un solo mensaje para dos fallos distintos.** `login` buscaba con
+  `.eq('email', …).eq('password', …)` en la **misma** consulta, así que "ese
+  correo no existe" y "la clave no coincide" daban idéntico resultado y acababan
+  en "Credenciales incorrectas". Sin saber cuál de los dos era, no hay forma de
+  corregirlo desde la pantalla.
+- **Y el `eq` del correo es exacto:** un espacio final (los teclados del móvil lo
+  añaden al autocompletar) o una mayúscula hacían "no existe la cuenta" aunque la
+  cuenta estuviera perfecta. Nada normalizaba el correo, ni al crear ni al entrar.
+- **Arreglos:**
+  - `login` normaliza (`trim` + minúsculas el correo, `trim` la clave), busca
+    **solo por correo** y compara la clave en JS → mensajes separados: *"No existe
+    ninguna cuenta con ese correo"* vs. *"La contraseña no coincide. Si la cuenta
+    es nueva, la clave temporal es: connexo123"*.
+  - Reintento sin distinguir mayúsculas (`ilike`) para las cuentas viejas ya
+    guardadas con mayúsculas. ⚠️ `ilike` trata `_` como comodín y hay correos con
+    guion bajo, así que la igualdad real se reconfirma en JS.
+  - `addTeamMember` y `updateProfile` guardan el correo ya normalizado, para que
+    el problema no vuelva a entrar por la puerta de la creación.
+  - El "no se pudo verificar" final ya no dice "credenciales incorrectas": si se
+    llega ahí es que **no hubo conexión** con la base (el fallback local tampoco
+    encontró nada), y decir "credenciales" mandaba a diagnosticar lo que no era.
+  - Duplicado de correo → *"Ya existe una cuenta con el correo X"* en vez del
+    texto crudo de Postgres.
+- **Bug latente encontrado al probar (Lección #8 otra vez):** en `addTeamMember`
+  la actualización de la caché `connexo_team` estaba **dentro del `try` del
+  INSERT**. El usuario ya estaba guardado en la base, pero un fallo de
+  `localStorage` (cuota, JSON corrupto) saltaba al `catch`, mostraba "No se pudo
+  registrar" y **caía al fallback offline, que lo duplicaba en local**. Ahora la
+  caché va en su propio `try` y nunca tumba la creación.
+- **Verificado** con el `dataService` real contra Supabase (Vite +
+  `ssrLoadModule`), 8 casos de login: correo con espacios ✅, en MAYÚSCULAS ✅,
+  clave con espacios ✅, clave equivocada → mensaje de clave, correo inexistente →
+  mensaje de correo, rol equivocado → "Acceso denegado", super admin con
+  mayúsculas ✅. Y el ciclo crear (correo sucio) → entrar → duplicado → borrar.
+- 🔎 **Ojo:** la base está **purgada** — quedan 2 perfiles y **0 ventas** (el
+  2026-08-06 eran 24 y 1.405). Alguien corrió "PURGAR". `inventory` conserva sus
+  17 filas y `sedes` las 2.
+
 ### 2026-08-06 (6) — Carga del historial en dos fases
 - **Al entrar solo se piden las ventas del MES en curso**; el histórico completo
   llega después, en segundo plano, sin bloquear la pantalla. Medido en el Super
