@@ -215,7 +215,13 @@ async function calcMetrics(user) {
 }
 
 export const dataService = {
-  async login(email, password, selectedRole = null) {
+  async login(rawEmail, rawPassword, selectedRole = null) {
+    // El correo no distingue mayúsculas y los teclados del móvil suelen añadir
+    // un espacio al autocompletar. Sin normalizar, la búsqueda es un `eq` exacto
+    // y una cuenta recién creada "no existe" aunque la clave sea correcta.
+    const email = (rawEmail || '').trim().toLowerCase();
+    const password = (rawPassword || '').trim();
+
     // 1. Validación de Super Admins Principales
     const hardcodedAdmins = {
       'thony.karter@gmail.com': { password: '__REDACTED_SUPER_ADMIN_PASSWORD__', name: 'Thony Karter (Admin)' }
@@ -270,38 +276,56 @@ export const dataService = {
     // 2. Login normal para el resto de usuarios
     let userData = null;
     try {
-      const { data, error } = await supabase
+      // Se busca SOLO por correo y la clave se compara en JS. Antes el `eq` de
+      // la clave iba en la misma consulta, así que "el correo no existe" y "la
+      // clave no coincide" devolvían lo mismo y acababan en un único mensaje
+      // vago ("credenciales incorrectas") que no dice qué corregir.
+      let { data: rows, error } = await supabase
         .from('profiles')
         .select('*')
-        .eq('email', email)
-        .eq('password', password)
-        .single();
-        
-      if (!error && data) {
-        userData = data;
-      } else {
-        if (error && error.code === 'PGRST116') {
-          throw new Error('USER_NOT_FOUND');
-        }
-        throw new Error('No encontrado en Supabase');
+        .eq('email', email);
+
+      if (error) throw new Error(error.message);
+
+      // Cuentas antiguas guardadas con mayúsculas o espacios: se reintenta sin
+      // distinguir mayúsculas. `ilike` trata "_" como comodín (y hay correos con
+      // guion bajo), así que la igualdad real se confirma después en JS.
+      if (!rows || rows.length === 0) {
+        const { data: alt, error: errAlt } = await supabase
+          .from('profiles')
+          .select('*')
+          .ilike('email', email);
+        if (errAlt) throw new Error(errAlt.message);
+        rows = (alt || []).filter(p => (p.email || '').trim().toLowerCase() === email);
       }
+
+      if (rows.length === 0) throw new Error('USER_NOT_FOUND');
+
+      const match = rows.find(p => (p.password || '').trim() === password);
+      if (!match) throw new Error('BAD_PASSWORD');
+      userData = match;
     } catch (err) {
       if (err.message === 'USER_NOT_FOUND') {
-        throw new Error('Credenciales incorrectas o cuenta no registrada.');
+        throw new Error('No existe ninguna cuenta con ese correo. Revísalo o pide al administrador que la cree.');
+      }
+      if (err.message === 'BAD_PASSWORD') {
+        throw new Error('La contraseña no coincide. Si la cuenta es nueva, la clave temporal es: connexo123');
       }
       // Buscar en caché local (modo offline o usuarios caídos por schema)
       const cached = localStorage.getItem('connexo_team');
       if (cached) {
         const team = JSON.parse(cached);
-        const localMatch = team.find(t => t.email === email && t.password === password);
+        const localMatch = team.find(
+          t => (t.email || '').trim().toLowerCase() === email && (t.password || '').trim() === password
+        );
         if (localMatch) {
           userData = localMatch;
         }
       }
     }
-      
+
     if (!userData) {
-      throw new Error('Credenciales incorrectas. Verifica tu email y contraseña.');
+      throw new Error('No se pudo verificar la cuenta (sin conexión con la base). Revisa tu internet e inténtalo otra vez.');
     }
 
     // Validar que el rol seleccionado en la UI coincida con el rol real
@@ -790,8 +814,11 @@ export const dataService = {
   },
 
   async addTeamMember(parentId, userData) {
+    // Se guarda normalizado (sin espacios y en minúsculas) para que coincida
+    // siempre con lo que teclee la persona al entrar. Ver `login`.
+    const email = (userData.email || '').trim().toLowerCase();
     let calculatedSede = userData.sede_asignada || null;
-    
+
     // Si no viene sede asignada, intentamos obtenerla del padre
     if (!calculatedSede && parentId) {
       try {
@@ -810,14 +837,13 @@ export const dataService = {
 
     // Si aún no hay sede asignada, usamos el fallback de email (ve -> Venezuela, si no Ecuador)
     if (!calculatedSede) {
-      const emailVal = userData.email || '';
-      calculatedSede = emailVal.toLowerCase().includes('ve') ? 'sede-ve-1' : 'sede-ec-1';
+      calculatedSede = email.includes('ve') ? 'sede-ve-1' : 'sede-ec-1';
     }
 
     const newProfile = {
       full_name: userData.name,
-      email: userData.email,
-      password: userData.password || 'connexo123',
+      email,
+      password: (userData.password || 'connexo123').trim(),
       role: userData.role || ROLES.SELLER,
       tier: userData.tier || null,
       tier_start_date: userData.tier ? new Date().toISOString() : null,
@@ -834,18 +860,37 @@ export const dataService = {
         .select()
         .single();
 
-      if (error) throw new Error(error.message);
-      const { password, ...safeProfile } = data;
-      
-      const completeProfile = { ...newProfile, ...safeProfile };
-      const cached = localStorage.getItem('connexo_team') || '[]';
-      const team = JSON.parse(cached);
-      if (!team.some(t => t.email === completeProfile.email)) {
-        team.push(completeProfile);
-        safeSetItem('connexo_team', JSON.stringify(team));
+      if (error) {
+        if (error.code === '23505') {
+          // Mensaje ya redactado para la persona: se relanza tal cual, sin el
+          // prefijo genérico de más abajo.
+          const dup = new Error(`Ya existe una cuenta con el correo ${email}.`);
+          dup.yaExplicado = true;
+          throw dup;
+        }
+        throw new Error(error.message);
       }
+      const { password, ...safeProfile } = data;
+
+      const completeProfile = { ...newProfile, ...safeProfile };
+
+      // La caché es un extra (Lección #8): el usuario YA está en la base, así
+      // que un fallo aquí no puede tumbar la creación ni caer al fallback
+      // offline, que lo duplicaría en local.
+      try {
+        const cached = localStorage.getItem('connexo_team') || '[]';
+        const team = JSON.parse(cached);
+        if (!team.some(t => t.email === completeProfile.email)) {
+          team.push(completeProfile);
+          safeSetItem('connexo_team', JSON.stringify(team));
+        }
+      } catch (errCache) {
+        console.warn('No se pudo actualizar la caché de equipo:', errCache.message);
+      }
+
       return completeProfile;
     } catch (err) {
+      if (err.yaExplicado) throw err;
       // Si el error NO es de red (ej: duplicado), abortamos y lo mostramos al usuario
       if (err.message && !err.message.toLowerCase().includes('fetch')) {
         console.error("⚠️ Error de Supabase al agregar usuario:", err.message);
@@ -994,6 +1039,11 @@ export const dataService = {
   },
 
   async updateProfile(userId, updates) {
+    // Mismo criterio que en `addTeamMember`: si se edita el correo, se guarda
+    // normalizado para que el login lo encuentre.
+    if (typeof updates.email === 'string') {
+      updates = { ...updates, email: updates.email.trim().toLowerCase() };
+    }
     try {
       const { data, error } = await supabase
         .from('profiles')
