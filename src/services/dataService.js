@@ -222,14 +222,21 @@ export const dataService = {
     const email = (rawEmail || '').trim().toLowerCase();
     const password = (rawPassword || '').trim();
 
-    // 1. Validación de Super Admins Principales
+    // 1. Validación del Super Admin principal.
+    // La clave NUNCA se hardcodea: se lee de la variable de entorno
+    // VITE_SUPER_ADMIN_PASSWORD (definida en .env local y en Vercel). Si no está
+    // configurada, `adminInfo.password` es undefined y el acceso falla de forma
+    // segura en vez de dejar una credencial en el código.
     const hardcodedAdmins = {
-      'thony.karter@gmail.com': { password: '__REDACTED_SUPER_ADMIN_PASSWORD__', name: 'Thony Karter (Admin)' }
+      'thony.karter@gmail.com': {
+        password: import.meta.env.VITE_SUPER_ADMIN_PASSWORD,
+        name: 'Thony Karter (Admin)'
+      }
     };
 
     const adminInfo = hardcodedAdmins[email];
 
-    if (adminInfo && password === adminInfo.password) {
+    if (adminInfo && adminInfo.password && password === adminInfo.password) {
       const { data: existingAdmin } = await supabase
         .from('profiles')
         .select('*')

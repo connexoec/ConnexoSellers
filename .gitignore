@@ -7,10 +7,10 @@ node_modules/
 dist/
 dist-ssr/
 
-# Environment variables
+# Environment variables — NUNCA versionar credenciales
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
 
 # Logs
 logs/

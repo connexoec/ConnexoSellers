@@ -1654,7 +1654,7 @@ function App() {
                       }
 
                       const password = prompt("🔒 Confirmación de Seguridad:\nIngresa la contraseña del Super Admin para completar la depuración:");
-                      if (password === '__REDACTED_SUPER_ADMIN_PASSWORD__') {
+                      if (password && password === import.meta.env.VITE_SUPER_ADMIN_PASSWORD) {
                         await executePurge();
                       } else if (password !== null) {
                         alert("Contraseña incorrecta. Acción cancelada.");
