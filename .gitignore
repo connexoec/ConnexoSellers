@@ -43,3 +43,20 @@ PLANES_INVERSION_DISTRIBUIDORES.docx
 *PLANES_INVERSION*
 *_PRIVADO.*
 /Documentos internos/
+
+# Documentación y notas que describen la lógica de negocio de Connexo.
+# Se conservan en local pero NO se versionan en el repo público.
+CLAUDE.md
+DOCUMENTACION_TECNICA.md
+DOCUMENTACION_TECNICA.docx
+DOCUMENTACION_TECNICA.pdf
+MANUAL_CAPACITACION.md
+MANUAL_CAPACITACION.docx
+Manual_Tecnico_Estructural.pdf
+NOTIFICACIONES_SETUP.md
+scripts/generate-doc-pdf.mjs
+
+# Definiciones de la base (esquema, migraciones y funciones de Supabase).
+# Revelan la estructura del backend; se quedan en local. El esquema real
+# vive en el proyecto Supabase.
+supabase/

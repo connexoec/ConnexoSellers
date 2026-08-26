@@ -1792,7 +1792,8 @@ function App() {
                 {/* List of active Sedes */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '1.5rem', maxHeight: '200px', overflowY: 'auto' }}>
                   {sedes.map(s => {
-                    const canDelete = user?.email === 'thony.karter@gmail.com';
+                    const masterAdminEmail = (import.meta.env.VITE_MASTER_ADMIN || '').trim().toLowerCase();
+                    const canDelete = !!masterAdminEmail && (user?.email || '').trim().toLowerCase() === masterAdminEmail;
                     return (
                       <div key={s.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
                         <div>

@@ -2,6 +2,12 @@ import { supabase } from '../lib/supabase';
 import { DEFAULT_PROFILE_TYPE } from '../constants/customerProfiles';
 import { safeSetItem } from '../lib/storage';
 
+// El correo del Super Admin maestro se lee de una variable de entorno para no
+// dejar datos personales en el código fuente. Definir VITE_MASTER_ADMIN en el
+// `.env` local y en Vercel. Si no está configurada, no hay admin maestro y el
+// acceso privilegiado falla de forma segura en vez de dejar el dato en el repo.
+const MASTER_ADMIN_EMAIL = (import.meta.env.VITE_MASTER_ADMIN || '').trim().toLowerCase();
+
 export const PLANS = {
   PRO:   { id: 'PRO',   price: 97.00,  label: 'Plan PRO' },
   ULTRA: { id: 'ULTRA', price: 197.00, label: 'Plan ULTRA' },
@@ -227,12 +233,14 @@ export const dataService = {
     // VITE_SUPER_ADMIN_PASSWORD (definida en .env local y en Vercel). Si no está
     // configurada, `adminInfo.password` es undefined y el acceso falla de forma
     // segura en vez de dejar una credencial en el código.
-    const hardcodedAdmins = {
-      'thony.karter@gmail.com': {
-        password: import.meta.env.VITE_SUPER_ADMIN_PASSWORD,
-        name: 'Thony Karter (Admin)'
-      }
-    };
+    const hardcodedAdmins = MASTER_ADMIN_EMAIL
+      ? {
+          [MASTER_ADMIN_EMAIL]: {
+            password: import.meta.env.VITE_SUPER_ADMIN_PASSWORD,
+            name: 'Super Admin'
+          }
+        }
+      : {};
 
     const adminInfo = hardcodedAdmins[email];
 
@@ -246,7 +254,7 @@ export const dataService = {
       if (existingAdmin) {
         _currentUser = {
           ...existingAdmin,
-          permiso_eliminar_sede: email === 'thony.karter@gmail.com',
+          permiso_eliminar_sede: email === MASTER_ADMIN_EMAIL,
           sede_asignada: 'GLOBAL'
         };
         return _currentUser;
@@ -273,7 +281,7 @@ export const dataService = {
         }
         _currentUser = {
           ...insertedAdmin,
-          permiso_eliminar_sede: email === 'thony.karter@gmail.com',
+          permiso_eliminar_sede: email === MASTER_ADMIN_EMAIL,
           sede_asignada: 'GLOBAL'
         };
         return _currentUser;
@@ -1545,7 +1553,7 @@ export const dataService = {
       await supabase.from('inventory_requests').delete().neq('id', '00000000-0000-0000-0000-000000000000');
       // Borrar todos los usuarios (profiles) excepto el super admin principal
       await supabase.from('profiles').delete()
-        .neq('email', 'thony.karter@gmail.com');
+        .neq('email', MASTER_ADMIN_EMAIL || '__sin_admin__');
     } catch (e) {
       console.warn("Supabase purge error:", e);
     }
@@ -1813,8 +1821,8 @@ export const dataService = {
   },
 
   async deleteSede(sedeId, userEmail) {
-    const masterAdmin = import.meta.env.VITE_MASTER_ADMIN || 'thony.karter@gmail.com';
-    if (userEmail !== masterAdmin) {
+    const masterAdmin = MASTER_ADMIN_EMAIL;
+    if (!masterAdmin || (userEmail || '').trim().toLowerCase() !== masterAdmin) {
       throw new Error('Validación de Seguridad: Solo el Master Admin posee privilegios para eliminar sedes.');
     }
     try {
