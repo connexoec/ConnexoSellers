@@ -36,3 +36,10 @@ Thumbs.db
 
 # Supabase CLI (estado local, no versionar)
 supabase/.temp/
+
+# Documentos internos/comerciales — se quedan SOLO en local, nunca al repo
+# público (planes de inversión, precios de distribuidores, etc.).
+PLANES_INVERSION_DISTRIBUIDORES.docx
+*PLANES_INVERSION*
+*_PRIVADO.*
+/Documentos internos/
