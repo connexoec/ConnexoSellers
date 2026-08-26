@@ -17,6 +17,7 @@ import BadgeGrid, { BADGES_INFO } from './components/badges/BadgeGrid';
 import { evaluarInsigniasAutomaticas } from './lib/badges';
 import { SESSION_KEY, saveSession, loadSession, clearSession, safeSetItem, avatarKey } from './lib/storage';
 import { compressImage } from './lib/image';
+import { exportClientesXLSX } from './lib/exportClientes';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -643,50 +644,24 @@ function App() {
             <p style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', margin: 0 }}>Base de clientes y activaciones.</p>
           </div>
           {user?.role === 'SUPER_ADMIN' || user?.role === 'DISTRIBUTOR' ? (
-            <button 
-              onClick={() => {
+            <button
+              onClick={async () => {
                 try {
-                  const doc = new jsPDF();
-                  doc.setFont('helvetica');
-                  doc.text(`Base de Clientes - ${user?.role === 'SUPER_ADMIN' ? 'Red Completa' : 'Mi Equipo'}`, 14, 20);
-                  const groupedSales = sales.reduce((acc, sale) => {
-                    const plan = sale.plan_type || 'Otros';
-                    if (!acc[plan]) acc[plan] = [];
-                    acc[plan].push(sale);
-                    return acc;
-                  }, {});
-                  let currentY = 30;
-                  Object.keys(groupedSales).forEach((plan) => {
-                    doc.setFontSize(12);
-                    doc.text(`Categoría: Plan ${plan}`, 14, currentY);
-                    autoTable(doc, {
-                      startY: currentY + 5,
-                      head: [['Cliente', 'Teléfono', 'Email', 'Vendedor', 'Fecha']],
-                      body: groupedSales[plan].map(s => {
-                        const seller = team.find(m => m.id === s.seller_id)?.full_name || 'Desconocido';
-                        return [
-                          s.customer_name || 'N/A',
-                          s.customer_phone || 'N/A',
-                          s.customer_email || 'N/A',
-                          seller,
-                          new Date(s.created_at).toLocaleDateString()
-                        ];
-                      }),
-                      theme: 'striped',
-                      headStyles: { fillColor: [255, 102, 0] }
-                    });
-                    currentY = doc.lastAutoTable.finalY + 15;
+                  await exportClientesXLSX({
+                    sales,
+                    team,
+                    sedes,
+                    scope: user?.role === 'SUPER_ADMIN' ? 'Red Completa' : 'Mi Equipo',
                   });
-                  doc.save('base_clientes_connexo.pdf');
                 } catch (err) {
-                  console.error("Error generating PDF:", err);
-                  alert("Error al generar el documento PDF.");
+                  console.error("Error generando el Excel:", err);
+                  alert("Error al generar el documento Excel.");
                 }
               }}
-              className="btn glass" 
+              className="btn glass"
               style={{ fontSize: '0.65rem', padding: '6px 10px', height: 'auto', gap: '6px' }}
             >
-              📥 PDF
+              📊 Excel
             </button>
           ) : (
             <div style={{ textAlign: 'right' }}>
