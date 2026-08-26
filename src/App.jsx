@@ -11,13 +11,12 @@ import { getProfileLabel } from './constants/customerProfiles';
 import Academy      from './components/academy/Academy';
 import InventoryManager from './components/inventory/InventoryManager';
 import { dataService, PLANS } from './services/dataService';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
 import BadgeGrid, { BADGES_INFO } from './components/badges/BadgeGrid';
 import { evaluarInsigniasAutomaticas } from './lib/badges';
 import { SESSION_KEY, saveSession, loadSession, clearSession, safeSetItem, avatarKey } from './lib/storage';
 import { compressImage } from './lib/image';
 import { exportClientesXLSX } from './lib/exportClientes';
+import { exportReporteGlobalXLSX } from './lib/exportReporteGlobal';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -975,40 +974,18 @@ function App() {
                   🏢 Gestionar Sede
                 </button>
                 <button
-                  onClick={() => {
+                  onClick={async () => {
                     try {
-                      // Consolidado Global Report Export
-                      const totalEcuadorSales = sales.filter(s => s.sede_id === 'sede-ec-1').length;
-                      const totalVenezuelaSales = sales.filter(s => s.sede_id === 'sede-ve-1').length;
-                      const totalEcuRevenue = sales.filter(s => s.sede_id === 'sede-ec-1').reduce((a, b) => a + (b.amount || 0), 0);
-                      const totalVenRevenue = sales.filter(s => s.sede_id === 'sede-ve-1').reduce((a, b) => a + (b.amount || 0), 0);
-
-                      const doc = new jsPDF();
-                      doc.setFont('helvetica');
-                      doc.setFontSize(16);
-                      doc.text('CONSOLIDADO GLOBAL MULTISEDE - CONNEXO', 14, 20);
-                      
-                      doc.setFontSize(11);
-                      doc.text(`Fecha del Reporte: ${new Date().toLocaleString()}`, 14, 28);
-                      doc.text(`Admin Ejecutante: ${user?.email}`, 14, 34);
-
-                      autoTable(doc, {
-                        startY: 40,
-                        head: [['Sede', 'País', 'Transacciones', 'Volumen de Ventas']],
-                        body: [
-                          ['Sede Quito', 'Ecuador', totalEcuadorSales, `$${totalEcuRevenue.toFixed(2)}`],
-                          ['Sede Caracas', 'Venezuela', totalVenezuelaSales, `$${totalVenRevenue.toFixed(2)}`],
-                          ['Total Consolidado', 'Global', sales.length, `$${sales.reduce((a, b) => a + (b.amount || 0), 0).toFixed(2)}`]
-                        ],
-                        theme: 'striped',
-                        headStyles: { fillColor: [249, 115, 22] }
+                      await exportReporteGlobalXLSX({
+                        sales,
+                        team,
+                        sedes,
+                        generadoPor: user?.email || '',
                       });
-
-                      doc.save('reporte_global_connexo.pdf');
-                      addNotification('Reporte Consolidado Exportado con éxito', 'SUCCESS');
+                      addNotification('Reporte Global exportado con éxito', 'SUCCESS');
                     } catch (err) {
                       console.error('Error al exportar reporte global:', err);
-                      alert('Error al generar el Reporte Consolidado.');
+                      alert('Error al generar el Reporte Global.');
                     }
                   }}
                   className="btn btn-primary"
