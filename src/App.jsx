@@ -976,13 +976,24 @@ function App() {
                 <button
                   onClick={async () => {
                     try {
+                      addNotification('Generando reporte global…', 'INFO');
+                      // El Inicio del Super Admin solo tiene el MES en curso en
+                      // `sales` (el histórico llega en segundo plano). Para el
+                      // reporte necesitamos TODO, así que se pide completo aquí
+                      // en vez de depender del estado parcial.
+                      const uid = user?.uid || user?.id;
+                      const [ventas, perfiles, sucursales] = await Promise.all([
+                        dataService.getSalesForTeam(uid, user?.role),
+                        team.length ? Promise.resolve(team) : dataService.getAllProfiles(),
+                        sedes.length ? Promise.resolve(sedes) : dataService.getSedes(),
+                      ]);
                       await exportReporteGlobalXLSX({
-                        sales,
-                        team,
-                        sedes,
+                        sales: ventas || [],
+                        team: perfiles || [],
+                        sedes: sucursales || [],
                         generadoPor: user?.email || '',
                       });
-                      addNotification('Reporte Global exportado con éxito', 'SUCCESS');
+                      addNotification(`Reporte Global exportado (${(ventas || []).length} ventas)`, 'SUCCESS');
                     } catch (err) {
                       console.error('Error al exportar reporte global:', err);
                       alert('Error al generar el Reporte Global.');
