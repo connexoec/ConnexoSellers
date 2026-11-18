@@ -513,7 +513,7 @@ function App() {
       dataService.notify(uid, {
         type: 'level',
         title: `🚀 ¡Ascendiste a ${metrics.level}!`,
-        body: `Tu comisión sube al ${(metrics.rate * 100).toFixed(0)}% y tu sueldo base a $${metrics.base}.`,
+        body: `Tu comisión sube al ${(metrics.rate * 100).toFixed(0)}% y tu bono por meta a $${metrics.base}.`,
         url: '?tab=dashboard',
         // El nivel se reinicia cada mes: la clave lleva el mes para que un
         // ascenso del mes siguiente sí vuelva a avisar.
@@ -529,8 +529,8 @@ function App() {
         safeSetItem(claveBase, '1');
         dataService.notify(uid, {
           type: 'base',
-          title: '💵 Sueldo base desbloqueado',
-          body: `Cumpliste la meta de ventas anuales del mes: $${metrics.base} asegurados.`,
+          title: '💵 Bono por meta desbloqueado',
+          body: `Cumpliste la meta de ventas anuales del mes: bono por meta de $${metrics.base}.`,
           url: '?tab=dashboard',
           dedupeKey: `base:${currentMonthKey}`
         });
@@ -1008,7 +1008,7 @@ function App() {
               </div>
             </div>
 
-            {/* TABLA DE PRECIOS / INVERSIONES TIPO BILLETERA */}
+            {/* TABLA DE PRECIOS Y PAQUETES DE LICENCIAS */}
             <motion.div 
               initial={{ opacity: 0, y: 10 }} 
               animate={{ opacity: 1, y: 0 }}
@@ -1016,16 +1016,16 @@ function App() {
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '0.2rem', marginTop: '0.5rem' }}>
                 <span style={{ color: 'var(--accent)', fontWeight: 'bold', fontSize: '1.1rem' }}>💼</span>
-                <h3 style={{ fontSize: '0.9rem', textTransform: 'uppercase', fontFamily: 'var(--font-heading)', margin: 0, letterSpacing: '1px' }}>Precios e Inversión Connexo</h3>
+                <h3 style={{ fontSize: '0.9rem', textTransform: 'uppercase', fontFamily: 'var(--font-heading)', margin: 0, letterSpacing: '1px' }}>Precios y paquetes de licencias</h3>
               </div>
 
               <div className="card glass" style={{ padding: '1.25rem' }}>
-                <h4 style={{ fontSize: '0.75rem', opacity: 0.7, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '12px', color: 'var(--accent)' }}>Planes de Inversión por Niveles</h4>
+                <h4 style={{ fontSize: '0.75rem', opacity: 0.7, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '12px', color: 'var(--accent)' }}>Paquetes de licencias por nivel</h4>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   {[
-                    { lvl: 'Nivel 1', units: '100 unidades', inv: '$526.00', margin: '$53.20' },
-                    { lvl: 'Nivel 2', units: '200 unidades', inv: '$1,052.00', margin: '$106.40' },
-                    { lvl: 'Nivel 3', units: '300 unidades', inv: '$1,578.00', margin: '$159.60' }
+                    { lvl: 'Nivel 1', units: '100 unidades', inv: '$526.00' },
+                    { lvl: 'Nivel 2', units: '200 unidades', inv: '$1,052.00' },
+                    { lvl: 'Nivel 3', units: '300 unidades', inv: '$1,578.00' }
                   ].map((item, idx) => (
                     <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', background: 'rgba(0,0,0,0.2)', borderRadius: '8px' }}>
                       <div>
@@ -1033,8 +1033,7 @@ function App() {
                         <p style={{ margin: 0, fontSize: '0.65rem', opacity: 0.6 }}>{item.units}</p>
                       </div>
                       <div style={{ textAlign: 'right' }}>
-                        <p style={{ margin: 0, fontWeight: 'bold', fontSize: '0.85rem', color: 'var(--accent)' }}>{item.inv} Inv.</p>
-                        <p style={{ margin: 0, fontSize: '0.65rem', color: 'var(--success)', fontWeight: '600' }}>{item.margin} Margen</p>
+                        <p style={{ margin: 0, fontWeight: 'bold', fontSize: '0.85rem', color: 'var(--accent)' }}>{item.inv} por el paquete</p>
                       </div>
                     </div>
                   ))}
@@ -1140,10 +1139,10 @@ function App() {
           {user?.role !== 'SUPER_ADMIN' && (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: '2.5rem' }}>
               <div className="card glass" style={{ borderLeft: '3px solid var(--accent)', position: 'relative' }}>
-                <p style={{ fontSize: '0.55rem', opacity: 0.5, letterSpacing: '1px' }}>BILLETERA</p>
+                <p style={{ fontSize: '0.55rem', opacity: 0.5, letterSpacing: '1px' }}>COMISIONES POR COBRAR</p>
                 <h3 style={{ margin: '4px 0', fontSize: '1.25rem', color: 'white' }}>${(user?.wallet_balance || 0).toFixed(2)}</h3>
                 <p style={{ position: 'absolute', bottom: '6px', left: '12px', fontSize: '0.5rem', color: 'var(--text-secondary)', margin: 0, fontWeight: 600 }}>
-                  Comisiones acumuladas
+                  Acumulado histórico
                 </p>
               </div>
               <div 
@@ -1156,7 +1155,7 @@ function App() {
                 }}
               >
                 <p style={{ fontSize: '0.55rem', opacity: 0.5, letterSpacing: '1px' }}>
-                  SUELDO BASE {metrics.baseUnlocked ? '✅' : '🔒'}
+                  BONO POR META {metrics.baseUnlocked ? '✅' : '🔒'}
                 </p>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
                    <h3 style={{ margin: '4px 0', fontSize: '1.25rem', color: metrics.baseUnlocked && metrics.base > 0 ? 'var(--success)' : 'white' }}>
@@ -1663,13 +1662,13 @@ function App() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 <button 
                   onClick={async () => {
-                    const confirmSeed = confirm("¿Deseas crear el ESCENARIO COMPLETO de prueba?\n\nCada rol cumple su meta de anuales (sueldo base ACTIVADO) y suma planes mensuales extra:\n\n• Vendedor 1 (PRO) — 8 anuales + 6 mensuales = 14 planes\n• Vendedor 2 (ULTRA) — 13 anuales + 40 mensuales = 53 planes\n• Distribuidor 1 — 3 vendedores, 102 planes de equipo (27 anuales)\n• Distribuidor 2 — 5 vendedores, 210 planes de equipo (55 anuales)\n• Distribuidor 3 — 10 vendedores, 310 planes de equipo (100 anuales)\n\nAdemás se siembran los 2 MESES ANTERIORES al ~50% para poder revisar el historial mes a mes.\n\nOJO: purga todos los datos actuales y puede tardar un minuto.");
+                    const confirmSeed = confirm("¿Deseas crear el ESCENARIO COMPLETO de prueba?\n\nCada rol cumple su meta de anuales (bono por meta ACTIVADO) y suma planes mensuales extra:\n\n• Vendedor 1 (PRO) — 8 anuales + 6 mensuales = 14 planes\n• Vendedor 2 (ULTRA) — 13 anuales + 40 mensuales = 53 planes\n• Distribuidor 1 — 3 vendedores, 102 planes de equipo (27 anuales)\n• Distribuidor 2 — 5 vendedores, 210 planes de equipo (55 anuales)\n• Distribuidor 3 — 10 vendedores, 310 planes de equipo (100 anuales)\n\nAdemás se siembran los 2 MESES ANTERIORES al ~50% para poder revisar el historial mes a mes.\n\nOJO: purga todos los datos actuales y puede tardar un minuto.");
                     if (confirmSeed) {
                       setIsLoading(true);
                       try {
                         const result = await dataService.seedCompleteScenario(user.id || user.uid);
                         addNotification("¡Escenario completo sembrado con éxito!", "SUCCESS");
-                        alert(`✅ ESCENARIO COMPLETO CREADO:\n\n• ${result.vendedor1.full_name} → 14 planes del mes (8 anuales)\n• ${result.vendedor2.full_name} → 53 planes del mes (13 anuales)\n• ${result.distribuidor1.full_name} → 3 vendedores, 102 planes de equipo (27 anuales)\n• ${result.distribuidor2.full_name} → 5 vendedores, 210 planes de equipo (55 anuales)\n• ${result.distribuidor3.full_name} → 10 vendedores, 310 planes de equipo (100 anuales)\n\nTodos con sueldo base ACTIVADO + historial de los 2 meses anteriores.\n\nContraseña universal: connexo123`);
+                        alert(`✅ ESCENARIO COMPLETO CREADO:\n\n• ${result.vendedor1.full_name} → 14 planes del mes (8 anuales)\n• ${result.vendedor2.full_name} → 53 planes del mes (13 anuales)\n• ${result.distribuidor1.full_name} → 3 vendedores, 102 planes de equipo (27 anuales)\n• ${result.distribuidor2.full_name} → 5 vendedores, 210 planes de equipo (55 anuales)\n• ${result.distribuidor3.full_name} → 10 vendedores, 310 planes de equipo (100 anuales)\n\nTodos con bono por meta ACTIVADO + historial de los 2 meses anteriores.\n\nContraseña universal: connexo123`);
                         window.location.reload();
                       } catch (err) {
                         alert("Error al sembrar escenario: " + err.message);

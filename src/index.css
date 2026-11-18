@@ -2,9 +2,11 @@
 
 :root {
   /* Core Colors from Palette - Futuristic Cold Style */
-  --bg-primary: #0b0400;
-  --bg-secondary: #1a0c04;
-  --bg-elevated: #24110708;
+  /* Superficies "obsidiana" (mismas que Koda/Clients): casi negras con un
+     tinte cálido apenas perceptible. Antes eran marrones (#0b0400 / #1a0c04). */
+  --bg-primary: #070605;
+  --bg-secondary: #120f0d;
+  --bg-elevated: #1b171408;
   --text-primary: #fff3ea;
   --text-secondary: #ffb37a;
   --accent: #ff7a1a;
@@ -34,7 +36,7 @@
   --font-main: 'Space Grotesk', sans-serif;
   --font-heading: 'Tomorrow', sans-serif;
 
-  --glass-bg: rgba(16, 7, 1, 0.82);
+  --glass-bg: rgba(12, 10, 9, 0.84);
   --glass-border: rgba(255, 122, 26, 0.18);
   --glass-blur: blur(14px);
 
@@ -55,13 +57,11 @@ body {
   min-height: 100vh;
   line-height: 1.5;
   overflow-x: hidden;
-  /* Fondo en capas: brasa naranja arriba, dos rebotes fríos abajo. Da
-     profundidad sin restar contraste al texto. */
+  /* Fondo oscuro estilo Clients/Koda: negro obsidiana con solo un resplandor
+     de brasa muy tenue arriba. Sin lavados violeta/verde ni marrón. */
   background-image:
-    radial-gradient(ellipse 80% 55% at 50% -8%,  rgba(255, 122, 26, 0.20) 0%, transparent 70%),
-    radial-gradient(ellipse 60% 45% at 100% 22%, rgba(137, 0, 255, 0.10) 0%, transparent 70%),
-    radial-gradient(ellipse 70% 50% at 0% 78%,   rgba(30, 224, 160, 0.07) 0%, transparent 70%),
-    radial-gradient(circle at 50% 0%, #24100a 0%, transparent 80%);
+    radial-gradient(ellipse 80% 42% at 50% -10%, rgba(255, 122, 26, 0.10) 0%, transparent 70%),
+    radial-gradient(ellipse 55% 35% at 100% 0%,  rgba(255, 122, 26, 0.04) 0%, transparent 70%);
   background-attachment: fixed;
 }
 
@@ -126,9 +126,9 @@ p {
   padding: 1.5rem;
   border-radius: var(--radius-md);
   background:
-    linear-gradient(160deg, rgba(255, 122, 26, 0.06) 0%, rgba(255, 122, 26, 0) 55%),
+    linear-gradient(160deg, rgba(255, 122, 26, 0.04) 0%, rgba(255, 122, 26, 0) 55%),
     var(--bg-secondary);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.07);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
@@ -170,7 +170,7 @@ p {
    propio `background` en línea, así que no pisa ningún diseño existente. */
 .card.glass {
   background:
-    linear-gradient(150deg, rgba(255, 122, 26, 0.09) 0%, rgba(255, 122, 26, 0) 62%),
+    linear-gradient(150deg, rgba(255, 122, 26, 0.06) 0%, rgba(255, 122, 26, 0) 62%),
     var(--glass-bg);
 }
 
@@ -268,7 +268,7 @@ select:focus-visible {
   padding: 0 1rem;
   z-index: 1000;
   border-top: 1px solid var(--glass-border);
-  background: linear-gradient(180deg, rgba(45, 16, 2, 0.92) 0%, rgba(18, 7, 1, 0.96) 100%);
+  background: linear-gradient(180deg, rgba(22, 18, 15, 0.94) 0%, rgba(9, 7, 6, 0.97) 100%);
   backdrop-filter: blur(20px);
   box-shadow: 0 -8px 30px -10px rgba(0, 0, 0, 0.8);
 }

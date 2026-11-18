@@ -1497,10 +1497,10 @@ export const dataService = {
       },
       {
         id: '3',
-        title: "Examen de Certificación Oficial",
+        title: "Examen de Certificación de Producto",
         type: "quiz",
         duration: "10 min",
-        description: "Responde este cuestionario interactivo de 3 preguntas para obtener tu certificación oficial de comisiones.",
+        description: "Responde este cuestionario interactivo de 3 preguntas para obtener tu certificación de producto y activar tus comisiones.",
         questions: [
           {
             question: "¿Cuál es el beneficio principal de la cuenta ULTRA para un cliente?",

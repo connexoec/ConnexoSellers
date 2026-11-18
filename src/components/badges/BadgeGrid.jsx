@@ -21,7 +21,7 @@ export const BADGES_INFO = {
     id: 'SAAS_STARTER',
     title: 'SaaS\nStarter',
     subtitle: 'Primer Recurrente.',
-    description: 'Otorgado al distribuidor que cierra su primera venta de software de pago (Plan PRO o ULTRA). Marca el ingreso oficial al modelo de ingresos recurrentes de Connexo.',
+    description: 'Otorgado al distribuidor que cierra su primera venta de software de pago (Plan PRO o ULTRA). Marca tu primera venta de un plan de pago.',
     color: '#40E0D0', // Turquesa suave
     borderColor: '#C0C0C0', // Plateado
     icon: '🚀'
@@ -122,16 +122,16 @@ export const BADGES_INFO = {
     id: 'MONTHLY_CHAMP',
     title: 'Campeón\nMensual',
     subtitle: 'Meta 30 Suscripciones.',
-    description: 'Otorgado a los vendedores de élite que han alcanzado la meta mensual de 30 o más suscripciones de software activas (planes PRO o ULTRA). Reconoce la constancia y activa un bono exclusivo de $40 directo a la billetera.',
+    description: 'Otorgado a los vendedores de élite que han alcanzado la meta mensual de 30 o más suscripciones de software activas (planes PRO o ULTRA). Reconoce la constancia y activa un bono exclusivo de $40 que se suma a tus comisiones por cobrar.',
     color: '#FF8C00', // Naranja oscuro / Dorado
     borderColor: '#FFD700', // Dorado brillante
     icon: '🏆'
   },
   BASE_SALARY_UNLOCKED: {
     id: 'BASE_SALARY_UNLOCKED',
-    title: 'Sueldo\nActivado',
+    title: 'Bono\nActivado',
     subtitle: 'Ventas Anuales.',
-    description: 'Otorgado por alcanzar las 8 ventas anuales, liberando oficialmente el cobro de Sueldo Base Garantizado. Demuestra un alto nivel de compromiso a largo plazo.',
+    description: 'Reconoce que cumpliste la meta de planes anuales del mes. El bono se paga solo en los meses en que se cumple la meta.',
     color: '#00FF7F', // Verde primavera brillante
     borderColor: '#FFFFFF', 
     icon: '💰'

@@ -96,7 +96,7 @@ const Academy = ({ user, onCertify }) => {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem' }}>
         <div>
           <h2 style={{ fontSize: '1.4rem', textTransform: 'uppercase', fontFamily: 'var(--font-heading)' }}>Academia Connexo</h2>
-          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Capacitación y Certificaciones oficiales de red.</p>
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Capacitación y certificación de producto de la red.</p>
         </div>
         {isSuperAdmin && (
           <button 
@@ -124,7 +124,7 @@ const Academy = ({ user, onCertify }) => {
               <Award size={36} color="var(--success)" style={{ filter: 'drop-shadow(0 0 8px rgba(0,255,157,0.4))' }} />
               <div>
                 <h3 style={{ margin: 0, fontSize: '1rem', color: 'var(--success)', fontFamily: 'var(--font-heading)' }}>CERTIFICACIÓN ACTIVA</h3>
-                <p style={{ margin: '4px 0 0', fontSize: '0.8rem', opacity: 0.8 }}>¡Felicidades! Tienes acceso completo a comisiones, bonos y sueldos base.</p>
+                <p style={{ margin: '4px 0 0', fontSize: '0.8rem', opacity: 0.8 }}>¡Felicidades! Tienes acceso completo a comisiones y bonos por meta.</p>
               </div>
             </div>
           ) : (
@@ -133,7 +133,7 @@ const Academy = ({ user, onCertify }) => {
                 <Lock size={18} /> COMISIONES BLOQUEADAS
               </h3>
               <p style={{ fontSize: '0.8rem', marginTop: '6px', opacity: 0.9 }}>
-                Debes aprobar el **Examen de Certificación Oficial** abajo para desbloquear el cálculo de tus comisiones y sueldos base de red.
+                Debes aprobar el **Examen de Certificación de Producto** abajo para desbloquear el cálculo de tus comisiones y bonos por meta de la red.
               </p>
             </div>
           )}
@@ -370,7 +370,7 @@ const Academy = ({ user, onCertify }) => {
               <button onClick={() => setActiveQuiz(null)} style={{ position: 'absolute', top: 12, right: 12, background: 'transparent', border: 'none', color: '#fff', fontSize: '1.1rem', cursor: 'pointer' }}>✕</button>
               
               <h3 style={{ margin: '0 0 4px', fontSize: '1.2rem', color: 'white', fontFamily: 'var(--font-heading)' }}>{activeQuiz.title}</h3>
-              <p style={{ margin: '0 0 1.5rem', fontSize: '0.75rem', opacity: 0.6, textTransform: 'uppercase', letterSpacing: '1px' }}>Certificación Oficial</p>
+              <p style={{ margin: '0 0 1.5rem', fontSize: '0.75rem', opacity: 0.6, textTransform: 'uppercase', letterSpacing: '1px' }}>Certificación de Producto</p>
               
               {!quizSubmitted ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
@@ -415,7 +415,7 @@ const Academy = ({ user, onCertify }) => {
                     <motion.div initial={{ scale: 0.8 }} animate={{ scale: 1 }} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
                       <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: 'rgba(0,255,157,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2rem' }}><Award size={32} color="var(--success)" /></div>
                       <h4 style={{ color: 'var(--success)', margin: 0, fontSize: '1.2rem', fontFamily: 'var(--font-heading)' }}>¡EXAMEN APROBADO!</h4>
-                      <p style={{ fontSize: '0.85rem', opacity: 0.8, maxWidth: '300px', margin: '4px 0 20px' }}>Has respondido correctamente todas las preguntas. Tu certificación oficial ya está activa en tu red.</p>
+                      <p style={{ fontSize: '0.85rem', opacity: 0.8, maxWidth: '300px', margin: '4px 0 20px' }}>Has respondido correctamente todas las preguntas. Tu certificación de producto ya está activa en tu red.</p>
                       <button onClick={() => setActiveQuiz(null)} className="btn btn-primary" style={{ padding: '10px 24px', color: 'var(--bg-primary)' }}>Listo</button>
                     </motion.div>
                   ) : (

@@ -116,7 +116,7 @@ const InventoryManager = ({ user, team, metrics, addNotification, selectedSedeCo
     setDistributorTab('CATALOG');
     setIsRequesting(true);
 
-    addNotification(`🚀 Plan de Inversión añadido: ${quantity} Licencias listas para procesar.`);
+    addNotification(`📦 Paquete de ${quantity} licencias añadido al pedido.`);
   };
 
   const handleSendRequest = async () => {
@@ -238,7 +238,7 @@ const InventoryManager = ({ user, team, metrics, addNotification, selectedSedeCo
               color: distributorTab === 'INVESTMENT' ? 'var(--bg-primary)' : 'var(--text-secondary)'
             }}
           >
-            MI INVERSIÓN NFC
+            MI PAQUETE NFC
           </button>
         </div>
       )}
@@ -492,11 +492,11 @@ const InventoryManager = ({ user, team, metrics, addNotification, selectedSedeCo
             <p style={{ fontSize: '0.6rem', opacity: 0.6, textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '8px' }}>Nivel Actual de Distribución</p>
             <h3 style={{ margin: 0, fontSize: '1.4rem', color: 'var(--accent)' }}>{metrics?.level || 'DISTRIBUIDOR 1'}</h3>
             <p style={{ fontSize: '0.75rem', opacity: 0.7, marginTop: '8px', lineHeight: '1.5' }}>
-              Como Distribuidor Connexo, tu cuenta cuenta con una asignación de planes preferencial. A continuación, haz clic en tu nivel activo para ver el detalle exacto de lo que estás adquiriendo con tu inversión.
+              Tu cuenta incluye precios de distribuidor. Haz clic en tu nivel activo para ver lo que incluye tu paquete.
             </p>
           </div>
 
-          <h3 style={{ fontSize: '0.8rem', textTransform: 'uppercase', opacity: 0.6, letterSpacing: '1px', marginBottom: '1rem' }}>Proyección de Inversión por Niveles</h3>
+          <h3 style={{ fontSize: '0.8rem', textTransform: 'uppercase', opacity: 0.6, letterSpacing: '1px', marginBottom: '1rem' }}>Paquetes de licencias por nivel</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2.5rem' }}>
             {[
               { lvl: 'Nivel 1', units: '100 unidades', inv: '$526.00', label: 'DISTRIBUIDOR 1' },
@@ -528,7 +528,7 @@ const InventoryManager = ({ user, team, metrics, addNotification, selectedSedeCo
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div>
                       <h4 style={{ margin: 0, fontWeight: 'bold', fontSize: '0.95rem', color: isActive ? 'var(--accent)' : '#aaa' }}>{dLevel.lvl}</h4>
-                      <p style={{ margin: '4px 0 0', fontSize: '0.7rem', opacity: 0.6 }}>Capacidad Operativa: {dLevel.units}</p>
+                      <p style={{ margin: '4px 0 0', fontSize: '0.7rem', opacity: 0.6 }}>Licencias incluidas: {dLevel.units.split(' ')[0]}</p>
                       {isActive && (
                         <p style={{ margin: '6px 0 0', fontSize: '0.6rem', color: 'var(--accent)', fontStyle: 'italic' }}>💡 Haz clic para ver el detalle del plan</p>
                       )}
@@ -556,11 +556,11 @@ const InventoryManager = ({ user, team, metrics, addNotification, selectedSedeCo
               <span style={{ background: 'rgba(255,102,0,0.1)', color: 'var(--accent)', padding: '4px 12px', borderRadius: '100px', fontSize: '0.65rem', fontWeight: 800, letterSpacing: '1px' }}>DETALLE DE PLAN ACTIVO</span>
               <h3 style={{ margin: '8px 0 4px', fontSize: '1.4rem', color: 'white', fontWeight: 800 }}>{selectedLevelDetail.lvl}</h3>
               <h2 style={{ margin: 0, color: 'var(--accent)', fontSize: '1.8rem', fontWeight: 900 }}>{selectedLevelDetail.inv}</h2>
-              <p style={{ margin: '4px 0 0', fontSize: '0.75rem', opacity: 0.6 }}>Inversión para {selectedLevelDetail.units}</p>
+              <p style={{ margin: '4px 0 0', fontSize: '0.75rem', opacity: 0.6 }}>Paquete de {selectedLevelDetail.units.split(' ')[0]} licencias</p>
             </div>
 
             <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: '12px', padding: '1.2rem', border: '1px solid rgba(255,255,255,0.05)' }}>
-              <h4 style={{ margin: '0 0 12px', fontSize: '0.75rem', letterSpacing: '1px', textTransform: 'uppercase', opacity: 0.8 }}>¿Qué incluye esta inversión?</h4>
+              <h4 style={{ margin: '0 0 12px', fontSize: '0.75rem', letterSpacing: '1px', textTransform: 'uppercase', opacity: 0.8 }}>¿Qué incluye este paquete?</h4>
               <ul style={{ padding: 0, margin: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {(
                   selectedLevelDetail.label === 'DISTRIBUIDOR 1' ? [
@@ -580,7 +580,7 @@ const InventoryManager = ({ user, team, metrics, addNotification, selectedSedeCo
                     'Control Máximo Operativo de Ecosistema Multisede.',
                     'Soporte VIP Directo 24/7 de Alto Rendimiento.',
                     'Asesoría Estratégica Uno a Uno para Crecimiento de Red.',
-                    'Acceso Total a Herramientas Pro de Automatización de Nóminas.'
+                    'Reportes de comisiones de tu red.'
                   ]
                 ).map((text, i) => (
                   <li key={i} style={{ fontSize: '0.75rem', display: 'flex', alignItems: 'flex-start', gap: '8px', lineHeight: '1.4' }}>
@@ -604,7 +604,7 @@ const InventoryManager = ({ user, team, metrics, addNotification, selectedSedeCo
                 textTransform: 'uppercase'
               }}
             >
-              🚀 SOLICITAR ESTE PLAN AHORA
+              🚀 SOLICITAR ESTE PAQUETE
             </button>
 
             <button 
