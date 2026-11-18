@@ -52,6 +52,18 @@ const PROFILE_LIST_COLUMNS =
   'id, created_at, full_name, email, role, tier, tier_start_date, is_certified, ' +
   'wallet_balance, parent_id, sede_asignada, badges';
 
+// Columnas añadidas por `supabase/migrations/20261118000000_ruc_terminos_pagos.sql`.
+// ⚠️ NO van en PROFILE_LIST_COLUMNS: si la migración aún no se ejecutó, pedirlas
+// en el listado haría fallar TODA la lista de equipo. Se consultan aparte
+// (`getCompliance`) y degradan en silencio.
+const COMPLIANCE_COLUMNS = 'id, ruc, terms_accepted_at, terms_version';
+
+/** ¿El error de Supabase se debe a que falta una tabla/columna (migración sin ejecutar)? */
+export function esErrorDeEsquema(err) {
+  const txt = `${err?.code || ''} ${err?.message || ''}`.toLowerCase();
+  return /42703|42p01|pgrst204|pgrst205|schema cache|does not exist|could not find/.test(txt);
+}
+
 export const ROLES = {
   SUPER_ADMIN: 'SUPER_ADMIN',
   DISTRIBUTOR: 'DISTRIBUTOR',
@@ -1097,6 +1109,82 @@ export const dataService = {
       _metricsCache.clear();
       return { id: userId, ...updates };
     }
+  },
+
+  // ─── CUMPLIMIENTO: términos, RUC y pagos con estado de factura ─────────────
+  // ⚠️ Requieren `supabase/migrations/20261118000000_ruc_terminos_pagos.sql`.
+  // Mientras no se ejecute, degradan en silencio y nada se rompe.
+
+  /** Registra la aceptación de los términos (fecha y versión) en el perfil. */
+  async acceptTerms(userId, version) {
+    const ahora = new Date().toISOString();
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ terms_accepted_at: ahora, terms_version: version })
+        .eq('id', userId);
+      if (error) throw error;
+      return { terms_accepted_at: ahora, terms_version: version, persisted: true };
+    } catch (err) {
+      // Sin columnas (migración pendiente) o sin red: se deja una marca local
+      // para no pedir la aceptación en bucle. La fecha NO queda en la base.
+      console.warn('⚠️ No se pudo guardar la aceptación de términos en la base:', err?.message);
+      safeSetItem(`connexo_terms_${userId}`, JSON.stringify({ version, at: ahora }));
+      return { terms_accepted_at: ahora, terms_version: version, persisted: false };
+    }
+  },
+
+  /** Super Admin: RUC y aceptación de cada perfil → { [id]: {...} } (o null si falta la migración). */
+  async getCompliance() {
+    try {
+      const { data, error } = await supabase.from('profiles').select(COMPLIANCE_COLUMNS);
+      if (error) throw error;
+      return Object.fromEntries((data || []).map(p => [p.id, p]));
+    } catch (err) {
+      if (!esErrorDeEsquema(err)) console.warn('⚠️ getCompliance:', err?.message);
+      return null;
+    }
+  },
+
+  /** Pagos de un vendedor, del más reciente al más antiguo → { rows, missing }. */
+  async getPayouts(sellerId) {
+    try {
+      const { data, error } = await supabase
+        .from('payouts')
+        .select('*')
+        .eq('seller_id', sellerId)
+        .order('period', { ascending: false })
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return { rows: data || [], missing: false };
+    } catch (err) {
+      if (!esErrorDeEsquema(err)) console.warn('⚠️ getPayouts:', err?.message);
+      return { rows: [], missing: esErrorDeEsquema(err) };
+    }
+  },
+
+  async createPayout(payout) {
+    const { data, error } = await supabase.from('payouts').insert([payout]).select().single();
+    if (error) throw new Error(this._errorDePagos(error));
+    return data;
+  },
+
+  async updatePayout(id, updates) {
+    const { data, error } = await supabase.from('payouts').update(updates).eq('id', id).select().single();
+    if (error) throw new Error(this._errorDePagos(error));
+    return data;
+  },
+
+  async deletePayout(id) {
+    const { error } = await supabase.from('payouts').delete().eq('id', id);
+    if (error) throw new Error(this._errorDePagos(error));
+    return true;
+  },
+
+  _errorDePagos(error) {
+    return esErrorDeEsquema(error)
+      ? 'Los pagos aún no están habilitados en la base de datos (falta ejecutar la actualización de Supabase).'
+      : error.message;
   },
 
   // ─── NOTIFICACIONES ────────────────────────────────────────────────────────
