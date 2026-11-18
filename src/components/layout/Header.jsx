@@ -13,14 +13,14 @@ const Header = ({ user, activeTab, onBack, selectedSedeContext = 'GLOBAL', onCha
           <button 
             onClick={onBack} 
             className="btn glass" 
-            style={{ padding: '8px', border: '1px solid var(--accent)' }}
+            style={{ padding: '8px' }}
             aria-label="Volver al dashboard"
           >
-            <ArrowLeft size={18} color="var(--accent)" />
+            <ArrowLeft size={18} color="var(--accent-light)" />
           </button>
         )}
         <div>
-          <p style={{ fontSize: '0.7rem', marginBottom: '2px', opacity: 0.6, textTransform: 'uppercase' }}>Sesión Activa</p>
+          <p className="eyebrow" style={{ marginBottom: '2px' }}>Sesión activa</p>
           <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, fontFamily: 'var(--font-heading)' }}>{user.name}</h3>
         </div>
       </div>
@@ -32,8 +32,8 @@ const Header = ({ user, activeTab, onBack, selectedSedeContext = 'GLOBAL', onCha
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
               aria-label="Selector de Mercado"
               style={{
-                background: 'rgba(255, 255, 255, 0.04)',
-                border: '1px solid var(--accent)',
+                background: 'rgba(245, 236, 229, 0.04)',
+                border: '1px solid var(--line-strong)',
                 color: 'white',
                 fontSize: '1.1rem',
                 width: '38px',
@@ -43,7 +43,6 @@ const Header = ({ user, activeTab, onBack, selectedSedeContext = 'GLOBAL', onCha
                 alignItems: 'center',
                 justifyContent: 'center',
                 cursor: 'pointer',
-                boxShadow: '0 0 10px var(--accent-glow)',
                 outline: 'none',
                 transition: 'all 0.2s'
               }}
@@ -57,9 +56,9 @@ const Header = ({ user, activeTab, onBack, selectedSedeContext = 'GLOBAL', onCha
                   position: 'absolute',
                   top: '46px',
                   right: 0,
-                  background: 'rgba(20, 5, 0, 0.95)',
-                  border: '1px solid var(--accent)',
-                  borderRadius: '10px',
+                  background: 'rgba(14, 12, 11, 0.97)',
+                  border: '1px solid var(--line-strong)',
+                  borderRadius: '12px',
                   padding: '6px',
                   display: 'flex',
                   flexDirection: 'column',
@@ -109,7 +108,20 @@ const Header = ({ user, activeTab, onBack, selectedSedeContext = 'GLOBAL', onCha
         <NotificationCenter userId={user?.id || user?.uid} onNavigate={onNavigate} />
 
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
-          <span className="tier-badge" style={{ background: 'var(--accent)', color: 'var(--bg-primary)', fontWeight: 900, fontSize: '0.6rem' }}>
+          <span
+            className="tier-badge"
+            style={{
+              background: 'rgba(255, 122, 26, 0.12)',
+              color: 'var(--accent-light)',
+              border: '1px solid var(--accent-glow)',
+              borderRadius: '999px',
+              padding: '2px 9px',
+              fontFamily: 'var(--font-mono)',
+              fontWeight: 500,
+              fontSize: '0.58rem',
+              letterSpacing: '0.12em'
+            }}
+          >
             {user.role}
           </span>
           {user.is_certified ? (

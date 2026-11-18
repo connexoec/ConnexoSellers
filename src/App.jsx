@@ -10,7 +10,11 @@ import SaleForm     from './components/sales/SaleForm';
 import { getProfileLabel } from './constants/customerProfiles';
 import Academy      from './components/academy/Academy';
 import InventoryManager from './components/inventory/InventoryManager';
-import { dataService, PLANS } from './services/dataService';
+import { dataService, PLANS, esErrorDeEsquema } from './services/dataService';
+import TermsGate     from './components/legal/TermsGate';
+import IncomeNotice  from './components/legal/IncomeNotice';
+import PayoutsPanel  from './components/payouts/PayoutsPanel';
+import { TERMS_VERSION, hasAcceptedTerms, normalizeRuc, validateRuc, formatDate } from './constants/legal';
 import BadgeGrid, { BADGES_INFO } from './components/badges/BadgeGrid';
 import { evaluarInsigniasAutomaticas } from './lib/badges';
 import { SESSION_KEY, saveSession, loadSession, clearSession, safeSetItem, avatarKey } from './lib/storage';
@@ -49,6 +53,7 @@ function App() {
   const [showProfileSettings, setShowProfileSettings] = useState(false);
   const [editedName,      setEditedName]      = useState('');
   const [editedEmail,     setEditedEmail]     = useState('');
+  const [editedRuc,       setEditedRuc]       = useState('');
   const [selectedSedeContext, setSelectedSedeContext] = useState(() => {
     return localStorage.getItem('connexo_selected_sede_context') || 'GLOBAL';
   });
@@ -374,6 +379,18 @@ function App() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Vendedores y distribuidores deben aceptar los términos de colaboración
+  // (con fecha) antes de usar la app. El Super Admin es la empresa: no aplica.
+  const needsTerms = isAuthenticated && !!user && user.role !== 'SUPER_ADMIN' && !hasAcceptedTerms(user);
+
+  const handleAcceptTerms = async () => {
+    const uid = user.id || user.uid;
+    const res = await dataService.acceptTerms(uid, TERMS_VERSION);
+    const updatedUser = { ...user, terms_accepted_at: res.terms_accepted_at, terms_version: res.terms_version };
+    saveSession(updatedUser);
+    setUser(updatedUser);
   };
 
   const handleAdminBypass = (adminUser) => {
@@ -1074,8 +1091,8 @@ function App() {
             </motion.div>
             </>
           ) : (
-            <div className="card glass" style={{ marginBottom: '2rem', border: '1px solid var(--accent-glow)', background: 'linear-gradient(135deg, var(--bg-secondary) 0%, #2b1208 100%)' }}>
-              <p style={{ fontSize: '0.6rem', opacity: 0.6, textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '8px' }}>Estatus de Agente</p>
+            <div className="card glass" style={{ marginBottom: '2rem', border: '1px solid rgba(255,122,26,0.28)', background: 'linear-gradient(135deg, var(--bg-secondary) 0%, #1d130c 100%)' }}>
+              <p className="eyebrow" style={{ marginBottom: '8px' }}>Estatus de agente</p>
               <h2 style={{ color: 'var(--accent)', margin: '0', fontSize: '1.4rem', textShadow: '0 0 10px var(--accent-glow)' }}>{metrics.level}</h2>
               
               {/* Progreso de Nivel (Dinámico) — mide contra el objetivo del
@@ -1418,6 +1435,22 @@ function App() {
                   placeholder="Correo electrónico"
                   style={{ padding: '8px 12px', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--glass-border)', color: 'white', borderRadius: '8px', fontSize: '0.9rem', textAlign: 'center' }}
                 />
+                {user?.role !== 'SUPER_ADMIN' && (
+                  <>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={13}
+                      value={editedRuc}
+                      onChange={e => setEditedRuc(normalizeRuc(e.target.value))}
+                      placeholder="RUC (13 dígitos)"
+                      style={{ padding: '8px 12px', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--glass-border)', color: 'white', borderRadius: '8px', fontSize: '0.9rem', textAlign: 'center' }}
+                    />
+                    <p style={{ margin: 0, fontSize: '0.6rem', opacity: 0.55, textAlign: 'center' }}>
+                      Lo necesitas para facturar a Connexo tus comisiones y bonos.
+                    </p>
+                  </>
+                )}
                 <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', marginTop: '4px' }}>
                   <button 
                     onClick={async () => {
@@ -1425,17 +1458,30 @@ function App() {
                         alert("Por favor completa todos los campos.");
                         return;
                       }
+                      // El RUC solo se envía si cambió: así editar nombre o correo
+                      // sigue funcionando aunque la base aún no tenga la columna.
+                      const rucNuevo = normalizeRuc(editedRuc);
+                      const cambioRuc = user?.role !== 'SUPER_ADMIN' && rucNuevo !== (user?.ruc || '');
+                      if (cambioRuc) {
+                        const errRuc = validateRuc(rucNuevo);
+                        if (errRuc) { alert(errRuc); return; }
+                      }
+                      const camposRuc = cambioRuc ? { ruc: rucNuevo || null } : {};
                       setIsLoading(true);
                       try {
                         const uid = user.id || user.uid;
-                        await dataService.updateProfile(uid, { full_name: editedName, email: editedEmail });
-                        const updatedUser = { ...user, full_name: editedName, email: editedEmail };
+                        await dataService.updateProfile(uid, { full_name: editedName, email: editedEmail, ...camposRuc });
+                        const updatedUser = { ...user, full_name: editedName, email: editedEmail, ...camposRuc };
                         setUser(updatedUser);
                         saveSession(updatedUser);
                         setIsEditingProfile(false);
                         addNotification("Perfil actualizado con éxito", "SUCCESS");
                       } catch (err) {
-                        alert("Error actualizando perfil: " + err.message);
+                        alert("Error actualizando perfil: " + (
+                          cambioRuc && esErrorDeEsquema(err)
+                            ? 'el RUC aún no se puede guardar porque falta actualizar la base de datos. Avísale al administrador.'
+                            : err.message
+                        ));
                       } finally {
                         setIsLoading(false);
                       }
@@ -1450,8 +1496,9 @@ function App() {
                       setIsEditingProfile(false);
                       setEditedName(user?.full_name || '');
                       setEditedEmail(user?.email || '');
+                      setEditedRuc(user?.ruc || '');
                     }}
-                    className="btn glass" 
+                    className="btn glass"
                     style={{ fontSize: '0.7rem', padding: '6px 14px', height: 'auto' }}
                   >
                     Cancelar
@@ -1493,6 +1540,18 @@ function App() {
                     </p>
                   </div>
                 )}
+                {user?.role !== 'SUPER_ADMIN' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', margin: '2px 0 6px' }}>
+                    <p style={{ fontSize: '0.68rem', margin: 0, color: user?.ruc ? 'var(--text-secondary)' : '#f59e0b' }}>
+                      {user?.ruc ? `RUC ${user.ruc}` : '⚠️ Sin RUC: agrégalo en "Editar Perfil" para poder facturar tus pagos'}
+                    </p>
+                    {user?.terms_accepted_at && (
+                      <p style={{ fontSize: '0.6rem', margin: 0, opacity: 0.5 }}>
+                        Términos aceptados el {formatDate(user.terms_accepted_at)}
+                      </p>
+                    )}
+                  </div>
+                )}
               </>
             )}
           </div>
@@ -1520,6 +1579,7 @@ function App() {
                     setIsEditingProfile(true);
                     setEditedName(user?.full_name || '');
                     setEditedEmail(user?.email || '');
+                    setEditedRuc(user?.ruc || '');
                     setShowProfileSettings(false);
                   }}
                   className="btn glass" 
@@ -1649,6 +1709,9 @@ function App() {
             <BadgeGrid activeBadges={userBadges} />
           </div>
 
+          {/* Pagos de Connexo y estado de la factura de cada uno */}
+          {user?.role !== 'SUPER_ADMIN' && <PayoutsPanel mode="seller" seller={user} />}
+
 
 
           {/* Super Admin Purge & System Restore Section */}
@@ -1702,6 +1765,8 @@ function App() {
           onAdminBypass={handleAdminBypass}
           isLoading={isLoading}
         />
+      ) : needsTerms ? (
+        <TermsGate key="terms" user={user} onAccept={handleAcceptTerms} onLogout={handleLogout} />
       ) : showOnboarding ? (
         <Onboarding key="onboarding" user={user} onComplete={() => setShowOnboarding(false)} />
       ) : (
@@ -1714,7 +1779,10 @@ function App() {
             selectedSedeContext={selectedSedeContext}
             onChangeContext={setSelectedSedeContext}
           />
-          <main role="main" style={{ flex: 1 }}>{renderContent()}</main>
+          <main role="main" style={{ flex: 1 }}>
+            {renderContent()}
+            {user?.role !== 'SUPER_ADMIN' && <IncomeNotice />}
+          </main>
           <nav role="navigation">
             <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} role={user?.role} />
           </nav>

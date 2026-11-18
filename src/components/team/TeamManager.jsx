@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { UserPlus, Download } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { dataService, TIERS } from '../../services/dataService';
 import BadgeGrid, { BADGES_INFO } from '../badges/BadgeGrid';
+import PayoutsPanel from '../payouts/PayoutsPanel';
+import { formatDate } from '../../constants/legal';
 
 const BASIC_BADGE_KEYS = ['FIRST_BLOOD', 'SAAS_STARTER', 'ACADEMY_LV1', 'GOLD_HAMMER', 'BRILLIANT_MIND', 'LEAD_HUNTER'];
 const ELITE_BADGE_KEYS = ['PIONEER', 'RECURRING_LORD', 'VERIFIED_DIST', 'CORPORATE_CLOSER', 'SAAS_TITAN', 'CERTIFIED_MASTER'];
@@ -20,6 +22,40 @@ const TeamManager = ({ users, currentUser, onAddUser, sales, selectedSedeContext
   const [agentSearchQuery, setAgentSearchQuery] = useState('');
   const [agentPage, setAgentPage] = useState(1);
   const [showSocialDetails, setShowSocialDetails] = useState(false);
+  // Super Admin: RUC y aceptación de términos de cada perfil (null = aún sin migrar)
+  const [compliance, setCompliance] = useState(null);
+  const [payoutsFor, setPayoutsFor] = useState(null);
+
+  const esSuperAdmin = currentUser?.role === 'SUPER_ADMIN';
+  useEffect(() => {
+    if (!esSuperAdmin) return undefined;
+    let vivo = true;
+    dataService.getCompliance().then(c => { if (vivo) setCompliance(c); });
+    return () => { vivo = false; };
+  }, [esSuperAdmin]);
+
+  // Línea de estado de cumplimiento de una persona (solo Super Admin)
+  const lineaCumplimiento = (id) => {
+    const c = compliance?.[id];
+    if (!c) return null;
+    return (
+      <p style={{ margin: 0, fontSize: '0.6rem', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+        <span style={{ color: c.ruc ? 'var(--success)' : '#f59e0b' }}>{c.ruc ? '🧾 RUC ✓' : '⚠️ Sin RUC'}</span>
+        <span style={{ color: c.terms_accepted_at ? 'var(--success)' : '#f59e0b' }}>
+          {c.terms_accepted_at ? `📜 Términos ${formatDate(c.terms_accepted_at)}` : '📜 Términos pendientes'}
+        </span>
+      </p>
+    );
+  };
+
+  const botonPagos = (u) => (
+    <button
+      onClick={(e) => { e.stopPropagation(); setPayoutsFor({ ...u, ruc: compliance?.[u.id]?.ruc || null }); }}
+      style={{ background: 'rgba(255,122,26,0.1)', border: '1px solid var(--accent-glow)', color: 'var(--accent-light)', padding: '2px 8px', borderRadius: '4px', fontSize: '0.6rem', cursor: 'pointer' }}
+    >
+      💵 Pagos
+    </button>
+  );
 
   const toggleExpand = async (userId) => {
     if (expandedUserId === userId) {
@@ -339,6 +375,7 @@ const TeamManager = ({ users, currentUser, onAddUser, sales, selectedSedeContext
                 <h3 style={{ marginBottom: '1.2rem', fontSize: '0.9rem', textTransform: 'uppercase', opacity: 0.6, letterSpacing: '1px' }}>
                   {currentUser?.role === 'SUPER_ADMIN' ? 'Redes y Canales' : 'Miembros de Red'} ({rootDisplay.length})
                 </h3>
+                {payoutsFor && <PayoutsPanel mode="admin" seller={payoutsFor} onClose={() => setPayoutsFor(null)} />}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   {rootDisplay.length === 0 ? (
                     <p style={{ textAlign: 'center', opacity: 0.4, padding: '3rem', fontSize: '0.85rem' }}>
@@ -403,6 +440,7 @@ const TeamManager = ({ users, currentUser, onAddUser, sales, selectedSedeContext
                                         {isExpanded ? '▼ Ocultar Red' : `▶ Ver Red (${subSellers.length} agentes)`}
                                       </p>
                                     )}
+                                    {lineaCumplimiento(u.id)}
                                   </div>
                                 ) : (
                                   <p style={{ margin: 0, fontSize: '0.7rem', color: u.is_certified ? 'var(--success)' : 'var(--text-secondary)' }}>
@@ -425,6 +463,7 @@ const TeamManager = ({ users, currentUser, onAddUser, sales, selectedSedeContext
                                 </p>
                                 <p style={{ margin: 0, fontSize: '0.6rem', opacity: 0.4, textTransform: 'uppercase' }}>volumen</p>
                               </div>
+                              {currentUser?.role === 'SUPER_ADMIN' && botonPagos(u)}
                               {currentUser?.role === 'SUPER_ADMIN' && (
                                 <button
                                   onClick={async (e) => {
@@ -471,11 +510,12 @@ const TeamManager = ({ users, currentUser, onAddUser, sales, selectedSedeContext
                                           <p style={{ margin: 0, fontSize: '0.6rem', opacity: 0.5 }}>{sub.email} · <span style={{ color: sub.is_certified ? 'var(--success)' : '#f59e0b' }}>{sub.is_certified ? 'Certificado' : 'Pendiente'}</span></p>
                                         </div>
                                       </div>
-                                      <div style={{ textAlign: 'right' }}>
+                                      <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '3px' }}>
                                         <p style={{ margin: 0, fontSize: '0.8rem', fontWeight: 700, color: 'white' }}>
                                           ${sales.filter(s => s.seller_id === sub.id).reduce((acc, s) => acc + (s.amount || 0), 0).toFixed(0)}
                                         </p>
                                         <p style={{ margin: 0, fontSize: '0.55rem', opacity: 0.4 }}>Volumen</p>
+                                        {currentUser?.role === 'SUPER_ADMIN' && botonPagos(sub)}
                                       </div>
                                     </div>
                                   ))}
