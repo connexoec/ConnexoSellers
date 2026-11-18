@@ -286,10 +286,10 @@ export async function exportReporteGlobalXLSX({ sales = [], team = [], sedes = [
   // ════════ HOJA 4 · RANKING DE EQUIPO ════════
   {
     const ws = wb.addWorksheet('Ranking Equipo', { views: [{ state: 'frozen', ySplit: 6 }] });
-    const cols = [5, 24, 14, 16, 14, 10, 13, 13, 18, 18, 18, 16];
+    const cols = [5, 24, 14, 16, 14, 10, 13, 13, 18, 18, 18, 22];
     cols.forEach((w, i) => (ws.getColumn(i + 1).width = w));
     pintarBanner(ws, wb, base64, cols.length, 'CONNEXO · Reporte Global', 'Ranking de equipo (por facturación directa)');
-    cabecera(ws, 6, ['#', 'Vendedor', 'Rol', 'Rango', 'Sede', 'Cert.', 'Planes (mes)', 'Planes (hist)', 'Facturación directa', 'Comisiones ganadas', 'Facturación red', 'Billetera']);
+    cabecera(ws, 6, ['#', 'Vendedor', 'Rol', 'Rango', 'Sede', 'Cert.', 'Planes (mes)', 'Planes (hist)', 'Facturación directa', 'Comisiones ganadas', 'Facturación red', 'Comisiones por cobrar']);
 
     const ventasPorVendedor = new Map();
     sales.forEach((s) => {

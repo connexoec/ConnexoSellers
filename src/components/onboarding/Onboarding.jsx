@@ -31,8 +31,8 @@ const getSlidesForRole = (role) => {
       ...baseSlides,
       {
         id: 'distri_team',
-        title: "LIDERAZGO DE RED",
-        description: "Suma vendedores a tu equipo. Sus ventas te impulsan a los niveles de Partner 1, 2 y 3.",
+        title: "TU RED DE VENTAS",
+        description: "Refiere vendedores a la red de Connexo. Sus ventas cuentan para tu nivel: Distribuidor 1, 2 y 3.",
         icon: <TrendingUp size={80} color="var(--tier-ultra)" />,
         animation: { x: [-20, 20, 0] }
       }
@@ -43,8 +43,8 @@ const getSlidesForRole = (role) => {
     ...baseSlides,
     {
       id: 'seller_growth',
-      title: "TU CARRERA COMERCIAL",
-      description: "Escala de Basic a Ultra. 20 ventas para PRO, 31 para beneficios máximos.",
+      title: "TU CAMINO COMERCIAL",
+      description: "Sube de nivel según tus ventas del mes: PRO es el nivel base y ULTRA se alcanza con 50 planes en el mes.",
       icon: <TrendingUp size={80} color="var(--tier-pro)" />,
       animation: { scale: [1, 1.2, 1] }
     }
